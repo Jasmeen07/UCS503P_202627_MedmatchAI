@@ -137,9 +137,9 @@ export default function DashboardOverview() {
       {/* =========================================================================
           HERO SECTION — MedMatch Reassuring Botanical Consultation Banner
           ========================================================================= */}
-      <section className="relative pt-2 pb-6 sm:pb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-hidden">
-        {/* Left Headline & Editorial Reassurance */}
-        <div className="max-w-xl z-10 space-y-3">
+      <section className="relative pt-0 pb-4 sm:pb-6 flex flex-col md:flex-row md:items-start justify-between gap-6">
+        {/* Left Headline & Editorial Reassurance — positioned lower down with generous breathing space */}
+        <div className="max-w-xl z-10 space-y-3 pt-14 sm:pt-16 md:pt-20 lg:pt-24 xl:pt-28">
           <h1 className="text-4xl sm:text-5xl font-normal tracking-tight text-slate-900 dark:text-slate-100 font-editorial-serif min-h-[1.25em] flex items-baseline">
             <span>{displayedGreeting || greeting || "Good morning"}</span>
             <span className="inline-block w-0.5 h-[0.8em] bg-teal-700/60 dark:bg-teal-400/60 animate-pulse ml-1 rounded-full" />
@@ -155,10 +155,10 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Right Doctor Consultation Visual with Perfectly Locked Contouring Waves */}
-        <div className="relative flex items-center justify-end shrink-0 md:w-[520px] lg:w-[600px] xl:w-[680px]">
+        {/* Right Doctor Consultation Visual — Reaches all the way UP to the very start of the page */}
+        <div className="relative flex items-start justify-end shrink-0 md:w-[540px] lg:w-[620px] xl:w-[720px] pt-0">
           {/* Dedicated Wave Contour Layer locked to the Doctor Illustration */}
-          <div className="absolute -inset-x-10 -inset-y-6 pointer-events-none select-none z-0">
+          <div className="absolute -inset-x-12 -top-10 bottom-0 pointer-events-none select-none z-0">
             <svg 
               className="w-full h-full" 
               viewBox="0 0 800 420" 
@@ -167,45 +167,45 @@ export default function DashboardOverview() {
             >
               <defs>
                 <linearGradient id="docWaveGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#d5eee4" stopOpacity="0.7" />
+                  <stop offset="0%" stopColor="#d5eee4" stopOpacity="0.75" />
                   <stop offset="45%" stopColor="#e8f7f1" stopOpacity="0.4" />
                   <stop offset="100%" stopColor="#f8fbf9" stopOpacity="0.05" />
                 </linearGradient>
                 <linearGradient id="docWaveGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#bee8da" stopOpacity="0.5" />
+                  <stop offset="0%" stopColor="#bee8da" stopOpacity="0.55" />
                   <stop offset="60%" stopColor="#dcf4eb" stopOpacity="0.25" />
                   <stop offset="100%" stopColor="#f8fbf9" stopOpacity="0.02" />
                 </linearGradient>
               </defs>
               {/* Sweeps smoothly under the doctor desk and curves up behind the patient */}
               <path 
-                d="M 0 60 C 130 180, 240 350, 440 355 C 590 360, 690 280, 800 130 L 800 0 L 0 0 Z" 
+                d="M 0 40 C 130 160, 240 340, 440 345 C 590 350, 690 270, 800 110 L 800 0 L 0 0 Z" 
                 fill="url(#docWaveGrad1)" 
               />
               <path 
-                d="M 80 0 C 200 170, 310 320, 470 325 C 610 330, 720 250, 800 70 L 800 0 Z" 
+                d="M 80 0 C 200 150, 310 310, 470 315 C 610 320, 720 240, 800 50 L 800 0 Z" 
                 fill="url(#docWaveGrad2)" 
               />
             </svg>
           </div>
 
-          {/* Doctor consultation artwork with seamless radial alpha blend */}
+          {/* Doctor consultation artwork with seamless radial alpha blend reaching the very top */}
           <div 
-            className="relative w-full max-w-[500px] lg:max-w-[580px] xl:max-w-[650px] pointer-events-none select-none z-10"
+            className="relative w-full max-w-[520px] lg:max-w-[600px] xl:max-w-[680px] pointer-events-none select-none z-10"
             style={{
-              maskImage: "radial-gradient(ellipse 78% 78% at 50% 50%, black 55%, transparent 95%)",
-              WebkitMaskImage: "radial-gradient(ellipse 78% 78% at 50% 50%, black 55%, transparent 95%)"
+              maskImage: "radial-gradient(ellipse 86% 86% at 50% 46%, black 62%, transparent 98%)",
+              WebkitMaskImage: "radial-gradient(ellipse 86% 86% at 50% 46%, black 62%, transparent 98%)"
             }}
           >
             <img 
               src="/hero-doctor.png" 
               alt="Physician consultation" 
-              className="w-full h-auto object-contain mix-blend-multiply opacity-85 dark:opacity-75 dark:mix-blend-screen transition-opacity"
+              className="w-full h-auto object-contain mix-blend-multiply opacity-88 dark:opacity-75 dark:mix-blend-screen transition-opacity"
             />
           </div>
 
           {/* Editorial Side Caption */}
-          <div className="hidden xl:flex flex-col justify-center text-slate-500 dark:text-slate-400 font-editorial-serif italic text-xs tracking-wider space-y-1 pl-4 select-none shrink-0 z-10">
+          <div className="hidden xl:flex flex-col justify-center text-slate-500 dark:text-slate-400 font-editorial-serif italic text-xs tracking-wider space-y-1 pl-4 pt-16 select-none shrink-0 z-10">
             <p>People.</p>
             <p>Care.</p>
             <p>Better together.</p>
