@@ -69,6 +69,60 @@ export default function DashboardOverview() {
     ]);
   }, []);
 
+  const [greeting, setGreeting] = useState("");
+  const [displayedGreeting, setDisplayedGreeting] = useState("");
+
+  // Indian Time Zone Greeting Resolver (Asia/Kolkata)
+  const getIndianGreeting = () => {
+    try {
+      const now = new Date();
+      const istHourStr = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        hour: "numeric",
+        hour12: false
+      }).format(now);
+      const hour = parseInt(istHourStr, 10);
+      
+      if (hour >= 5 && hour < 12) return "Good morning";
+      if (hour >= 12 && hour < 17) return "Good afternoon";
+      if (hour >= 17 && hour < 21) return "Good evening";
+      return "Good night";
+    } catch {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) return "Good morning";
+      if (hour >= 12 && hour < 17) return "Good afternoon";
+      if (hour >= 17 && hour < 21) return "Good evening";
+      return "Good night";
+    }
+  };
+
+  // Keep greeting synced live with Indian Time Zone
+  useEffect(() => {
+    const update = () => {
+      const next = getIndianGreeting();
+      setGreeting((prev) => (prev !== next ? next : prev));
+    };
+    update();
+    const timer = setInterval(update, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Typewriter motion animation ("like we typed it")
+  useEffect(() => {
+    if (!greeting) return;
+    let index = 0;
+    setDisplayedGreeting("");
+    const interval = setInterval(() => {
+      index++;
+      setDisplayedGreeting(greeting.slice(0, index));
+      if (index >= greeting.length) {
+        clearInterval(interval);
+      }
+    }, 75);
+
+    return () => clearInterval(interval);
+  }, [greeting]);
+
   const toggleDose = (id: string) => {
     setDoses((prev) =>
       prev.map((d) => (d.id === id ? { ...d, taken: !d.taken } : d))
@@ -78,13 +132,6 @@ export default function DashboardOverview() {
   const completedDoses = doses.filter((d) => d.taken).length;
   const adherenceRate = Math.round((completedDoses / doses.length) * 100);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
   return (
     <div className="space-y-12 animate-in fade-in duration-500 relative">
       {/* =========================================================================
@@ -93,8 +140,9 @@ export default function DashboardOverview() {
       <section className="relative pt-2 pb-6 sm:pb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 overflow-hidden">
         {/* Left Headline & Editorial Reassurance */}
         <div className="max-w-xl z-10 space-y-3">
-          <h1 className="text-4xl sm:text-5xl font-normal tracking-tight text-slate-900 dark:text-slate-100 font-editorial-serif">
-            {getGreeting()}
+          <h1 className="text-4xl sm:text-5xl font-normal tracking-tight text-slate-900 dark:text-slate-100 font-editorial-serif min-h-[1.25em] flex items-baseline">
+            <span>{displayedGreeting || greeting || "Good morning"}</span>
+            <span className="inline-block w-0.5 h-[0.8em] bg-teal-700/60 dark:bg-teal-400/60 animate-pulse ml-1 rounded-full" />
           </h1>
           <p className="text-lg sm:text-xl text-slate-700 dark:text-slate-300 font-editorial-serif leading-relaxed">
             Your health matters. We&apos;re here for you.
@@ -109,12 +157,18 @@ export default function DashboardOverview() {
 
         {/* Right Doctor Consultation Visual with Soft Feathered Waves */}
         <div className="relative flex items-center justify-end shrink-0 md:w-[460px] lg:w-[500px]">
-          {/* Doctor consultation artwork with soft alpha feathered edges */}
-          <div className="relative w-full max-w-[420px] pointer-events-none select-none">
+          {/* Doctor consultation artwork with seamless radial alpha blend */}
+          <div 
+            className="relative w-full max-w-[420px] pointer-events-none select-none"
+            style={{
+              maskImage: "radial-gradient(ellipse 75% 75% at 50% 50%, black 50%, transparent 95%)",
+              WebkitMaskImage: "radial-gradient(ellipse 75% 75% at 50% 50%, black 50%, transparent 95%)"
+            }}
+          >
             <img 
               src="/hero-doctor.png" 
               alt="Physician consultation" 
-              className="w-full h-auto object-contain mix-blend-multiply opacity-80 dark:opacity-70 dark:mix-blend-screen transition-opacity"
+              className="w-full h-auto object-contain mix-blend-multiply opacity-85 dark:opacity-75 dark:mix-blend-screen transition-opacity"
             />
           </div>
 
@@ -270,46 +324,49 @@ export default function DashboardOverview() {
       </section>
 
       {/* =========================================================================
-          FLOATING ACTION BUTTON — PRESCRIPTION UPLOAD (Written Elegantly)
+          FLOATING ACTION BUTTON — PRESCRIPTION UPLOAD (Positioned Above the FAB)
           ========================================================================= */}
-      <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-40 flex items-end gap-2 pointer-events-auto select-none">
-        {/* Delicate Botanical Sprout (Soft & Blended) */}
-        <div className="w-16 h-14 sm:w-20 sm:h-16 shrink-0 pointer-events-none -mr-2 mb-2">
-          <img 
-            src="/bottom-leaf.png" 
-            alt="" 
-            className="w-full h-full object-contain mix-blend-multiply opacity-75 dark:opacity-60" 
-          />
-        </div>
+      <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-40 flex flex-col items-end pointer-events-auto select-none">
+        {/* Callout & Leaves Stacked Above the FAB */}
+        <div className="relative flex flex-col items-center -mr-2 mb-1 pointer-events-none">
+          {/* Delicate Botanical Sprout Rising Above */}
+          <div className="w-14 h-12 shrink-0 -mb-1 pointer-events-none">
+            <img 
+              src="/bottom-leaf.png" 
+              alt="" 
+              className="w-full h-full object-contain mix-blend-multiply opacity-70 dark:opacity-55" 
+            />
+          </div>
 
-        {/* Elegant Handcrafted Callout: "Upload prescription ⤴" */}
-        <div className="flex items-center gap-1.5 mb-3 pointer-events-none">
-          <div className="text-right font-editorial-serif italic text-xs sm:text-[13px] leading-tight text-slate-500 dark:text-teal-300 font-medium tracking-tight">
+          {/* Elegant Handcrafted Callout: "Upload \n prescription" */}
+          <div className="text-center font-editorial-serif italic text-xs sm:text-[13px] leading-tight text-slate-500 dark:text-teal-300 font-medium tracking-tight">
             <p>Upload</p>
             <p className="whitespace-nowrap">prescription</p>
           </div>
 
-          {/* Delicate Hand-Drawn Style Curved Arrow pointing to the FAB */}
-          <svg 
-            className="w-6 h-5 text-slate-400 dark:text-teal-400 shrink-0" 
-            viewBox="0 0 28 22" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="1.6" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          >
-            {/* Smooth looping curve swoop */}
-            <path d="M 2 14 C 9 17, 18 16, 24 6" />
-            {/* Arrowhead */}
-            <path d="M 19 5 L 25 5 L 25 11" />
-          </svg>
+          {/* Graceful curved swoop arrow pointing down-right toward the + button */}
+          <div className="w-8 h-8 -mr-5 -mt-0.5">
+            <svg 
+              viewBox="0 0 32 32" 
+              fill="none" 
+              stroke="currentColor" 
+              className="w-full h-full text-slate-400 dark:text-teal-400" 
+              strokeWidth="1.6" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              {/* Smooth looping curve swoop down to the FAB */}
+              <path d="M 6 4 C 16 6, 22 14, 20 25" />
+              {/* Arrowhead */}
+              <path d="M 14 21 L 20 26 L 25 20" />
+            </svg>
+          </div>
         </div>
 
         {/* Circular Dark Teal FAB */}
         <Link 
           href="/dashboard/scan"
-          className="fab-upload-btn group mb-2 shrink-0"
+          className="fab-upload-btn group shadow-lg shrink-0"
           title="Upload prescription"
         >
           <Plus className="w-6 h-6 stroke-[2.5] text-white group-hover:rotate-90 transition-transform duration-300" />

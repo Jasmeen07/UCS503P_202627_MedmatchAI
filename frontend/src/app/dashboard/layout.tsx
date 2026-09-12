@@ -37,6 +37,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState("light");
   const [searchQuery, setSearchQuery] = useState("");
+  const [greeting, setGreeting] = useState("Good morning");
   const supabase = createClient();
 
   useEffect(() => {
@@ -44,6 +45,34 @@ export default function DashboardLayout({
     if (document.documentElement.classList.contains("dark")) {
       setTheme("dark");
     }
+
+    // Indian Time Zone Greeting (Asia/Kolkata)
+    const getIndianGreeting = () => {
+      try {
+        const now = new Date();
+        const istHourStr = new Intl.DateTimeFormat("en-US", {
+          timeZone: "Asia/Kolkata",
+          hour: "numeric",
+          hour12: false
+        }).format(now);
+        const hour = parseInt(istHourStr, 10);
+        if (hour >= 5 && hour < 12) return "Good morning";
+        if (hour >= 12 && hour < 17) return "Good afternoon";
+        if (hour >= 17 && hour < 21) return "Good evening";
+        return "Good night";
+      } catch {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) return "Good morning";
+        if (hour >= 12 && hour < 17) return "Good afternoon";
+        if (hour >= 17 && hour < 21) return "Good evening";
+        return "Good night";
+      }
+    };
+
+    const updateGreeting = () => setGreeting(getIndianGreeting());
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const toggleTheme = () => {
@@ -97,12 +126,12 @@ export default function DashboardLayout({
               <stop offset="100%" stopColor="#edf8f4" stopOpacity="0.05" />
             </linearGradient>
           </defs>
-          {/* Broad sweeping wave */}
-          <path d="M 0 0 C 160 190, 340 300, 550 250 C 690 220, 780 130, 850 60 L 850 0 Z" fill="url(#waveTopGrad1)" fillOpacity="0.55" />
-          {/* Mid organic curve */}
-          <path d="M 90 0 C 240 150, 410 240, 620 210 C 740 190, 810 110, 850 30 L 850 0 Z" fill="url(#waveTopGrad2)" fillOpacity="0.4" />
+          {/* Broad sweeping wave tracing under the doctor consultation */}
+          <path d="M 0 0 C 140 180, 240 320, 420 330 C 580 340, 700 290, 850 140 L 850 0 Z" fill="url(#waveTopGrad1)" fillOpacity="0.5" />
+          {/* Mid organic curve tracing the lower contour */}
+          <path d="M 80 0 C 220 180, 320 300, 480 310 C 620 320, 740 250, 850 80 L 850 0 Z" fill="url(#waveTopGrad2)" fillOpacity="0.35" />
           {/* Accent feathered wave ridge */}
-          <path d="M 300 0 C 410 190, 540 280, 720 240 C 790 225, 830 170, 850 120 L 850 0 Z" fill="url(#waveTopGrad3)" fillOpacity="0.25" />
+          <path d="M 240 0 C 340 180, 440 280, 580 270 C 700 260, 780 190, 850 100 L 850 0 Z" fill="url(#waveTopGrad3)" fillOpacity="0.2" />
         </svg>
 
         {/* Bottom-Right Rolling Waves (Sweeping under Upload FAB) */}
@@ -301,7 +330,7 @@ export default function DashboardLayout({
                 JK
               </div>
               <span className="hidden md:inline text-xs font-medium text-slate-700 dark:text-slate-300">
-                Good morning
+                {greeting}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </div>
