@@ -276,10 +276,10 @@ export default function DashboardLayout({
       {/* =========================================================================
           MAIN CONTENT AREA (Spreads across 100% when sidebar collapses)
           ========================================================================= */}
-      <main className="flex-1 flex flex-col h-screen min-w-0 bg-transparent relative z-10 overflow-hidden">
-        {/* Topbar */}
-        <header className="h-16 flex items-center justify-between px-6 sm:px-8 bg-transparent sticky top-0 z-30">
-          <div className="flex items-center gap-3 flex-1 max-w-xl">
+      <main className="flex-1 relative flex flex-col h-screen min-w-0 bg-transparent z-10 overflow-hidden">
+        {/* Topbar — Floats transparently at the top without taking physical flow height */}
+        <header className="h-16 flex items-center justify-between px-6 sm:px-8 bg-transparent absolute top-0 left-0 right-0 z-30 pointer-events-none">
+          <div className="flex items-center gap-3 flex-1 max-w-xl pointer-events-auto">
             {/* Toggle Open Button (visible when sidebar is closed) */}
             {!sidebarOpen && (
               <button 
@@ -305,7 +305,7 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pointer-events-auto">
             {/* Theme Toggle */}
             <button 
               onClick={toggleTheme}
@@ -337,9 +337,9 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-y-auto px-6 sm:px-10 lg:px-12 py-8">
-          <div className="max-w-[1280px] mx-auto w-full h-full pb-20">
+        {/* Page Content — Starts from very top (pt-0) on Overview so hero visual bleeds to the top */}
+        <div className={`flex-1 h-full overflow-y-auto px-6 sm:px-10 lg:px-12 ${pathname === "/dashboard" ? "pt-0 pb-20" : "pt-20 pb-20"}`}>
+          <div className="max-w-[1280px] mx-auto w-full h-full">
             {children}
           </div>
         </div>
