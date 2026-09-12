@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import "./dashboard.css";
 import {
+  PanelLeftClose,
+  PanelLeftOpen,
   LayoutDashboard,
   FileText,
   Layers,
@@ -18,7 +21,10 @@ import {
   LogOut,
   Bell,
   Moon,
-  Sun
+  Sun,
+  Search,
+  ChevronDown,
+  HelpCircle
 } from "lucide-react";
 import { createClient } from "@/lib/client";
 
@@ -28,8 +34,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState("light");
+  const [searchQuery, setSearchQuery] = useState("");
   const supabase = createClient();
 
   useEffect(() => {
@@ -62,7 +69,76 @@ export default function DashboardLayout({
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-    <div className="flex h-screen w-full dash-bg-pattern text-[var(--dash-text)] overflow-hidden">
+    <div className="relative flex h-screen w-full text-[var(--dash-text)] overflow-hidden bg-[#fbfdfc] dark:bg-[#0b1115]">
+      {/* =========================================================================
+          GENUINE FLOWING ORGANIC SVG WAVES (Spanning the Whole Canvas Seamlessly)
+          ========================================================================= */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none">
+        {/* Top-Right Flowing Waves (Behind Doctor Consultation) */}
+        <svg 
+          className="absolute top-0 right-0 w-[65vw] max-w-[950px] h-[58vh] max-h-[520px]" 
+          viewBox="0 0 850 480" 
+          fill="none" 
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id="waveTopGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" className="editorial-wave-top1" />
+              <stop offset="45%" stopColor="#e2f5ee" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#edf8f4" stopOpacity="0.1" />
+            </linearGradient>
+            <linearGradient id="waveTopGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" className="editorial-wave-top2" />
+              <stop offset="60%" stopColor="#dcf3ea" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#f3faf7" stopOpacity="0.05" />
+            </linearGradient>
+            <linearGradient id="waveTopGrad3" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#aee0ce" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#d2eee3" stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          {/* Broad sweeping wave */}
+          <path d="M 0 0 C 160 190, 340 300, 550 250 C 690 220, 780 130, 850 60 L 850 0 Z" fill="url(#waveTopGrad1)" />
+          {/* Mid organic curve */}
+          <path d="M 90 0 C 240 150, 410 240, 620 210 C 740 190, 810 110, 850 30 L 850 0 Z" fill="url(#waveTopGrad2)" />
+          {/* Accent feathered wave ridge */}
+          <path d="M 300 0 C 410 190, 540 280, 720 240 C 790 225, 830 170, 850 120 L 850 0 Z" fill="url(#waveTopGrad3)" />
+        </svg>
+
+        {/* Bottom-Right Rolling Waves (Sweeping under Upload FAB) */}
+        <svg 
+          className="absolute bottom-0 right-0 w-[58vw] max-w-[850px] h-[38vh] max-h-[340px]" 
+          viewBox="0 0 750 320" 
+          fill="none" 
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id="waveBottomGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f1faf6" stopOpacity="0.2" />
+              <stop offset="50%" className="editorial-wave-bottom" />
+              <stop offset="100%" stopColor="#bee7d7" stopOpacity="0.85" />
+            </linearGradient>
+            <linearGradient id="waveBottomGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#e2f5ed" stopOpacity="0.3" />
+              <stop offset="60%" stopColor="#c7ebdc" stopOpacity="0.65" />
+              <stop offset="100%" stopColor="#b4e4d2" stopOpacity="0.75" />
+            </linearGradient>
+          </defs>
+          <path d="M 0 320 C 190 300, 360 225, 530 190 C 640 170, 700 200, 750 230 L 750 320 Z" fill="url(#waveBottomGrad1)" />
+          <path d="M 200 320 C 340 280, 470 185, 620 160 C 690 150, 730 170, 750 190 L 750 320 Z" fill="url(#waveBottomGrad2)" />
+        </svg>
+
+        {/* Bottom-Left Wave under Sidebar */}
+        <svg 
+          className="absolute bottom-0 left-0 w-[320px] h-[260px]" 
+          viewBox="0 0 320 260" 
+          fill="none"
+        >
+          <path d="M 0 110 C 90 130, 160 190, 240 260 L 0 260 Z" fill="#d4eee3" fillOpacity="0.75" />
+          <path d="M 0 170 C 50 180, 110 210, 160 260 L 0 260 Z" fill="#bee8d9" fillOpacity="0.5" />
+        </svg>
+      </div>
+
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
@@ -71,96 +147,170 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* Sidebar */}
+      {/* =========================================================================
+          SEAMLESS SIDEBAR (Blends 100% with Canvas, Collapses with Zero Gap)
+          ========================================================================= */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] dash-sidebar flex flex-col lg:relative transform ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed lg:relative inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out shrink-0 bg-transparent border-none ${
+          sidebarOpen 
+            ? "w-[260px] opacity-100 translate-x-0" 
+            : "w-0 opacity-0 -translate-x-full lg:translate-x-0 overflow-hidden pointer-events-none"
         }`}
       >
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold text-xl text-[var(--dash-sage)]">
-            <Activity className="w-6 h-6" />
-            <span>MedMatch AI</span>
-          </div>
-          <button className="lg:hidden" onClick={toggleSidebar}>
-            <X className="w-5 h-5 text-[var(--dash-text-tertiary)]" />
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto mt-4">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            const Icon = link.icon;
-            
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  isActive 
-                    ? "bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] font-medium border-l-4 border-[var(--dash-sage)]" 
-                    : "text-[var(--dash-text-secondary)] hover:bg-[var(--dash-surface)] hover:text-[var(--dash-text)] border-l-4 border-transparent"
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? "text-[var(--dash-sage)]" : ""}`} />
-                {link.name}
+        <div className="w-[260px] h-full flex flex-col justify-between select-none relative z-10">
+          <div>
+            {/* Brand Header with Close Button */}
+            <div className="p-6 pb-4 flex items-center justify-between">
+              <Link href="/dashboard" className="flex items-center gap-2.5 group">
+                {/* MedMatch Leaf Emblem */}
+                <div className="w-8 h-8 rounded-lg bg-teal-50/80 dark:bg-teal-950/80 flex items-center justify-center text-teal-700 dark:text-teal-300 shadow-xs">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" fill="#14b8a6" fillOpacity="0.3" stroke="#0f766e" />
+                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" stroke="#0f766e" />
+                  </svg>
+                </div>
+                <div>
+                  <span className="font-semibold text-lg tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-0.5">
+                    Med<span className="text-teal-700 dark:text-teal-400">Match</span>
+                  </span>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 -mt-0.5 font-normal">Care that fits you</p>
+                </div>
               </Link>
-            );
-          })}
-        </nav>
 
-        <div className="p-4 border-t border-[var(--dash-border)]">
-          <Link
-            href="/dashboard/settings"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--dash-text-secondary)] hover:bg-[var(--dash-surface)] transition-all mb-4"
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </Link>
-          
-          <div className="flex items-center gap-3 px-4 py-2">
-            <div className="w-9 h-9 rounded bg-[var(--dash-sand)] flex items-center justify-center text-[var(--dash-terracotta)] font-semibold text-xs border border-[var(--dash-border)]">
-              JK
+              {/* Sidebar Collapse Button */}
+              <button 
+                onClick={toggleSidebar}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-teal-800 hover:bg-teal-50/60 dark:hover:bg-slate-800 transition-colors"
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+              >
+                <PanelLeftClose className="w-5 h-5" />
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--dash-text)] truncate">Jane K.</p>
-              <p className="text-xs text-[var(--dash-text-tertiary)] truncate">jane@example.com</p>
+
+            {/* Navigation Links */}
+            <nav className="px-3 space-y-1 mt-2">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                const Icon = link.icon;
+                
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-r-xl rounded-l-md text-xs font-medium transition-all ${
+                      isActive 
+                        ? "bg-[#e2f3ec] dark:bg-teal-950/70 text-teal-900 dark:text-teal-200 border-l-[3.5px] border-teal-700 font-semibold shadow-xs" 
+                        : "text-slate-600 dark:text-slate-400 hover:bg-teal-50/40 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 border-l-[3.5px] border-transparent"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isActive ? "text-teal-700 dark:text-teal-300" : "text-slate-400"}`} />
+                    {link.name}
+                  </Link>
+                );
+              })}
+
+              <div className="pt-4 mt-4 border-t border-slate-200/40 dark:border-slate-800/40 px-1 space-y-1">
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-teal-50/40 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  Settings
+                </Link>
+                <Link
+                  href="/terms"
+                  className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-teal-50/40 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+                >
+                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                  Help & Support
+                </Link>
+              </div>
+            </nav>
+          </div>
+
+          {/* Sidebar Footer with Exact Botanical Leaf Sprig & Poetic Tagline */}
+          <div className="p-5 pb-6 flex items-end gap-3.5 select-none pointer-events-none">
+            <div className="w-10 h-20 shrink-0">
+              <img src="/sidebar-leaf.png" alt="" className="w-full h-full object-contain" />
             </div>
-            <button className="text-[var(--dash-text-tertiary)] hover:text-[var(--dash-coral)] transition-colors">
-              <LogOut className="w-5 h-5" />
-            </button>
+            <div className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 italic font-editorial-serif pb-1">
+              <p>Better care</p>
+              <p>brings brighter</p>
+              <p>tomorrows.</p>
+              <div className="w-6 h-px bg-slate-300 dark:bg-slate-700 mt-2"></div>
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen min-w-0 bg-[var(--dash-bg)] relative">
+      {/* =========================================================================
+          MAIN CONTENT AREA (Spreads across 100% when sidebar collapses)
+          ========================================================================= */}
+      <main className="flex-1 flex flex-col h-screen min-w-0 bg-transparent relative z-10 overflow-hidden">
         {/* Topbar */}
-        <header className="h-16 flex items-center justify-between px-6 border-b border-[var(--dash-border)] bg-[var(--dash-surface)] sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            <button className="lg:hidden p-2 -ml-2 rounded hover:bg-[var(--dash-surface-warm)]" onClick={toggleSidebar}>
-              <Menu className="w-5 h-5 text-[var(--dash-text)]" />
-            </button>
+        <header className="h-16 flex items-center justify-between px-6 sm:px-8 bg-transparent sticky top-0 z-30">
+          <div className="flex items-center gap-3 flex-1 max-w-xl">
+            {/* Toggle Open Button (visible when sidebar is closed) */}
+            {!sidebarOpen && (
+              <button 
+                onClick={toggleSidebar}
+                className="p-2 -ml-2 mr-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-teal-800 hover:bg-white/70 dark:hover:bg-slate-800 transition-all flex items-center gap-1.5 shadow-xs"
+                title="Open sidebar"
+                aria-label="Open sidebar"
+              >
+                <PanelLeftOpen className="w-5 h-5 text-teal-700 dark:text-teal-400" />
+              </button>
+            )}
+
+            {/* Reference-Styled Pill Search Bar */}
+            <div className="relative w-full max-w-md hidden sm:block">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search medications, appointments, or providers..." 
+                className="w-full pl-9 pr-4 py-2 rounded-full text-xs bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600 transition-all shadow-xs"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
             <button 
               onClick={toggleTheme}
-              className="p-2 rounded border border-[var(--dash-border)] hover:bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] transition-colors"
+              className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+              title="Toggle theme"
             >
               {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
-            <button className="p-2 rounded border border-[var(--dash-border)] hover:bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] transition-colors relative">
+
+            {/* Notifications Bell with Dot */}
+            <button 
+              className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors relative"
+              title="Notifications"
+            >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--dash-terracotta)] rounded-sm border border-[var(--dash-surface)]"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900"></span>
             </button>
-            <div className="hidden sm:block w-8 h-8 rounded bg-[var(--dash-sand)] border border-[var(--dash-border)]"></div>
+
+            {/* Profile Dropdown Indicator */}
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200/50 dark:border-slate-800/50">
+              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-semibold">
+                JK
+              </div>
+              <span className="hidden md:inline text-xs font-medium text-slate-700 dark:text-slate-300">
+                Good morning
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-[1200px] mx-auto w-full h-full pb-10">
+        <div className="flex-1 overflow-y-auto px-6 sm:px-10 lg:px-12 py-8">
+          <div className="max-w-[1280px] mx-auto w-full h-full pb-20">
             {children}
           </div>
         </div>
@@ -168,3 +318,4 @@ export default function DashboardLayout({
     </div>
   );
 }
+
