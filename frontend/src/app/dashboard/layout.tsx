@@ -84,25 +84,25 @@ export default function DashboardLayout({
           <defs>
             <linearGradient id="waveTopGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" className="editorial-wave-top1" />
-              <stop offset="45%" stopColor="#e2f5ee" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#edf8f4" stopOpacity="0.1" />
+              <stop offset="45%" stopColor="#edf7f3" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#f8fbf9" stopOpacity="0.05" />
             </linearGradient>
             <linearGradient id="waveTopGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
               <stop offset="0%" className="editorial-wave-top2" />
-              <stop offset="60%" stopColor="#dcf3ea" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#f3faf7" stopOpacity="0.05" />
+              <stop offset="60%" stopColor="#edf8f4" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#f8fbf9" stopOpacity="0.02" />
             </linearGradient>
             <linearGradient id="waveTopGrad3" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#aee0ce" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#d2eee3" stopOpacity="0.1" />
+              <stop offset="0%" stopColor="#bee8da" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#edf8f4" stopOpacity="0.05" />
             </linearGradient>
           </defs>
           {/* Broad sweeping wave */}
-          <path d="M 0 0 C 160 190, 340 300, 550 250 C 690 220, 780 130, 850 60 L 850 0 Z" fill="url(#waveTopGrad1)" />
+          <path d="M 0 0 C 160 190, 340 300, 550 250 C 690 220, 780 130, 850 60 L 850 0 Z" fill="url(#waveTopGrad1)" fillOpacity="0.55" />
           {/* Mid organic curve */}
-          <path d="M 90 0 C 240 150, 410 240, 620 210 C 740 190, 810 110, 850 30 L 850 0 Z" fill="url(#waveTopGrad2)" />
+          <path d="M 90 0 C 240 150, 410 240, 620 210 C 740 190, 810 110, 850 30 L 850 0 Z" fill="url(#waveTopGrad2)" fillOpacity="0.4" />
           {/* Accent feathered wave ridge */}
-          <path d="M 300 0 C 410 190, 540 280, 720 240 C 790 225, 830 170, 850 120 L 850 0 Z" fill="url(#waveTopGrad3)" />
+          <path d="M 300 0 C 410 190, 540 280, 720 240 C 790 225, 830 170, 850 120 L 850 0 Z" fill="url(#waveTopGrad3)" fillOpacity="0.25" />
         </svg>
 
         {/* Bottom-Right Rolling Waves (Sweeping under Upload FAB) */}
@@ -114,18 +114,18 @@ export default function DashboardLayout({
         >
           <defs>
             <linearGradient id="waveBottomGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f1faf6" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="#f8fbf9" stopOpacity="0.1" />
               <stop offset="50%" className="editorial-wave-bottom" />
-              <stop offset="100%" stopColor="#bee7d7" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#cbeee0" stopOpacity="0.65" />
             </linearGradient>
             <linearGradient id="waveBottomGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#e2f5ed" stopOpacity="0.3" />
-              <stop offset="60%" stopColor="#c7ebdc" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="#b4e4d2" stopOpacity="0.75" />
+              <stop offset="0%" stopColor="#f0faf5" stopOpacity="0.2" />
+              <stop offset="60%" stopColor="#d4f1e5" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#c5ecdc" stopOpacity="0.55" />
             </linearGradient>
           </defs>
-          <path d="M 0 320 C 190 300, 360 225, 530 190 C 640 170, 700 200, 750 230 L 750 320 Z" fill="url(#waveBottomGrad1)" />
-          <path d="M 200 320 C 340 280, 470 185, 620 160 C 690 150, 730 170, 750 190 L 750 320 Z" fill="url(#waveBottomGrad2)" />
+          <path d="M 0 320 C 190 300, 360 225, 530 190 C 640 170, 700 200, 750 230 L 750 320 Z" fill="url(#waveBottomGrad1)" fillOpacity="0.6" />
+          <path d="M 200 320 C 340 280, 470 185, 620 160 C 690 150, 730 170, 750 190 L 750 320 Z" fill="url(#waveBottomGrad2)" fillOpacity="0.4" />
         </svg>
 
         {/* Bottom-Left Wave under Sidebar */}
@@ -134,8 +134,8 @@ export default function DashboardLayout({
           viewBox="0 0 320 260" 
           fill="none"
         >
-          <path d="M 0 110 C 90 130, 160 190, 240 260 L 0 260 Z" fill="#d4eee3" fillOpacity="0.75" />
-          <path d="M 0 170 C 50 180, 110 210, 160 260 L 0 260 Z" fill="#bee8d9" fillOpacity="0.5" />
+          <path d="M 0 110 C 90 130, 160 190, 240 260 L 0 260 Z" fill="#dcf4eb" fillOpacity="0.5" />
+          <path d="M 0 170 C 50 180, 110 210, 160 260 L 0 260 Z" fill="#cbeee1" fillOpacity="0.35" />
         </svg>
       </div>
 
@@ -232,7 +232,7 @@ export default function DashboardLayout({
           {/* Sidebar Footer with Exact Botanical Leaf Sprig & Poetic Tagline */}
           <div className="p-5 pb-6 flex items-end gap-3.5 select-none pointer-events-none">
             <div className="w-10 h-20 shrink-0">
-              <img src="/sidebar-leaf.png" alt="" className="w-full h-full object-contain" />
+              <img src="/sidebar-leaf.png" alt="" className="w-full h-full object-contain mix-blend-multiply opacity-70 dark:opacity-60" />
             </div>
             <div className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 italic font-editorial-serif pb-1">
               <p>Better care</p>

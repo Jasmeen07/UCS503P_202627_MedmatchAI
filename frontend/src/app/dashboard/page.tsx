@@ -114,7 +114,7 @@ export default function DashboardOverview() {
             <img 
               src="/hero-doctor.png" 
               alt="Physician consultation" 
-              className="w-full h-auto object-contain"
+              className="w-full h-auto object-contain mix-blend-multiply opacity-80 dark:opacity-70 dark:mix-blend-screen transition-opacity"
             />
           </div>
 
@@ -270,16 +270,46 @@ export default function DashboardOverview() {
       </section>
 
       {/* =========================================================================
-          FLOATING ACTION BUTTON — PRESCRIPTION UPLOAD (Matches Reference)
+          FLOATING ACTION BUTTON — PRESCRIPTION UPLOAD (Written Elegantly)
           ========================================================================= */}
-      <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-40 flex items-end gap-2.5 pointer-events-auto select-none">
-        <div className="w-28 h-28 shrink-0 -mb-2 pointer-events-none">
-          <img src="/bottom-leaf.png" alt="Upload prescription" className="w-full h-full object-contain" />
+      <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-40 flex items-end gap-2 pointer-events-auto select-none">
+        {/* Delicate Botanical Sprout (Soft & Blended) */}
+        <div className="w-16 h-14 sm:w-20 sm:h-16 shrink-0 pointer-events-none -mr-2 mb-2">
+          <img 
+            src="/bottom-leaf.png" 
+            alt="" 
+            className="w-full h-full object-contain mix-blend-multiply opacity-75 dark:opacity-60" 
+          />
         </div>
 
+        {/* Elegant Handcrafted Callout: "Upload prescription ⤴" */}
+        <div className="flex items-center gap-1.5 mb-3 pointer-events-none">
+          <div className="text-right font-editorial-serif italic text-xs sm:text-[13px] leading-tight text-slate-500 dark:text-teal-300 font-medium tracking-tight">
+            <p>Upload</p>
+            <p className="whitespace-nowrap">prescription</p>
+          </div>
+
+          {/* Delicate Hand-Drawn Style Curved Arrow pointing to the FAB */}
+          <svg 
+            className="w-6 h-5 text-slate-400 dark:text-teal-400 shrink-0" 
+            viewBox="0 0 28 22" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="1.6" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            {/* Smooth looping curve swoop */}
+            <path d="M 2 14 C 9 17, 18 16, 24 6" />
+            {/* Arrowhead */}
+            <path d="M 19 5 L 25 5 L 25 11" />
+          </svg>
+        </div>
+
+        {/* Circular Dark Teal FAB */}
         <Link 
           href="/dashboard/scan"
-          className="fab-upload-btn group mb-3 shrink-0"
+          className="fab-upload-btn group mb-2 shrink-0"
           title="Upload prescription"
         >
           <Plus className="w-6 h-6 stroke-[2.5] text-white group-hover:rotate-90 transition-transform duration-300" />
