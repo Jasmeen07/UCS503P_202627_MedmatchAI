@@ -290,29 +290,29 @@
 }
 
 .editorial-wave-top1 {
-  stop-color: #cdeee2;
-  stop-opacity: 0.8;
+  stop-color: #d8f2e8;
+  stop-opacity: 0.55;
 }
 .editorial-wave-top2 {
-  stop-color: #bee8d9;
-  stop-opacity: 0.65;
+  stop-color: #c9ede0;
+  stop-opacity: 0.45;
 }
 .editorial-wave-bottom {
-  stop-color: #d2ede3;
-  stop-opacity: 0.85;
+  stop-color: #d9f2e9;
+  stop-opacity: 0.6;
 }
 
 .dark .editorial-wave-top1 {
-  stop-color: #0e3d36;
-  stop-opacity: 0.6;
+  stop-color: #0b2e29;
+  stop-opacity: 0.4;
 }
 .dark .editorial-wave-top2 {
-  stop-color: #124e45;
-  stop-opacity: 0.5;
+  stop-color: #0e3d36;
+  stop-opacity: 0.35;
 }
 .dark .editorial-wave-bottom {
-  stop-color: #0c362f;
-  stop-opacity: 0.7;
+  stop-color: #0a2924;
+  stop-opacity: 0.5;
 }
 
 .font-editorial-serif {
