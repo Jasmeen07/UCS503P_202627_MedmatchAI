@@ -1,0 +1,279 @@
+/* Clinical Dashboard Design Tokens */
+:root {
+  --dash-bg: #f8fafc;
+  --dash-surface: #ffffff;
+  --dash-surface-warm: #f1f5f9;
+  --dash-border: #e2e8f0;
+  --dash-text: #0f172a;
+  --dash-text-secondary: #475569;
+  --dash-text-tertiary: #94a3b8;
+  --dash-sage: #0f766e;
+  --dash-sage-light: #14b8a6;
+  --dash-sage-bg: #f0fdfa;
+  --dash-terracotta: #334155;
+  --dash-terracotta-light: #475569;
+  --dash-terracotta-bg: #f1f5f9;
+  --dash-sand: #cbd5e1;
+  --dash-sand-light: #f8fafc;
+  --dash-amber: #d97706;
+  --dash-amber-bg: #fffbeb;
+  --dash-coral: #dc2626;
+  --dash-coral-bg: #fef2f2;
+}
+
+.dark {
+  --dash-bg: #0b0f19;
+  --dash-surface: #111827;
+  --dash-surface-warm: #1f2937;
+  --dash-border: #374151;
+  --dash-text: #f9fafb;
+  --dash-text-secondary: #9ca3af;
+  --dash-text-tertiary: #6b7280;
+  --dash-sage: #14b8a6;
+  --dash-sage-light: #2dd4bf;
+  --dash-sage-bg: #134e4a;
+  --dash-terracotta: #94a3b8;
+  --dash-terracotta-light: #cbd5e1;
+  --dash-terracotta-bg: #1e293b;
+  --dash-sand: #374151;
+  --dash-sand-light: #1f2937;
+  --dash-amber: #f59e0b;
+  --dash-amber-bg: #451a03;
+  --dash-coral: #ef4444;
+  --dash-coral-bg: #450a0a;
+}
+
+/* Base utility classes for the dashboard */
+.dash-bg-pattern {
+  background-color: var(--dash-bg);
+}
+
+.dash-card {
+  background-color: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.dash-sidebar {
+  background-color: var(--dash-surface);
+  border-right: 1px solid var(--dash-border);
+}
+
+.dash-stat-card {
+  background-color: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-stat-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--accent-color, var(--dash-sage));
+}
+
+/* Rectangular Clinical Tag - No Pill Shapes */
+.dash-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.dash-input {
+  background-color: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  color: var(--dash-text);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+}
+
+.dash-input:focus {
+  outline: none;
+  border-color: var(--dash-sage);
+  box-shadow: 0 0 0 1px var(--dash-sage);
+}
+
+.dash-btn-primary {
+  background-color: #0f172a;
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.dash-btn-primary:hover {
+  background-color: #1e293b;
+}
+
+.dark .dash-btn-primary {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.dark .dash-btn-primary:hover {
+  background-color: #e2e8f0;
+}
+
+.dash-btn-secondary {
+  background-color: transparent;
+  color: var(--dash-text);
+  border: 1px solid var(--dash-border);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.dash-btn-secondary:hover {
+  background-color: var(--dash-surface-warm);
+}
+
+/* Creative Motion & Sliding Panel Architecture */
+.creative-panel-slider {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+}
+
+.creative-panel-backdrop {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+  border-radius: 8px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.creative-panel-backdrop.slide-right {
+  transform: translateX(100%);
+}
+
+.creative-panel-content {
+  position: relative;
+  z-index: 2;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Tactile Interactive Cards */
+.card-interactive {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -5px rgba(15, 118, 110, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  border-color: rgba(20, 184, 166, 0.5);
+}
+
+.card-interactive:active {
+  transform: scale(0.99) translateY(0);
+}
+
+/* Scanner HUD Laser Beam */
+.scan-hud-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.scan-hud-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(20, 184, 166, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 184, 166, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.scan-laser-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #14b8a6 20%, #2dd4bf 50%, #14b8a6 80%, transparent 100%);
+  box-shadow: 0 0 12px 2px rgba(45, 212, 191, 0.6);
+  animation: scanLaserSweep 2.2s ease-in-out infinite alternate;
+  z-index: 10;
+  pointer-events: none;
+}
+
+@keyframes scanLaserSweep {
+  0% {
+    top: 4%;
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 94%;
+    opacity: 0.9;
+  }
+}
+
+/* Interactive Dosage Rhythm Tracker */
+.rhythm-pill-box {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.rhythm-pill-box:hover {
+  transform: translateY(-2px);
+}
+
+.rhythm-pill-box:active {
+  transform: scale(0.97);
+}
+
+/* Subtle Shimmer Bar */
+@keyframes shimmerSweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-active {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+  animation: shimmerSweep 2.5s infinite;
+}
+

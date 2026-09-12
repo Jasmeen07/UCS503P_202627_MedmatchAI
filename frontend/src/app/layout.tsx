@@ -13,14 +13,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// [FIX GAP-4] Updated from boilerplate "Create Next App" to MedMatch AI branding.
 export const metadata: Metadata = {
-  title: "MedMatch AI",
-  description: "Your intelligent medical records companion — manage, understand, and share your health documents securely.",
+  metadataBase: new URL("https://medmatch.ai"),
+  title: "MedMatch AI: Medical Records and Prescription Management",
+  description:
+    "Secure digital health record platform for storing prescriptions, condition-based treatment groups, medication interaction alerts, and physician collaboration.",
+  icons: {
+    icon: "/logos/logo_light.png",
+    shortcut: "/logos/logo_light.png",
+    apple: "/logos/logo_light.png",
+  },
 };
 
-// [FIX MIN-1] Replaced internal LayoutProps<"/"> with the stable React.ReactNode pattern.
-// LayoutProps<"/"> is an internal Next.js type that can break between versions.
 export default function RootLayout({
   children,
 }: {

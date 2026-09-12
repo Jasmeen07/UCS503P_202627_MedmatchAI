@@ -23,6 +23,15 @@ app.add_middleware(
 )
 
 
+from routers import prescriptions, documents, ocr, analytics, appointments, sharing
+
+app.include_router(prescriptions.router, prefix="/api/prescriptions", tags=["Prescriptions"])
+app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
+app.include_router(ocr.router, prefix="/api/ocr", tags=["OCR"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(appointments.router, prefix="/api/appointments", tags=["Appointments"])
+app.include_router(sharing.router, prefix="/api/sharing", tags=["Sharing"])
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to MedMatch AI Backend API"}

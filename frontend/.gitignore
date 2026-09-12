@@ -34,6 +34,7 @@ yarn-error.log*
 # .env.example is safe to commit (contains only placeholder values).
 .env*
 !.env.example
+.env.local
 
 # vercel
 .vercel

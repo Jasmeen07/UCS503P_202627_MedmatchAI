@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/client";
+import { User as UserIcon, Stethoscope, Pill, Sun, Moon } from "lucide-react";
 import "./auth.css";
 
 /* ── inline SVGs ─────────────────────────────────────────────── */
@@ -72,19 +73,19 @@ const ROLES = [
     id: "patient",
     label: "Patient",
     desc: "Manage your personal health records",
-    icon: "🧑‍⚕️",
+    icon: UserIcon,
   },
   {
     id: "doctor",
     label: "Doctor",
     desc: "Collaborate with patients",
-    icon: "👨‍⚕️",
+    icon: Stethoscope,
   },
   {
     id: "pharmacy",
     label: "Pharmacy",
     desc: "Manage inventory and prescriptions",
-    icon: "💊",
+    icon: Pill,
   },
 ] as const;
 
@@ -228,8 +229,8 @@ export default function AuthPage() {
           />
           <span className="brand-name limelight-regular font-bold text-black dark:text-white" style={{ fontSize: '1.5rem' }}>MedMatch AI</span>
         </Link>
-        <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle dark mode">
-          {theme === "light" ? "🌙" : "☀️"}
+        <button className="theme-toggle flex items-center justify-center" onClick={toggleTheme} aria-label="Toggle dark mode">
+          {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
         </button>
       </header>
 
@@ -340,7 +341,9 @@ export default function AuthPage() {
                         : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--brand-500)]/40"
                     }`}
                   >
-                    <span className="text-2xl">{r.icon}</span>
+                    <div className="w-9 h-9 rounded border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                      <r.icon className="w-5 h-5" />
+                    </div>
                     <div>
                       <p className="font-semibold text-sm text-[var(--foreground)]">{r.label}</p>
                       <p className="text-xs text-[var(--muted)] mt-0.5">{r.desc}</p>

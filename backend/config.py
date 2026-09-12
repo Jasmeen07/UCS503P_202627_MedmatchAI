@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: str
 
+    # ── Gemini ──────────────────────────────────────────────────────────────
+    gemini_api_key: str = ""
+
     # ── Security ────────────────────────────────────────────────────────────
     # Comma-separated allowed origins, e.g. "http://localhost:3000,https://medmatch.ai"
     cors_allowed_origins: str = "http://localhost:3000"
