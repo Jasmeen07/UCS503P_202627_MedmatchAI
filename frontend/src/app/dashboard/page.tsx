@@ -155,14 +155,46 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Right Doctor Consultation Visual with Soft Feathered Waves */}
-        <div className="relative flex items-center justify-end shrink-0 md:w-[460px] lg:w-[500px]">
+        {/* Right Doctor Consultation Visual with Perfectly Locked Contouring Waves */}
+        <div className="relative flex items-center justify-end shrink-0 md:w-[520px] lg:w-[600px] xl:w-[680px]">
+          {/* Dedicated Wave Contour Layer locked to the Doctor Illustration */}
+          <div className="absolute -inset-x-10 -inset-y-6 pointer-events-none select-none z-0">
+            <svg 
+              className="w-full h-full" 
+              viewBox="0 0 800 420" 
+              fill="none" 
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="docWaveGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#d5eee4" stopOpacity="0.7" />
+                  <stop offset="45%" stopColor="#e8f7f1" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#f8fbf9" stopOpacity="0.05" />
+                </linearGradient>
+                <linearGradient id="docWaveGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#bee8da" stopOpacity="0.5" />
+                  <stop offset="60%" stopColor="#dcf4eb" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#f8fbf9" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              {/* Sweeps smoothly under the doctor desk and curves up behind the patient */}
+              <path 
+                d="M 0 60 C 130 180, 240 350, 440 355 C 590 360, 690 280, 800 130 L 800 0 L 0 0 Z" 
+                fill="url(#docWaveGrad1)" 
+              />
+              <path 
+                d="M 80 0 C 200 170, 310 320, 470 325 C 610 330, 720 250, 800 70 L 800 0 Z" 
+                fill="url(#docWaveGrad2)" 
+              />
+            </svg>
+          </div>
+
           {/* Doctor consultation artwork with seamless radial alpha blend */}
           <div 
-            className="relative w-full max-w-[420px] pointer-events-none select-none"
+            className="relative w-full max-w-[500px] lg:max-w-[580px] xl:max-w-[650px] pointer-events-none select-none z-10"
             style={{
-              maskImage: "radial-gradient(ellipse 75% 75% at 50% 50%, black 50%, transparent 95%)",
-              WebkitMaskImage: "radial-gradient(ellipse 75% 75% at 50% 50%, black 50%, transparent 95%)"
+              maskImage: "radial-gradient(ellipse 78% 78% at 50% 50%, black 55%, transparent 95%)",
+              WebkitMaskImage: "radial-gradient(ellipse 78% 78% at 50% 50%, black 55%, transparent 95%)"
             }}
           >
             <img 
@@ -173,7 +205,7 @@ export default function DashboardOverview() {
           </div>
 
           {/* Editorial Side Caption */}
-          <div className="hidden xl:flex flex-col justify-center text-slate-500 dark:text-slate-400 font-editorial-serif italic text-xs tracking-wider space-y-1 pl-4 select-none shrink-0">
+          <div className="hidden xl:flex flex-col justify-center text-slate-500 dark:text-slate-400 font-editorial-serif italic text-xs tracking-wider space-y-1 pl-4 select-none shrink-0 z-10">
             <p>People.</p>
             <p>Care.</p>
             <p>Better together.</p>
@@ -324,41 +356,34 @@ export default function DashboardOverview() {
       </section>
 
       {/* =========================================================================
-          FLOATING ACTION BUTTON — PRESCRIPTION UPLOAD (Positioned Above the FAB)
+          FLOATING ACTION BUTTON — PRESCRIPTION UPLOAD (Grounded, Balanced & Elegant)
           ========================================================================= */}
-      <div className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-40 flex flex-col items-end pointer-events-auto select-none">
-        {/* Callout & Leaves Stacked Above the FAB */}
-        <div className="relative flex flex-col items-center -mr-2 mb-1 pointer-events-none">
-          {/* Delicate Botanical Sprout Rising Above */}
-          <div className="w-14 h-12 shrink-0 -mb-1 pointer-events-none">
-            <img 
-              src="/bottom-leaf.png" 
-              alt="" 
-              className="w-full h-full object-contain mix-blend-multiply opacity-70 dark:opacity-55" 
-            />
+      <div className="fixed bottom-7 right-7 sm:bottom-9 sm:right-9 z-40 flex items-center gap-3 pointer-events-auto select-none group">
+        {/* Cohesive Callout: Sprout + Text + Swoop Arrow */}
+        <div className="flex items-center gap-2 pointer-events-none">
+          {/* Soft Botanical Sprout */}
+          <div className="w-9 h-11 shrink-0 opacity-70 dark:opacity-55 mix-blend-multiply">
+            <img src="/bottom-leaf.png" alt="" className="w-full h-full object-contain" />
           </div>
 
-          {/* Elegant Handcrafted Callout: "Upload \n prescription" */}
-          <div className="text-center font-editorial-serif italic text-xs sm:text-[13px] leading-tight text-slate-500 dark:text-teal-300 font-medium tracking-tight">
-            <p>Upload</p>
-            <p className="whitespace-nowrap">prescription</p>
-          </div>
+          {/* Crisp Serif Callout */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-editorial-serif italic text-[13px] sm:text-sm text-slate-600 dark:text-teal-300 font-medium tracking-tight whitespace-nowrap">
+              Upload prescription
+            </span>
 
-          {/* Graceful curved swoop arrow pointing down-right toward the + button */}
-          <div className="w-8 h-8 -mr-5 -mt-0.5">
+            {/* Elegant Curved Swoop Arrow pointing directly to the FAB */}
             <svg 
-              viewBox="0 0 32 32" 
+              className="w-5 h-4 text-slate-400 dark:text-teal-400 shrink-0 transform translate-y-0.5 group-hover:translate-x-1 transition-transform duration-300" 
+              viewBox="0 0 24 16" 
               fill="none" 
               stroke="currentColor" 
-              className="w-full h-full text-slate-400 dark:text-teal-400" 
-              strokeWidth="1.6" 
+              strokeWidth="1.8" 
               strokeLinecap="round" 
-              strokeLinejoin="round"
+              strokeLinejoin="round" 
             >
-              {/* Smooth looping curve swoop down to the FAB */}
-              <path d="M 6 4 C 16 6, 22 14, 20 25" />
-              {/* Arrowhead */}
-              <path d="M 14 21 L 20 26 L 25 20" />
+              <path d="M 2 12 C 8 14, 15 13, 20 5" />
+              <path d="M 15 4 L 21 4 L 21 10" />
             </svg>
           </div>
         </div>
