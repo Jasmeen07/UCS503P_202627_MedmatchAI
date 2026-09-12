@@ -1,0 +1,16 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 220" fill="none">
+  <!-- Delicate botanical stem -->
+  <path d="M40 210 C60 170 75 120 110 30" stroke="#7bbda9" stroke-width="2.2" stroke-linecap="round" stroke-opacity="0.75"/>
+  <!-- Leaf 1 (top right) -->
+  <path d="M110 30 C125 15 145 20 148 40 C140 60 120 50 110 30 Z" fill="#93cebc" fill-opacity="0.6" stroke="#68ae98" stroke-width="1.2"/>
+  <path d="M110 30 C126 35 138 40 148 40" stroke="#68ae98" stroke-width="0.9" stroke-opacity="0.7"/>
+  <!-- Leaf 2 (top left) -->
+  <path d="M96 60 C80 40 60 48 55 68 C70 80 90 72 96 60 Z" fill="#a4d7c7" fill-opacity="0.55" stroke="#68ae98" stroke-width="1.2"/>
+  <path d="M96 60 C82 63 68 66 55 68" stroke="#68ae98" stroke-width="0.9" stroke-opacity="0.7"/>
+  <!-- Leaf 3 (mid right) -->
+  <path d="M84 95 C108 85 125 96 126 118 C108 130 90 114 84 95 Z" fill="#8dc9b6" fill-opacity="0.65" stroke="#60a690" stroke-width="1.2"/>
+  <path d="M84 95 C100 102 114 110 126 118" stroke="#60a690" stroke-width="0.9" stroke-opacity="0.7"/>
+  <!-- Leaf 4 (lower left) -->
+  <path d="M68 135 C45 120 25 132 24 154 C44 168 62 152 68 135 Z" fill="#a0d5c4" fill-opacity="0.5" stroke="#68ae98" stroke-width="1.2"/>
+  <path d="M68 135 C50 142 36 148 24 154" stroke="#68ae98" stroke-width="0.9" stroke-opacity="0.7"/>
+</svg>
