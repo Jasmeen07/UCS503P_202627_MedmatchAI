@@ -27,6 +27,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import { createClient } from "@/lib/client";
+import { assetPath } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -34,13 +35,18 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState("light");
   const [searchQuery, setSearchQuery] = useState("");
   const [greeting, setGreeting] = useState("Good morning");
   const supabase = createClient();
 
   useEffect(() => {
+    // Open sidebar by default only on large screens
+    if (window.innerWidth >= 1024) {
+      setSidebarOpen(true);
+    }
+
     // Check theme
     if (document.documentElement.classList.contains("dark")) {
       setTheme("dark");
@@ -171,16 +177,16 @@ export default function DashboardLayout({
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 z-40 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden transition-opacity duration-300"
           onClick={toggleSidebar}
         />
       )}
 
       {/* =========================================================================
-          SEAMLESS SIDEBAR (Blends 100% with Canvas, Collapses with Zero Gap)
+          SEAMLESS SIDEBAR (Blends 100% with Canvas on desktop, solid on mobile)
           ========================================================================= */}
       <aside 
-        className={`fixed lg:relative inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out shrink-0 bg-transparent border-none ${
+        className={`fixed lg:relative inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out shrink-0 bg-white/95 dark:bg-[#0c151c]/95 lg:bg-transparent shadow-2xl lg:shadow-none border-r border-slate-200/60 dark:border-slate-800 lg:border-none ${
           sidebarOpen 
             ? "w-[260px] opacity-100 translate-x-0" 
             : "w-0 opacity-0 -translate-x-full lg:translate-x-0 overflow-hidden pointer-events-none"
@@ -261,7 +267,7 @@ export default function DashboardLayout({
           {/* Sidebar Footer with Exact Botanical Leaf Sprig & Poetic Tagline */}
           <div className="p-5 pb-6 flex items-end gap-3.5 select-none pointer-events-none">
             <div className="w-10 h-20 shrink-0">
-              <img src="/sidebar-leaf.png" alt="" className="w-full h-full object-contain mix-blend-multiply opacity-70 dark:opacity-60" />
+              <img src={assetPath("/sidebar-leaf.png")} alt="" className="w-full h-full object-contain mix-blend-multiply opacity-70 dark:opacity-60" />
             </div>
             <div className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 italic font-editorial-serif pb-1">
               <p>Better care</p>

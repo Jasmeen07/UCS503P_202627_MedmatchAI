@@ -13,6 +13,7 @@ import {
   Lock,
   Search,
 } from "lucide-react";
+import { assetPath } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "MedMatch AI: Personal Health Record & Prescription Management",
@@ -71,12 +72,12 @@ export default function Home() {
           <Link href="/" className="flex items-center gap-3">
             <div className="w-8 h-8 rounded border border-slate-200 dark:border-slate-800 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
               <img
-                src="/logos/logo_light.png"
+                src={assetPath("/logos/logo_light.png")}
                 alt="MedMatch AI Logo"
                 className="w-6 h-6 object-contain dark:hidden"
               />
               <img
-                src="/logos/logo_dark.png"
+                src={assetPath("/logos/logo_dark.png")}
                 alt="MedMatch AI Logo"
                 className="w-6 h-6 object-contain hidden dark:block"
               />
@@ -129,12 +130,12 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 rounded border border-slate-200 dark:border-slate-800 flex items-center justify-center">
               <img
-                src="/logos/logo_light.png"
+                src={assetPath("/logos/logo_light.png")}
                 alt="MedMatch AI Logo"
                 className="w-4 h-4 object-contain dark:hidden"
               />
               <img
-                src="/logos/logo_dark.png"
+                src={assetPath("/logos/logo_dark.png")}
                 alt="MedMatch AI Logo"
                 className="w-4 h-4 object-contain hidden dark:block"
               />

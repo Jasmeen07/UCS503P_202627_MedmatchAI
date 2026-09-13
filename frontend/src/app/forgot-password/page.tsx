@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/client";
+import { assetPath } from "@/lib/utils";
 
 /* ── inline SVGs ─────────────────────────────────────────────── */
 function IconMail() {
@@ -69,8 +70,8 @@ export default function ForgotPasswordPage() {
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 group cursor-pointer" onClick={() => router.push('/')}>
           <div className="w-10 h-10">
-            <img src="/logos/logo_light.png" alt="MedMatch AI Logo" className="w-full h-full object-contain dark:hidden" />
-            <img src="/logos/logo_dark.png" alt="MedMatch AI Logo" className="w-full h-full object-contain hidden dark:block" />
+            <img src={assetPath("/logos/logo_light.png")} alt="MedMatch AI Logo" className="w-full h-full object-contain dark:hidden" />
+            <img src={assetPath("/logos/logo_dark.png")} alt="MedMatch AI Logo" className="w-full h-full object-contain hidden dark:block" />
           </div>
           <span className="brand-name limelight-regular font-bold text-black dark:text-white" style={{ fontSize: '1.5rem' }}>MedMatch AI</span>
         </div>
