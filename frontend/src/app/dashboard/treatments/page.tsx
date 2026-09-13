@@ -1047,7 +1047,7 @@ export default function TreatmentsPage() {
                       return (
                         <Link
                           key={rxId}
-                          href={`/dashboard/prescriptions/${rxId}`}
+                          href={`/dashboard/prescriptions/view?id=${rxId}`}
                           className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-800 hover:border-teal-400/80 transition-all flex items-center justify-between group"
                         >
                           <div className="space-y-0.5">

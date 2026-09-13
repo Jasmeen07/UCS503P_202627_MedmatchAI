@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { 
   ArrowLeft, 
   FileText, 
@@ -87,9 +87,9 @@ const defaultMockPrescriptions: Record<string, PrescriptionRecord> = {
   }
 };
 
-export default function PrescriptionDetailPage() {
-  const params = useParams();
-  const id = params?.id as string;
+function PrescriptionDetailContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
   const [rx, setRx] = useState<PrescriptionRecord | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
 
@@ -454,3 +454,6 @@ export default function PrescriptionDetailPage() {
     </div>
   );
 }
+
+export default function PrescriptionDetailPage() { return ( <Suspense fallback={<div className='p-12 text-center'>Loading...</div>}><PrescriptionDetailContent /></Suspense> ); }
+

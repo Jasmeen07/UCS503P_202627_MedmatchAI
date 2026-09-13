@@ -396,7 +396,7 @@ export default function ScanPage() {
 
       setSaveSuccess(true);
       setTimeout(() => {
-        router.push(`/dashboard/prescriptions/${rxId}`);
+        router.push(`/dashboard/prescriptions/view?id=${rxId}`);
       }, 400);
     } catch {
       setApiError("Failed to save prescription. Please review your entries and try again.");
