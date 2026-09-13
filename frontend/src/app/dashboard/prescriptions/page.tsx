@@ -99,7 +99,7 @@ export default function PrescriptionsPage() {
       {viewMode === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredMocks.map(p => (
-            <Link href={`/dashboard/prescriptions/${p.id}`} key={p.id} className="dash-card card-interactive flex flex-col h-full group hover:border-[var(--dash-sage-light)] transition-all">
+            <Link href={`/dashboard/prescriptions/view?id=${p.id}`} key={p.id} className="dash-card card-interactive flex flex-col h-full group hover:border-[var(--dash-sage-light)] transition-all">
               <div 
                 className="h-1.5 w-full"
                 style={{ 
@@ -177,7 +177,7 @@ export default function PrescriptionsPage() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <Link href={`/dashboard/prescriptions/${p.id}`} className="text-[var(--dash-sage)] font-medium hover:underline">
+                      <Link href={`/dashboard/prescriptions/view?id=${p.id}`} className="text-[var(--dash-sage)] font-medium hover:underline">
                         View Details
                       </Link>
                     </td>

@@ -244,7 +244,7 @@ export default function DashboardOverview() {
             {recentPrescriptions.map((item, i) => (
               <Link
                 key={item.id || i}
-                href={`/dashboard/prescriptions/${item.id || 1}`}
+                href={`/dashboard/prescriptions/view?id=${item.id || 1}`}
                 className="group editorial-row py-3.5 px-2 flex items-center justify-between block -mx-2 rounded-lg transition-all"
               >
                 <div className="space-y-0.5 min-w-0 pr-4">
