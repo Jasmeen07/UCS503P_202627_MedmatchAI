@@ -11,6 +11,7 @@ import {
   Activity,
   UserCheck
 } from "lucide-react";
+import { assetPath } from "@/lib/utils";
 
 interface DailyDoseItem {
   id: string;
@@ -198,7 +199,7 @@ export default function DashboardOverview() {
             }}
           >
             <img 
-              src="/hero-doctor.png" 
+              src={assetPath("/hero-doctor.png")} 
               alt="Physician consultation" 
               className="w-full h-auto object-contain mix-blend-multiply opacity-88 dark:opacity-75 dark:mix-blend-screen transition-opacity"
             />
@@ -363,7 +364,7 @@ export default function DashboardOverview() {
         <div className="flex items-center gap-2 pointer-events-none">
           {/* Soft Botanical Sprout */}
           <div className="w-9 h-11 shrink-0 opacity-70 dark:opacity-55 mix-blend-multiply">
-            <img src="/bottom-leaf.png" alt="" className="w-full h-full object-contain" />
+            <img src={assetPath("/bottom-leaf.png")} alt="" className="w-full h-full object-contain" />
           </div>
 
           {/* Crisp Serif Callout */}
