@@ -263,7 +263,7 @@ export default function ScanPage() {
         verificationFile
       );
 
-      setExtractedData(data);
+      setExtractedData(data as unknown as ExtractedData);
       setClinicalSummary(data.clinical_summary || null);
       setDoctorName(data.doctor_name || "");
       setHospitalName(data.clinic_name || "");
