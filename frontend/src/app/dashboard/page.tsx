@@ -9,32 +9,25 @@ import {
   Calendar,
   Layers,
   Activity,
-  UserCheck
+  UserCheck,
+  FileText
 } from "lucide-react";
 import { assetPath } from "@/lib/utils";
-
-interface DailyDoseItem {
-  id: string;
-  name: string;
-  dosage: string;
-  timeSlot: "morning" | "afternoon" | "night";
-  instructions: string;
-  taken: boolean;
-  purpose: string;
-}
-
-const initialDoses: DailyDoseItem[] = [
-  { id: "1", name: "Lisinopril", dosage: "10mg", timeSlot: "morning", instructions: "Once daily", taken: true, purpose: "Blood pressure regulation" },
-  { id: "2", name: "Metformin", dosage: "500mg", timeSlot: "morning", instructions: "Twice daily", taken: true, purpose: "Glycemic balance" },
-  { id: "3", name: "Atorvastatin", dosage: "20mg", timeSlot: "night", instructions: "Once daily", taken: false, purpose: "Arterial health & lipid regulation" },
-  { id: "4", name: "Tab Thyrox", dosage: "75mcg", timeSlot: "morning", instructions: "Empty stomach", taken: true, purpose: "Thyroid hormone support" },
-];
+import { 
+  getPatientPrescriptions, 
+  getPatientDailyDoses, 
+  togglePatientDailyDose, 
+  getActivePatientEmail,
+  DailyDoseItem,
+  StoredPrescription
+} from "@/lib/patientData";
 
 export default function DashboardOverview() {
   const [userName, setUserName] = useState("Patient");
   const [currentDate, setCurrentDate] = useState("");
-  const [doses, setDoses] = useState<DailyDoseItem[]>(initialDoses);
-  const [recentPrescriptions, setRecentPrescriptions] = useState<any[]>([]);
+  const [patientEmail, setPatientEmail] = useState("");
+  const [doses, setDoses] = useState<DailyDoseItem[]>([]);
+  const [recentPrescriptions, setRecentPrescriptions] = useState<StoredPrescription[]>([]);
 
   useEffect(() => {
     const date = new Date();
@@ -46,28 +39,15 @@ export default function DashboardOverview() {
     };
     setCurrentDate(date.toLocaleDateString('en-US', options));
 
-    // Load recent scanned prescriptions from localStorage
-    try {
-      const stored = localStorage.getItem("medmatch_prescriptions");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setRecentPrescriptions(parsed.slice(0, 5));
-          return;
-        }
-      }
-    } catch {
-      // ignore
-    }
+    // Load user's scoped data
+    const activeEmail = getActivePatientEmail();
+    setPatientEmail(activeEmail);
 
-    // Default fallbacks matching real care updates
-    setRecentPrescriptions([
-      { id: "1", doc: "Dr. Sharma", diag: "Prescription renewed", subtitle: "By Dr. Sharma", date: "Sep 12, 2026", meds: 3, status: "active" },
-      { id: "2", doc: "General Check-up", diag: "Appointment scheduled", subtitle: "General Check-up", date: "Sep 10, 2026", meds: 4, status: "active" },
-      { id: "3", doc: "Apollo Lab", diag: "Lab results available", subtitle: "Blood work", date: "Sep 8, 2026", meds: 2, status: "completed" },
-      { id: "4", doc: "Clinical Visit", diag: "Clinical note updated", subtitle: "Visit summary", date: "Sep 5, 2026", meds: 3, status: "active" },
-      { id: "5", doc: "Dr. Patel", diag: "Medication added", subtitle: "By Dr. Patel", date: "Sep 1, 2026", meds: 1, status: "active" }
-    ]);
+    const userRx = getPatientPrescriptions(activeEmail);
+    setRecentPrescriptions(userRx.slice(0, 5));
+
+    const userDoses = getPatientDailyDoses(activeEmail);
+    setDoses(userDoses);
   }, []);
 
   const [greeting, setGreeting] = useState("");
@@ -125,13 +105,12 @@ export default function DashboardOverview() {
   }, [greeting]);
 
   const toggleDose = (id: string) => {
-    setDoses((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, taken: !d.taken } : d))
-    );
+    const updated = togglePatientDailyDose(id, patientEmail);
+    setDoses(updated);
   };
 
   const completedDoses = doses.filter((d) => d.taken).length;
-  const adherenceRate = Math.round((completedDoses / doses.length) * 100);
+  const adherenceRate = doses.length > 0 ? Math.round((completedDoses / doses.length) * 100) : 0;
 
   return (
     <div className="space-y-12 animate-in fade-in duration-500 relative">
@@ -240,32 +219,48 @@ export default function DashboardOverview() {
             </Link>
           </div>
 
-          {/* Clean Editorial List with Hairline Dividers */}
-          <div className="divide-y divide-slate-200/50 dark:divide-slate-800/50">
-            {recentPrescriptions.map((item, i) => (
-              <Link
-                key={item.id || i}
-                href={`/dashboard/prescriptions/view?id=${item.id || 1}`}
-                className="group editorial-row py-3.5 px-2 flex items-center justify-between block -mx-2 rounded-lg transition-all"
-              >
-                <div className="space-y-0.5 min-w-0 pr-4">
-                  <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-teal-800 dark:group-hover:text-teal-300 transition-colors">
-                    {item.diag || "Prescription record"}
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {item.subtitle || (item.doc ? `By ${item.doc}` : "Clinical record")}
-                  </p>
-                </div>
+          {/* Clean Editorial List or Empty State */}
+          {recentPrescriptions.length > 0 ? (
+            <div className="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+              {recentPrescriptions.map((item, i) => (
+                <Link
+                  key={item.id || i}
+                  href={`/dashboard/prescriptions/view?id=${item.id || 1}`}
+                  className="group editorial-row py-3.5 px-2 flex items-center justify-between block -mx-2 rounded-lg transition-all"
+                >
+                  <div className="space-y-0.5 min-w-0 pr-4">
+                    <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-teal-800 dark:group-hover:text-teal-300 transition-colors">
+                      {item.diag || "Prescription record"}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {item.doc ? `By ${item.doc}` : "Clinical record"}
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-                    {item.date}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-teal-700 dark:group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
-                </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                      {item.date}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-teal-700 dark:group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 px-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+              <FileText className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">No Prescriptions Yet</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                Scan or upload your doctor&apos;s prescription slip to automatically track your health record.
+              </p>
+              <Link 
+                href="/dashboard/scan" 
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Scan Prescription
               </Link>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* -----------------------------------------------------------------------
@@ -289,43 +284,59 @@ export default function DashboardOverview() {
             </Link>
           </div>
 
-          {/* Clean Editorial List with Hairline Dividers */}
-          <div className="divide-y divide-slate-200/50 dark:divide-slate-800/50">
-            {doses.map((dose) => (
-              <div
-                key={dose.id}
-                className="group editorial-row py-3.5 px-2 flex items-center justify-between -mx-2 rounded-lg transition-all"
+          {/* Clean Editorial List or Empty State */}
+          {doses.length > 0 ? (
+            <div className="divide-y divide-slate-200/50 dark:divide-slate-800/50">
+              {doses.map((dose) => (
+                <div
+                  key={dose.id}
+                  className="group editorial-row py-3.5 px-2 flex items-center justify-between -mx-2 rounded-lg transition-all"
+                >
+                  <div className="space-y-0.5 min-w-0 pr-4">
+                    <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                      {dose.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {dose.dosage} · {dose.instructions}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    {/* Discreet interactive adherence checkmark */}
+                    <button
+                      onClick={() => toggleDose(dose.id)}
+                      title={dose.taken ? "Completed dose (click to undo)" : "Mark as taken"}
+                      className={`w-5 h-5 rounded flex items-center justify-center transition-all ${
+                        dose.taken
+                          ? "bg-teal-700 dark:bg-teal-600 text-white"
+                          : "border border-slate-300 dark:border-slate-700 hover:border-teal-600 bg-white/50 dark:bg-slate-800/50 text-transparent"
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
+
+                    <Link href="/dashboard/treatments" title="View treatment details">
+                      <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-teal-700 dark:group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 px-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+              <Layers className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">No Active Treatment Regimens</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                Create treatment groups or scan prescriptions to build your daily dosage schedule.
+              </p>
+              <Link 
+                href="/dashboard/treatments" 
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition-colors"
               >
-                <div className="space-y-0.5 min-w-0 pr-4">
-                  <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-                    {dose.name}
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {dose.dosage} · {dose.instructions}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  {/* Discreet interactive adherence checkmark */}
-                  <button
-                    onClick={() => toggleDose(dose.id)}
-                    title={dose.taken ? "Completed dose (click to undo)" : "Mark as taken"}
-                    className={`w-5 h-5 rounded flex items-center justify-center transition-all ${
-                      dose.taken
-                        ? "bg-teal-700 dark:bg-teal-600 text-white"
-                        : "border border-slate-300 dark:border-slate-700 hover:border-teal-600 bg-white/50 dark:bg-slate-800/50 text-transparent"
-                    }`}
-                  >
-                    <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </button>
-
-                  <Link href="/dashboard/treatments" title="View treatment details">
-                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-teal-700 dark:group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+                <Plus className="w-3.5 h-3.5" /> Manage Treatments
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
@@ -350,8 +361,14 @@ export default function DashboardOverview() {
           </div>
 
           <div className="flex items-center gap-2 font-editorial-serif italic text-[11px]">
-            <span>Daily Adherence: {adherenceRate}%</span>
-            <span>({completedDoses} of {doses.length} logged)</span>
+            {doses.length > 0 ? (
+              <>
+                <span>Daily Adherence: {adherenceRate}%</span>
+                <span>({completedDoses} of {doses.length} logged)</span>
+              </>
+            ) : (
+              <span>No scheduled doses for today</span>
+            )}
           </div>
         </div>
       </section>

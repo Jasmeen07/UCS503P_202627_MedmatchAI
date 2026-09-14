@@ -1601,6 +1601,11 @@ export function analyzePrescriptionInteractions(medicationNames: string[]): Inte
       "No clinically significant drug-drug contraindications were detected across your active medication regimen."
     );
   }
+  if (profiles.length === 0) {
+    actionableSummary.push(
+      "No active medications found in your clinical profile. Upload or scan a prescription, or use the interactive drug tester above to evaluate pharmacology safety."
+    );
+  }
 
   return {
     safetyScore: score,

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { 
   Activity, 
   AlertTriangle, 
@@ -15,10 +16,10 @@ import {
   Clock, 
   Utensils, 
   Sparkles, 
-  ExternalLink,
-  ChevronRight,
-  Stethoscope,
-  Filter
+  ExternalLink, 
+  ChevronRight, 
+  Stethoscope, 
+  Filter 
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { 
@@ -28,6 +29,11 @@ import {
   InteractionResult, 
   InteractionAnalysisSummary 
 } from "@/lib/drug-interactions";
+import { 
+  getPatientPrescriptions, 
+  getActivePatientEmail, 
+  isDemoPatient 
+} from "@/lib/patientData";
 
 const DEFAULT_BASE_MEDS = [
   "Metformin", 
@@ -52,41 +58,52 @@ const SUGGESTED_QUICK_ADD = [
 ];
 
 export default function InsightsPage() {
-  const [activeMeds, setActiveMeds] = useState<string[]>(DEFAULT_BASE_MEDS);
-  const [scannedSourceMeds, setScannedSourceMeds] = useState<string[]>(DEFAULT_BASE_MEDS);
+  const [activeMeds, setActiveMeds] = useState<string[]>([]);
+  const [scannedSourceMeds, setScannedSourceMeds] = useState<string[]>([]);
   const [hasScanned, setHasScanned] = useState(false);
   const [newMedInput, setNewMedInput] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "critical" | "moderate" | "food" | "timing">("all");
   const [lastAddedProfile, setLastAddedProfile] = useState<DrugProfile | null>(null);
 
-  // Load medications from stored prescriptions in localStorage
+  // Load medications from stored scoped prescriptions for the active patient
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("medmatch_prescriptions");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setHasScanned(true);
-          const scannedMeds: string[] = [];
-          for (const rx of parsed) {
-            if (Array.isArray(rx.medicines)) {
-              for (const m of rx.medicines) {
-                const name = m.medicine_name || m.name;
-                if (name && typeof name === "string") {
-                  scannedMeds.push(name.trim());
-                }
+      const email = getActivePatientEmail();
+      const isDemo = isDemoPatient(email);
+      const prescriptions = getPatientPrescriptions(email);
+
+      if (prescriptions.length > 0) {
+        setHasScanned(true);
+        const scannedMeds: string[] = [];
+        for (const rx of prescriptions) {
+          if (Array.isArray(rx.medicines)) {
+            for (const m of rx.medicines) {
+              const name = m.medicine_name || m.name;
+              if (name && typeof name === "string") {
+                scannedMeds.push(name.trim());
               }
             }
           }
-          if (scannedMeds.length > 0) {
-            const combined = Array.from(new Set([...scannedMeds]));
-            setScannedSourceMeds(combined);
-            setActiveMeds(combined);
-          }
+        }
+        if (scannedMeds.length > 0) {
+          const combined = Array.from(new Set(scannedMeds));
+          setScannedSourceMeds(combined);
+          setActiveMeds(combined);
+          return;
         }
       }
+
+      // If demo user fallback to demo base meds
+      if (isDemo) {
+        setScannedSourceMeds(DEFAULT_BASE_MEDS);
+        setActiveMeds(DEFAULT_BASE_MEDS);
+      } else {
+        // Non-demo patients start with fresh clean state
+        setScannedSourceMeds([]);
+        setActiveMeds([]);
+      }
     } catch (e) {
-      console.warn("Could not read stored prescriptions for insights:", e);
+      console.warn("Could not read scoped patient prescriptions for insights:", e);
     }
   }, []);
 
@@ -342,26 +359,38 @@ export default function InsightsPage() {
           <div className="text-xs font-semibold text-[var(--dash-text-tertiary)] uppercase tracking-wider mb-2">
             Currently Monitored ({activeMeds.length} medications):
           </div>
-          <div className="flex flex-wrap gap-2">
-            {summary.analyzedProfiles.map((profile) => (
-              <div 
-                key={profile.name}
-                className="group inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl bg-[var(--dash-bg)] border border-[var(--dash-border)] shadow-sm hover:border-[var(--dash-sage)] transition-colors"
+          {activeMeds.length === 0 ? (
+            <div className="p-4 rounded-xl bg-[var(--dash-surface-warm)]/50 border border-[var(--dash-border)] text-sm text-[var(--dash-text-secondary)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <span>No medications currently active. Add medicines using the tester above or scan a prescription to run automatic pharmacology checks.</span>
+              <Link
+                href="/dashboard/scan"
+                className="dash-btn-primary text-xs px-3.5 py-2 rounded-xl shrink-0 inline-flex items-center gap-1.5"
               >
-                <div>
-                  <span className="text-sm font-semibold text-[var(--dash-text)]">{profile.name}</span>
-                  <span className="block text-[10px] text-[var(--dash-text-tertiary)]">{profile.categoryLabel}</span>
-                </div>
-                <button
-                  onClick={() => handleRemoveMed(profile.name)}
-                  className="w-5 h-5 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-[var(--dash-text-tertiary)] transition-colors ml-1"
-                  title={`Remove ${profile.name}`}
+                Scan Prescription
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {summary.analyzedProfiles.map((profile) => (
+                <div 
+                  key={profile.name}
+                  className="group inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl bg-[var(--dash-bg)] border border-[var(--dash-border)] shadow-sm hover:border-[var(--dash-sage)] transition-colors"
                 >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div>
+                    <span className="text-sm font-semibold text-[var(--dash-text)]">{profile.name}</span>
+                    <span className="block text-[10px] text-[var(--dash-text-tertiary)]">{profile.categoryLabel}</span>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveMed(profile.name)}
+                    className="w-5 h-5 rounded-md hover:bg-rose-500/10 hover:text-rose-600 flex items-center justify-center text-[var(--dash-text-tertiary)] transition-colors ml-1"
+                    title={`Remove ${profile.name}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -430,14 +459,18 @@ export default function InsightsPage() {
             <div className="dash-card p-8 text-center border-l-[6px] border-l-emerald-500 bg-emerald-500/5 rounded-2xl">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-3" />
               <h4 className="text-lg font-bold text-[var(--dash-text)]">
-                {activeTab === "critical" 
+                {activeMeds.length === 0
+                  ? "No Active Medications Monitored"
+                  : activeTab === "critical" 
                   ? "No Critical Contraindications Detected"
                   : activeTab === "moderate"
                   ? "No Moderate or Minor Warnings Detected"
                   : "All Clear — No Adverse Drug Interactions Detected"}
               </h4>
               <p className="text-sm text-[var(--dash-text-secondary)] max-w-xl mx-auto mt-1">
-                Your currently selected {activeMeds.length} medications show no recognized cross-reactivity or pharmacological conflicts based on clinical matrices.
+                {activeMeds.length === 0
+                  ? "Add medications via the sandbox above or upload a prescription to screen for potential drug interactions and contraindications."
+                  : `Your currently selected ${activeMeds.length} medications show no recognized cross-reactivity or pharmacological conflicts based on clinical matrices.`}
               </p>
             </div>
           ) : (
@@ -542,9 +575,13 @@ export default function InsightsPage() {
           {summary.foodWarnings.length === 0 ? (
             <div className="dash-card p-8 text-center border-l-[6px] border-l-emerald-500 bg-emerald-500/5 rounded-2xl">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-3" />
-              <h4 className="text-lg font-bold text-[var(--dash-text)]">No Dietary Conflicts Detected</h4>
+              <h4 className="text-lg font-bold text-[var(--dash-text)]">
+                {activeMeds.length === 0 ? "No Active Regimen Screened" : "No Dietary Conflicts Detected"}
+              </h4>
               <p className="text-sm text-[var(--dash-text-secondary)] mt-1">
-                None of your currently tracked medications have high-risk food or beverage interactions.
+                {activeMeds.length === 0 
+                  ? "Add medications to evaluate food-drug interactions, fruit juice contraindications, and dietary warnings."
+                  : "None of your currently tracked medications have high-risk food or beverage interactions."}
               </p>
             </div>
           ) : (
@@ -591,21 +628,31 @@ export default function InsightsPage() {
               Optimal daily timing based on hepatic chronobiology, food absorption kinetics, and gastric mucosal protection.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {summary.timingRecommendations.map((t, idx) => (
-                <div key={idx} className="p-4 rounded-xl bg-[var(--dash-bg)] border border-[var(--dash-border)]">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-sm text-[var(--dash-text)]">{t.drug}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] font-semibold">
-                      Optimal Schedule
-                    </span>
+            {summary.timingRecommendations.length === 0 ? (
+              <div className="p-8 text-center bg-[var(--dash-surface-warm)]/40 rounded-xl border border-[var(--dash-border)]">
+                <p className="text-sm text-[var(--dash-text-secondary)]">
+                  {activeMeds.length === 0
+                    ? "Add medications above or scan a prescription to generate a chronotherapeutic daily schedule."
+                    : "No specific time-of-day constraints identified for your current medications."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {summary.timingRecommendations.map((t, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-[var(--dash-bg)] border border-[var(--dash-border)]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold text-sm text-[var(--dash-text)]">{t.drug}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] font-semibold">
+                        Optimal Schedule
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--dash-text-secondary)] leading-relaxed">
+                      {t.timing}
+                    </p>
                   </div>
-                  <p className="text-xs text-[var(--dash-text-secondary)] leading-relaxed">
-                    {t.timing}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -625,24 +672,40 @@ export default function InsightsPage() {
         </div>
 
         <ul className="space-y-2.5 text-sm text-[var(--dash-text)]">
-          <li className="flex items-start gap-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--dash-sage)] mt-2 shrink-0" />
-            <span>Verify whether your current dose of <strong>Atorvastatin</strong> requires liver enzyme or CPK monitoring if taken long-term.</span>
-          </li>
-          <li className="flex items-start gap-2.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--dash-sage)] mt-2 shrink-0" />
-            <span>Confirm periodic eGFR (kidney function) and HbA1c tests every 3 to 6 months while on <strong>Metformin</strong>.</span>
-          </li>
+          {activeMeds.some(m => /statin/i.test(m)) && (
+            <li className="flex items-start gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--dash-sage)] mt-2 shrink-0" />
+              <span>Verify whether your current statin therapy requires periodic liver enzyme or CPK monitoring if taken long-term.</span>
+            </li>
+          )}
+          {activeMeds.some(m => /metformin|glim|glip/i.test(m)) && (
+            <li className="flex items-start gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--dash-sage)] mt-2 shrink-0" />
+              <span>Confirm periodic eGFR (kidney function) and HbA1c tests every 3 to 6 months while on antidiabetic therapy.</span>
+            </li>
+          )}
           {summary.criticalCount > 0 && (
             <li className="flex items-start gap-2.5 text-rose-700 dark:text-rose-300 font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-600 mt-2 shrink-0" />
               <span>Discuss substituting or closely timing the {summary.criticalCount} severe interaction pair(s) detected above.</span>
             </li>
           )}
+          {activeMeds.some(m => /warfarin|aspirin|clopidogrel|apixaban|rivaroxaban|dabigatran|ticagrelor/i.test(m)) && (
+            <li className="flex items-start gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--dash-sage)] mt-2 shrink-0" />
+              <span>Inform your dentist and surgical providers about any anticoagulants, antiplatelets, or blood thinners before procedures.</span>
+            </li>
+          )}
           <li className="flex items-start gap-2.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--dash-sage)] mt-2 shrink-0" />
-            <span>Inform your dentist and surgical providers about any anticoagulants, antiplatelets, or blood thinners before procedures.</span>
+            <span>Always present your complete MedMatch digital medication list when consulting any specialist or hospital clinic.</span>
           </li>
+          {activeMeds.length === 0 && (
+            <li className="flex items-start gap-2.5 text-[var(--dash-text-secondary)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--dash-sage)] mt-2 shrink-0" />
+              <span>Keep your active prescriptions up to date by scanning new prescriptions or pill bottles in the scanner tab.</span>
+            </li>
+          )}
         </ul>
       </div>
     </div>
