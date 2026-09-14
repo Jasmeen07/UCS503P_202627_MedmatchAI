@@ -84,7 +84,10 @@ function AuthFormInner() {
   const supabase = createClient();
 
   const redirectParam = searchParams.get("redirect");
-  const targetDestination = redirectParam ? decodeURIComponent(redirectParam) : "/dashboard";
+  let targetDestination = redirectParam ? decodeURIComponent(redirectParam) : "/dashboard";
+  if (targetDestination.startsWith("/UCS503P_202627_MedmatchAI")) {
+    targetDestination = targetDestination.slice("/UCS503P_202627_MedmatchAI".length) || "/dashboard";
+  }
 
   // --- UI State ---
   const [isActive, setIsActive] = useState(false); // false = login, true = register

@@ -56,9 +56,7 @@ export default function DashboardLayout({
 
         if (!session) {
           // Capture target destination including search query parameters
-          const destination = typeof window !== "undefined"
-            ? window.location.pathname + window.location.search
-            : "/dashboard";
+          const destination = pathname + (typeof window !== "undefined" ? window.location.search : "");
 
           router.replace(`/login?redirect=${encodeURIComponent(destination)}`);
           return;
