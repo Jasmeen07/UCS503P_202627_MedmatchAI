@@ -154,44 +154,71 @@ function AuthFormInner() {
     setLoginError(null);
     setLoginLoading(true);
 
+    const cleanEmail = loginEmail.trim().toLowerCase();
+    const cleanPassword = loginPassword.trim();
+
     try {
-      // 1. Attempt Supabase signInWithPassword if configured
-      const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
-      if (!isPlaceholder) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: loginEmail,
-          password: loginPassword,
-        });
-
-        if (!error && data?.user) {
-          setUserSession({
-            id: data.user.id,
-            email: data.user.email || loginEmail,
-            name: data.user.user_metadata?.name || data.user.user_metadata?.username || loginEmail.split("@")[0],
-            role: (data.user.user_metadata?.role as any) || "patient",
-            loggedInAt: Date.now()
-          });
-          router.push(targetDestination);
-          router.refresh();
-          return;
+      // 1. Primary check: validate credentials against registered accounts (instant & reliable)
+      const localResult = validateCredentials(cleanEmail, cleanPassword);
+      if (localResult.success && localResult.session) {
+        // Attempt background Supabase sign-in without blocking the user
+        try {
+          const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
+          if (!isPlaceholder) {
+            await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password: cleanPassword,
+            }).catch(() => {});
+          }
+        } catch {
+          // ignore background Supabase errors
         }
 
-        if (error) {
-          setLoginError(error.message);
-          return;
-        }
-      }
-
-      // 2. Strict credential and password verification against registered accounts
-      const result = validateCredentials(loginEmail, loginPassword);
-      if (!result.success) {
-        setLoginError(result.error || "Incorrect email or password. Please verify your credentials.");
+        router.push(targetDestination);
+        router.refresh();
         return;
       }
 
-      // Successful verified login
-      router.push(targetDestination);
-      router.refresh();
+      // 2. Secondary check: If not matched in local registry, check Supabase
+      const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
+      if (!isPlaceholder) {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: cleanPassword,
+          });
+
+          if (!error && data?.user) {
+            const newSession = {
+              id: data.user.id,
+              email: data.user.email || cleanEmail,
+              name: data.user.user_metadata?.name || data.user.user_metadata?.username || cleanEmail.split("@")[0],
+              role: (data.user.user_metadata?.role as any) || "patient",
+              loggedInAt: Date.now()
+            };
+            setUserSession(newSession);
+
+            // Cache credentials locally for future instant logins
+            registerNewAccount({
+              email: cleanEmail,
+              password: cleanPassword,
+              name: newSession.name,
+              role: newSession.role
+            });
+
+            router.push(targetDestination);
+            router.refresh();
+            return;
+          }
+        } catch (supaErr) {
+          console.warn("Supabase auth check:", supaErr);
+        }
+      }
+
+      // 3. If neither succeeded, present clear and accurate error:
+      // "Incorrect password. Please verify your password and try again." or
+      // "No account found with this email address. Please register an account first."
+      setLoginError(localResult.error || "Incorrect email or password. Please verify your credentials.");
     } catch (err: any) {
       setLoginError(err?.message || "Sign-in failed. Please verify credentials.");
     } finally {
@@ -227,15 +254,19 @@ function AuthFormInner() {
     setRegLoading(true);
 
     try {
-      // 1. Try Supabase signUp if available
+      const cleanEmail = regEmail.trim().toLowerCase();
+      const cleanPassword = regPassword.trim();
+      const cleanName = regUsername.trim();
+
+      // 1. Try Supabase signUp if available (non-blocking)
       const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
       if (!isPlaceholder) {
         await supabase.auth.signUp({
-          email: regEmail,
-          password: regPassword,
+          email: cleanEmail,
+          password: cleanPassword,
           options: {
             data: {
-              username: regUsername,
+              username: cleanName,
               role: role,
             },
           },
@@ -244,9 +275,9 @@ function AuthFormInner() {
 
       // 2. Register account into local database with verified credentials
       const regResult = registerNewAccount({
-        email: regEmail,
-        password: regPassword,
-        name: regUsername,
+        email: cleanEmail,
+        password: cleanPassword,
+        name: cleanName,
         role: role
       });
 

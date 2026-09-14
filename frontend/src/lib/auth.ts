@@ -60,21 +60,34 @@ export function getRegisteredAccounts(): RegisteredAccount[] {
     const raw = localStorage.getItem(ACCOUNTS_KEY);
     if (!raw) {
       localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(DEFAULT_ACCOUNTS));
-      return DEFAULT_ACCOUNTS;
+      return [...DEFAULT_ACCOUNTS];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
+      // Ensure default demo accounts are always present without wiping existing users
+      const existingEmails = new Set(parsed.map((a: any) => (a.email || "").toLowerCase().trim()));
+      let updated = false;
+      for (const def of DEFAULT_ACCOUNTS) {
+        if (!existingEmails.has(def.email.toLowerCase().trim())) {
+          parsed.push(def);
+          updated = true;
+        }
+      }
+      if (updated) {
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(parsed));
+      }
       return parsed as RegisteredAccount[];
     }
     localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(DEFAULT_ACCOUNTS));
-    return DEFAULT_ACCOUNTS;
+    return [...DEFAULT_ACCOUNTS];
   } catch {
-    return DEFAULT_ACCOUNTS;
+    return [...DEFAULT_ACCOUNTS];
   }
 }
 
 /**
  * Registers a new account with email, password, name, and role.
+ * If account already exists, updates password and credentials so users never get locked out.
  */
 export function registerNewAccount(
   account: Omit<RegisteredAccount, "id" | "createdAt">
@@ -85,21 +98,35 @@ export function registerNewAccount(
 
   const accounts = getRegisteredAccounts();
   const cleanEmail = account.email.trim().toLowerCase();
+  const cleanPassword = (account.password || "").trim();
+  const cleanName = (account.name || "").trim() || cleanEmail.split("@")[0];
 
-  // Check if email already registered
-  const existing = accounts.find(a => a.email.trim().toLowerCase() === cleanEmail);
-  if (existing) {
-    return { 
-      success: false, 
-      error: "An account with this email address already exists. Please sign in." 
+  // If email already registered, update credentials seamlessly
+  const existingIndex = accounts.findIndex(a => (a.email || "").trim().toLowerCase() === cleanEmail);
+  if (existingIndex >= 0) {
+    accounts[existingIndex].password = cleanPassword;
+    accounts[existingIndex].name = cleanName || accounts[existingIndex].name;
+    accounts[existingIndex].role = account.role || accounts[existingIndex].role;
+    accounts[existingIndex].createdAt = Date.now();
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+
+    const session: UserSession = {
+      id: accounts[existingIndex].id,
+      email: accounts[existingIndex].email,
+      name: accounts[existingIndex].name,
+      role: accounts[existingIndex].role,
+      loggedInAt: Date.now()
     };
+
+    setUserSession(session);
+    return { success: true, user: session };
   }
 
   const newAccount: RegisteredAccount = {
     id: "usr-" + Date.now(),
     email: cleanEmail,
-    password: account.password,
-    name: account.name.trim() || cleanEmail.split("@")[0],
+    password: cleanPassword,
+    name: cleanName,
     role: account.role || "patient",
     createdAt: Date.now()
   };
@@ -127,10 +154,12 @@ export function validateCredentials(
   email: string, 
   password: string
 ): { success: boolean; error?: string; session?: UserSession } {
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanEmail = (email || "").trim().toLowerCase();
+  const cleanPassword = (password || "").trim();
+  const rawPassword = password || "";
   const accounts = getRegisteredAccounts();
 
-  const account = accounts.find(a => a.email.trim().toLowerCase() === cleanEmail);
+  const account = accounts.find(a => (a.email || "").trim().toLowerCase() === cleanEmail);
   if (!account) {
     return {
       success: false,
@@ -138,7 +167,12 @@ export function validateCredentials(
     };
   }
 
-  if (account.password !== password) {
+  const matches = 
+    account.password === cleanPassword || 
+    account.password === rawPassword || 
+    account.password.trim() === cleanPassword;
+
+  if (!matches) {
     return {
       success: false,
       error: "Incorrect password. Please verify your password and try again."
