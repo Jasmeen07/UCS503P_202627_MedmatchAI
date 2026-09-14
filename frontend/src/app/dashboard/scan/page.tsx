@@ -20,9 +20,15 @@ import {
   Sparkles,
   Stethoscope,
   CheckCheck,
+  Key,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ExternalLink,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { createClient } from "@/lib/client";
+import { extractWithGeminiApi } from "@/lib/gemini-client";
 
 interface MedicineItem {
   medicine_name: string;
@@ -97,6 +103,50 @@ export default function ScanPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const verificationInputRef = useRef<HTMLInputElement>(null);
+
+  // Gemini API Key Management
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState("");
+  const [showKeyText, setShowKeyText] = useState(false);
+  const [keyToastMessage, setKeyToastMessage] = useState<string | null>(null);
+
+  // Load API key from localStorage or NEXT_PUBLIC_GEMINI_API_KEY
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("medmatch_gemini_api_key");
+      if (stored && stored.trim()) {
+        setGeminiApiKey(stored.trim());
+      } else if (process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+        setGeminiApiKey(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
+      }
+    }
+  }, []);
+
+  const handleSaveApiKey = (keyToSave: string) => {
+    const trimmed = keyToSave.trim();
+    if (trimmed) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("medmatch_gemini_api_key", trimmed);
+      }
+      setGeminiApiKey(trimmed);
+      setIsKeyModalOpen(false);
+      setApiError(null);
+      setKeyToastMessage("Google Gemini API key connected successfully!");
+      setTimeout(() => setKeyToastMessage(null), 3000);
+    }
+  };
+
+  const handleRemoveApiKey = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("medmatch_gemini_api_key");
+    }
+    setGeminiApiKey("");
+    setTempApiKey("");
+    setIsKeyModalOpen(false);
+    setKeyToastMessage("Gemini API key removed.");
+    setTimeout(() => setKeyToastMessage(null), 3000);
+  };
 
   // Clean up object URLs
   useEffect(() => {
@@ -221,113 +271,54 @@ export default function ScanPage() {
   const extractWithAi = async () => {
     if (!file) return;
 
+    // Check API Key
+    const keyToUse =
+      geminiApiKey ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("medmatch_gemini_api_key") || ""
+        : "") ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      "";
+
+    if (!keyToUse || !keyToUse.trim()) {
+      setTempApiKey("");
+      setIsKeyModalOpen(true);
+      setApiError(
+        "Google Gemini API key required: Please configure your Gemini API key to enable live prescription AI recognition."
+      );
+      return;
+    }
+
     setIsProcessing(true);
     setApiError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      if (clinicalContext.trim()) {
-        formData.append("clinical_context", clinicalContext.trim());
-      }
-      if (verificationFile) {
-        formData.append("verification_file", verificationFile);
-      }
-
-      let isSuccess = false;
-      try {
-        const response = await fetch("/api/ocr/scan", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const data: ExtractedData = result.data || {};
-          setExtractedData(data);
-          setClinicalSummary(data.clinical_summary || null);
-          setDoctorName(data.doctor_name || "");
-          setHospitalName(data.clinic_name || "");
-          setPrescriptionDate(
-            data.date || new Date().toISOString().split("T")[0]
-          );
-          setDiagnosis(
-            Array.isArray(data.diagnosis)
-              ? data.diagnosis.join(", ")
-              : data.diagnosis || clinicalContext || ""
-          );
-          setMedicines(data.medicines || []);
-          isSuccess = true;
-        }
-      } catch {
-        // Backend not hosted on static GitHub Pages
-      }
-
-      if (!isSuccess) {
-        // Fallback for static hosting demonstration (GitHub Pages)
-        await new Promise((resolve) => setTimeout(resolve, 1400));
-        
-        const contextLower = (clinicalContext || file.name || "").toLowerCase();
-        let fallbackData: ExtractedData;
-
-        if (contextLower.includes("diabet") || contextLower.includes("sugar") || contextLower.includes("glucose")) {
-          fallbackData = {
-            doctor_name: "Dr. A. K. Patel, MD",
-            clinic_name: "Metabolic & Endocrine Healthcare Center",
-            date: new Date().toISOString().split("T")[0],
-            diagnosis: ["Type 2 Diabetes Mellitus", "Dyslipidemia"],
-            clinical_summary: "Glycemic management regimen combining biguanides, sulfonylureas, and cardiovascular lipid protection.",
-            medicines: [
-              { medicine_name: "Metformin", dosage: "500mg", frequency: "Twice daily", duration: "90 days", instructions: "Take with meals", intended_use: "Blood glucose regulation", confidence: "high", needs_review: false },
-              { medicine_name: "Glimepiride", dosage: "2mg", frequency: "Once daily", duration: "90 days", instructions: "Take before breakfast", intended_use: "Insulin secretion stimulation", confidence: "high", needs_review: false },
-              { medicine_name: "Atorvastatin", dosage: "10mg", frequency: "Once daily at night", duration: "90 days", instructions: "Take at bedtime", intended_use: "LDL cholesterol control", confidence: "high", needs_review: false },
-              { medicine_name: "Pregabalin", dosage: "50mg", frequency: "Once daily", duration: "30 days", instructions: "For peripheral tingling", intended_use: "Neuropathy relief", confidence: "low", needs_review: true, candidate_suggestions: ["Pregabalin 50", "Gabapentin 100"] }
-            ]
-          };
-        } else if (contextLower.includes("fever") || contextLower.includes("cough") || contextLower.includes("throat") || contextLower.includes("respirat")) {
-          fallbackData = {
-            doctor_name: "Dr. Rajesh Sharma, MD",
-            clinic_name: "City Care Clinic & Diagnostic Center",
-            date: new Date().toISOString().split("T")[0],
-            diagnosis: ["Acute Upper Respiratory Tract Infection", "Viral Pharyngitis"],
-            clinical_summary: "Symptomatic and infection control therapy for acute upper respiratory inflammation.",
-            medicines: [
-              { medicine_name: "Amoxicillin / Clavulanate", dosage: "625mg", frequency: "Twice daily", duration: "5 days", instructions: "After food", intended_use: "Bacterial infection control", confidence: "high", needs_review: false },
-              { medicine_name: "Paracetamol", dosage: "650mg", frequency: "Thrice daily (as needed)", duration: "3 days", instructions: "Take for fever or severe body ache", intended_use: "Antipyretic & pain relief", confidence: "high", needs_review: false },
-              { medicine_name: "Levocetirizine", dosage: "5mg", frequency: "Once daily at night", duration: "5 days", instructions: "May cause slight drowsiness", intended_use: "Rhinitis & nasal allergy relief", confidence: "high", needs_review: false }
-            ]
-          };
-        } else {
-          fallbackData = {
-            doctor_name: "Dr. Vikram Sethi, MD",
-            clinic_name: "Apex Multispecialty Hospital",
-            date: new Date().toISOString().split("T")[0],
-            diagnosis: ["Essential Hypertension", "Mild Hyperacidity"],
-            clinical_summary: "Cardiovascular maintenance therapy with gastroprotective co-prescription.",
-            medicines: [
-              { medicine_name: "Telmisartan", dosage: "40mg", frequency: "Once daily", duration: "30 days", instructions: "Take in the morning", intended_use: "Blood pressure regulation", confidence: "high", needs_review: false },
-              { medicine_name: "Pantoprazole", dosage: "40mg", frequency: "Once daily", duration: "15 days", instructions: "Take 30 mins before breakfast", intended_use: "Gastric acid reduction", confidence: "high", needs_review: false },
-              { medicine_name: "Multivitamin & Zinc", dosage: "1 Tablet", frequency: "Once daily", duration: "30 days", instructions: "After lunch", intended_use: "Nutritional support", confidence: "medium", needs_review: false }
-            ]
-          };
-        }
-
-        setExtractedData(fallbackData);
-        setClinicalSummary(fallbackData.clinical_summary || null);
-        setDoctorName(fallbackData.doctor_name || "");
-        setHospitalName(fallbackData.clinic_name || "");
-        setPrescriptionDate(fallbackData.date || new Date().toISOString().split("T")[0]);
-        setDiagnosis(
-          Array.isArray(fallbackData.diagnosis)
-            ? fallbackData.diagnosis.join(", ")
-            : fallbackData.diagnosis || ""
-        );
-        setMedicines(fallbackData.medicines || []);
-      }
-    } catch {
-      setApiError(
-        "Could not process document. Please try uploading again."
+      const data = await extractWithGeminiApi(
+        file,
+        keyToUse.trim(),
+        clinicalContext,
+        verificationFile
       );
+
+      setExtractedData(data);
+      setClinicalSummary(data.clinical_summary || null);
+      setDoctorName(data.doctor_name || "");
+      setHospitalName(data.clinic_name || "");
+      setPrescriptionDate(
+        data.date || new Date().toISOString().split("T")[0]
+      );
+      setDiagnosis(
+        Array.isArray(data.diagnosis)
+          ? data.diagnosis.join(", ")
+          : data.diagnosis || clinicalContext || ""
+      );
+      setMedicines((data.medicines as MedicineItem[]) || []);
+    } catch (err: any) {
+      console.error("Gemini Vision Error:", err);
+      const msg =
+        err?.message ||
+        "Could not process document with Gemini AI. Please check your file and API key.";
+      setApiError(msg);
     } finally {
       setIsProcessing(false);
     }
@@ -534,6 +525,72 @@ export default function ScanPage() {
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
       />
+
+      {/* Toast Notification */}
+      {keyToastMessage && (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs rounded-lg flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>{keyToastMessage}</span>
+          </div>
+          <button
+            onClick={() => setKeyToastMessage(null)}
+            className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Gemini Engine & Key Status Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-2.5 h-2.5 rounded-full ${geminiApiKey ? "bg-emerald-500 animate-pulse" : "bg-amber-400"}`}></div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                AI Engine: Google Gemini 3.6 Flash
+              </span>
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                Direct Browser Vision
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              {geminiApiKey
+                ? "API Key is connected securely in local storage. Real-time vision ready."
+                : "A Google Gemini API key is needed to interpret your handwritten prescription."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {geminiApiKey ? (
+            <button
+              type="button"
+              onClick={() => {
+                setTempApiKey(geminiApiKey);
+                setIsKeyModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <Key className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              Manage API Key
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setTempApiKey("");
+                setIsKeyModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 rounded shadow-sm transition-colors"
+            >
+              <Key className="w-3.5 h-3.5" />
+              Connect Gemini Key
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Pre-Scan Setup (Clinical Context & Dual Upload Slots) */}
       {!extractedData && (
@@ -774,12 +831,24 @@ export default function ScanPage() {
           )}
 
           {apiError && (
-            <div className="p-4 rounded border border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 text-sm flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-medium">Extraction Notice</p>
-                <p className="text-xs leading-relaxed">{apiError}</p>
+            <div className="p-4 rounded-lg border border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-medium">Extraction Notice</p>
+                  <p className="text-xs leading-relaxed">{apiError}</p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setTempApiKey(geminiApiKey);
+                  setIsKeyModalOpen(true);
+                }}
+                className="self-start sm:self-center shrink-0 px-3 py-1.5 text-xs rounded border border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/40 font-medium transition-colors"
+              >
+                Configure Gemini Key
+              </button>
             </div>
           )}
 
@@ -1223,6 +1292,114 @@ export default function ScanPage() {
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gemini API Key Configuration Modal */}
+      {isKeyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Google Gemini API Key
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    For Live Multimodal Prescription OCR
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsKeyModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p>
+                MedMatchAI uses Google&apos;s latest <span className="font-semibold text-slate-900 dark:text-slate-100">Gemini 3.6 Flash</span> multimodal vision engine to read Indian doctor handwriting directly from your browser.
+              </p>
+              <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+                <p className="font-medium text-slate-700 dark:text-slate-300">
+                  🔒 Privacy & Security Guarantee:
+                </p>
+                <p>
+                  Your key is stored only inside your browser&apos;s private localStorage and is never committed to git or sent to any intermediary backend.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                Gemini API Key
+              </label>
+              <div className="relative">
+                <input
+                  type={showKeyText ? "text" : "password"}
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  placeholder="Paste your Gemini API key (e.g. AIzaSy... or AQ...)"
+                  className="w-full pl-3 pr-10 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:ring-1 focus:ring-teal-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKeyText(!showKeyText)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  tabIndex={-1}
+                >
+                  {showKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] text-teal-600 hover:text-teal-700 dark:text-teal-400 hover:underline font-medium"
+                >
+                  <span>Get a free API key from Google AI Studio</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+              {geminiApiKey ? (
+                <button
+                  type="button"
+                  onClick={handleRemoveApiKey}
+                  className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400 font-medium"
+                >
+                  Remove Key
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsKeyModalOpen(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveApiKey(tempApiKey)}
+                  disabled={!tempApiKey.trim()}
+                  className="px-4 py-1.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white rounded transition-colors disabled:opacity-50"
+                >
+                  Save Key
                 </button>
               </div>
             </div>
