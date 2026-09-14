@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import "./dashboard.css";
 import {
   PanelLeftClose,
@@ -15,8 +14,6 @@ import {
   Activity,
   Calendar,
   UserCheck,
-  Menu,
-  X,
   Settings,
   LogOut,
   Bell,
@@ -24,10 +21,14 @@ import {
   Sun,
   Search,
   ChevronDown,
-  HelpCircle
+  HelpCircle,
+  HeartPulse,
+  ShieldCheck,
+  User
 } from "lucide-react";
 import { createClient } from "@/lib/client";
 import { assetPath } from "@/lib/utils";
+import { verifyActiveSession, clearUserSession, UserSession } from "@/lib/auth";
 
 export default function DashboardLayout({
   children,
@@ -35,11 +36,48 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState("light");
   const [searchQuery, setSearchQuery] = useState("");
   const [greeting, setGreeting] = useState("Good morning");
-  const supabase = createClient();
+  const [isVerifying, setIsVerifying] = useState(true);
+  const [userSession, setUserSession] = useState<UserSession | null>(null);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  // Authentication Gatekeeper
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAuthentication = async () => {
+      try {
+        const session = await verifyActiveSession();
+        if (!isMounted) return;
+
+        if (!session) {
+          // Capture target destination including search query parameters
+          const destination = typeof window !== "undefined"
+            ? window.location.pathname + window.location.search
+            : "/dashboard";
+
+          router.replace(`/login?redirect=${encodeURIComponent(destination)}`);
+          return;
+        }
+
+        setUserSession(session);
+        setIsVerifying(false);
+      } catch (err) {
+        console.warn("Auth check error:", err);
+        router.replace("/login");
+      }
+    };
+
+    checkAuthentication();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   useEffect(() => {
     // Open sidebar by default only on large screens
@@ -91,6 +129,11 @@ export default function DashboardLayout({
     }
   };
 
+  const handleLogout = async () => {
+    await clearUserSession();
+    router.replace("/login");
+  };
+
   const navLinks = [
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
     { name: "Prescriptions", href: "/dashboard/prescriptions", icon: FileText },
@@ -103,13 +146,38 @@ export default function DashboardLayout({
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+  // Authentication Loading Screen: Prevents medical data flash for unauthenticated visitors
+  if (isVerifying) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#fbfdfc] dark:bg-[#0b1115] text-slate-800 dark:text-slate-100 select-none">
+        <div className="flex flex-col items-center gap-4 max-w-sm px-6 text-center animate-in fade-in duration-300">
+          <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200/80 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300 shadow-md animate-pulse">
+            <HeartPulse className="w-8 h-8 text-teal-700 dark:text-teal-400" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Med<span className="text-teal-700 dark:text-teal-400">Match</span> AI
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Verifying clinical authentication credentials...
+            </p>
+          </div>
+          <div className="w-48 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-3">
+            <div className="h-full bg-teal-600 rounded-full w-2/3 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const userInitials = userSession?.name
+    ? userSession.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
+    : "PT";
+
   return (
     <div className="relative flex h-screen w-full text-[var(--dash-text)] overflow-hidden bg-[#fbfdfc] dark:bg-[#0b1115]">
-      {/* =========================================================================
-          GENUINE FLOWING ORGANIC SVG WAVES (Spanning the Whole Canvas Seamlessly)
-          ========================================================================= */}
+      {/* GENUINE FLOWING ORGANIC SVG WAVES */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 select-none">
-        {/* Top-Right Flowing Waves (Behind Doctor Consultation) */}
         <svg 
           className="absolute top-0 right-0 w-[65vw] max-w-[950px] h-[58vh] max-h-[520px]" 
           viewBox="0 0 850 480" 
@@ -132,15 +200,11 @@ export default function DashboardLayout({
               <stop offset="100%" stopColor="#edf8f4" stopOpacity="0.05" />
             </linearGradient>
           </defs>
-          {/* Broad sweeping wave tracing under the doctor consultation */}
           <path d="M 0 0 C 140 180, 240 320, 420 330 C 580 340, 700 290, 850 140 L 850 0 Z" fill="url(#waveTopGrad1)" fillOpacity="0.5" />
-          {/* Mid organic curve tracing the lower contour */}
           <path d="M 80 0 C 220 180, 320 300, 480 310 C 620 320, 740 250, 850 80 L 850 0 Z" fill="url(#waveTopGrad2)" fillOpacity="0.35" />
-          {/* Accent feathered wave ridge */}
           <path d="M 240 0 C 340 180, 440 280, 580 270 C 700 260, 780 190, 850 100 L 850 0 Z" fill="url(#waveTopGrad3)" fillOpacity="0.2" />
         </svg>
 
-        {/* Bottom-Right Rolling Waves (Sweeping under Upload FAB) */}
         <svg 
           className="absolute bottom-0 right-0 w-[58vw] max-w-[850px] h-[38vh] max-h-[340px]" 
           viewBox="0 0 750 320" 
@@ -163,11 +227,10 @@ export default function DashboardLayout({
           <path d="M 200 320 C 340 280, 470 185, 620 160 C 690 150, 730 170, 750 190 L 750 320 Z" fill="url(#waveBottomGrad2)" fillOpacity="0.4" />
         </svg>
 
-        {/* Bottom-Left Wave under Sidebar */}
         <svg 
           className="absolute bottom-0 left-0 w-[320px] h-[260px]" 
           viewBox="0 0 320 260" 
-          fill="none"
+          fill="none" 
         >
           <path d="M 0 110 C 90 130, 160 190, 240 260 L 0 260 Z" fill="#dcf4eb" fillOpacity="0.5" />
           <path d="M 0 170 C 50 180, 110 210, 160 260 L 0 260 Z" fill="#cbeee1" fillOpacity="0.35" />
@@ -182,9 +245,7 @@ export default function DashboardLayout({
         />
       )}
 
-      {/* =========================================================================
-          SEAMLESS SIDEBAR (Blends 100% with Canvas on desktop, solid on mobile)
-          ========================================================================= */}
+      {/* SIDEBAR */}
       <aside 
         className={`fixed lg:relative inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out shrink-0 bg-white/95 dark:bg-[#0c151c]/95 lg:bg-transparent shadow-2xl lg:shadow-none border-r border-slate-200/60 dark:border-slate-800 lg:border-none ${
           sidebarOpen 
@@ -197,7 +258,6 @@ export default function DashboardLayout({
             {/* Brand Header with Close Button */}
             <div className="p-6 pb-4 flex items-center justify-between">
               <Link href="/dashboard" className="flex items-center gap-2.5 group">
-                {/* MedMatch Leaf Emblem */}
                 <div className="w-8 h-8 rounded-lg bg-teal-50/80 dark:bg-teal-950/80 flex items-center justify-center text-teal-700 dark:text-teal-300 shadow-xs">
                   <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" fill="#14b8a6" fillOpacity="0.3" stroke="#0f766e" />
@@ -212,7 +272,6 @@ export default function DashboardLayout({
                 </div>
               </Link>
 
-              {/* Sidebar Collapse Button */}
               <button 
                 onClick={toggleSidebar}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-teal-800 hover:bg-teal-50/60 dark:hover:bg-slate-800 transition-colors"
@@ -247,46 +306,58 @@ export default function DashboardLayout({
 
               <div className="pt-4 mt-4 border-t border-slate-200/40 dark:border-slate-800/40 px-1 space-y-1">
                 <Link
-                  href="/dashboard"
-                  className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-teal-50/40 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
-                >
-                  <Settings className="w-4 h-4 text-slate-400" />
-                  Settings
-                </Link>
-                <Link
                   href="/terms"
                   className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-teal-50/40 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
                 >
                   <HelpCircle className="w-4 h-4 text-slate-400" />
                   Help & Support
                 </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors text-left"
+                >
+                  <LogOut className="w-4 h-4 text-rose-500" />
+                  Sign Out
+                </button>
               </div>
             </nav>
           </div>
 
-          {/* Sidebar Footer with Exact Botanical Leaf Sprig & Poetic Tagline */}
-          <div className="p-5 pb-6 flex items-end gap-3.5 select-none pointer-events-none">
-            <div className="w-10 h-20 shrink-0">
-              <img src={assetPath("/sidebar-leaf.png")} alt="" className="w-full h-full object-contain mix-blend-multiply opacity-70 dark:opacity-60" />
-            </div>
-            <div className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 italic font-editorial-serif pb-1">
-              <p>Better care</p>
-              <p>brings brighter</p>
-              <p>tomorrows.</p>
-              <div className="w-6 h-px bg-slate-300 dark:bg-slate-700 mt-2"></div>
+          {/* User Session Profile in Sidebar Bottom */}
+          <div className="p-4 border-t border-slate-200/40 dark:border-slate-800/40">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 flex items-center justify-center text-xs font-bold shrink-0">
+                  {userInitials}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                    {userSession?.name || "Patient User"}
+                  </p>
+                  <p className="text-[10px] text-teal-700 dark:text-teal-400 capitalize flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    {userSession?.role || "Patient"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* =========================================================================
-          MAIN CONTENT AREA (Spreads across 100% when sidebar collapses)
-          ========================================================================= */}
+      {/* MAIN CONTENT AREA */}
       <main className="flex-1 relative flex flex-col h-screen min-w-0 bg-transparent z-10 overflow-hidden">
-        {/* Topbar — Floats transparently at the top without taking physical flow height */}
+        {/* Topbar */}
         <header className="h-16 flex items-center justify-between px-6 sm:px-8 bg-transparent absolute top-0 left-0 right-0 z-30 pointer-events-none">
           <div className="flex items-center gap-3 flex-1 max-w-xl pointer-events-auto">
-            {/* Toggle Open Button (visible when sidebar is closed) */}
             {!sidebarOpen && (
               <button 
                 onClick={toggleSidebar}
@@ -298,7 +369,6 @@ export default function DashboardLayout({
               </button>
             )}
 
-            {/* Reference-Styled Pill Search Bar */}
             <div className="relative w-full max-w-md hidden sm:block">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
@@ -311,8 +381,7 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pointer-events-auto">
-            {/* Theme Toggle */}
+          <div className="flex items-center gap-3 pointer-events-auto relative">
             <button 
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
@@ -321,7 +390,6 @@ export default function DashboardLayout({
               {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
 
-            {/* Notifications Bell with Dot */}
             <button 
               className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors relative"
               title="Notifications"
@@ -331,19 +399,44 @@ export default function DashboardLayout({
             </button>
 
             {/* Profile Dropdown Indicator */}
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200/50 dark:border-slate-800/50">
-              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-semibold">
-                JK
-              </div>
-              <span className="hidden md:inline text-xs font-medium text-slate-700 dark:text-slate-300">
-                {greeting}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <div className="relative">
+              <button
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="flex items-center gap-2 pl-2 border-l border-slate-200/50 dark:border-slate-800/50 hover:opacity-80 transition-opacity"
+              >
+                <div className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-semibold shadow-xs">
+                  {userInitials}
+                </div>
+                <span className="hidden md:inline text-xs font-medium text-slate-700 dark:text-slate-300 max-w-[140px] truncate">
+                  {userSession?.name || greeting}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+
+              {profileDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-2 z-50 animate-in fade-in">
+                  <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                    <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                      {userSession?.name || "Patient"}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      {userSession?.email}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full mt-1 flex items-center gap-2 px-3 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
 
-        {/* Page Content — Starts from very top (pt-0) on Overview so hero visual bleeds to the top */}
+        {/* Page Content */}
         <div className={`flex-1 h-full overflow-y-auto px-6 sm:px-10 lg:px-12 ${pathname === "/dashboard" ? "pt-0 pb-20" : "pt-20 pb-20"}`}>
           <div className="max-w-[1280px] mx-auto w-full h-full">
             {children}
@@ -353,4 +446,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
