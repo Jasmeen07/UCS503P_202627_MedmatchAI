@@ -24,6 +24,7 @@ import {
 import { PageHeader } from "@/components/dashboard/page-header";
 import { createClient } from "@/lib/client";
 import { extractWithGeminiApi } from "@/lib/gemini-client";
+import { generatePrescriptionId } from "@/lib/auth";
 
 interface MedicineItem {
   medicine_name: string;
@@ -294,7 +295,7 @@ export default function ScanPage() {
     setIsSaving(true);
     setApiError(null);
     try {
-      const rxId = "rx-" + Date.now();
+      const rxId = generatePrescriptionId();
 
       // Convert images to base64 for local persistence preview
       let imageBase64: string | null = null;

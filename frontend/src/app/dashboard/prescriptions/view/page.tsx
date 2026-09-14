@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Sparkles
 } from "lucide-react";
+import { formatPrescriptionId } from "@/lib/auth";
 
 interface MedicineDetail {
   medicine_name?: string;
@@ -94,17 +95,23 @@ function PrescriptionDetailContent() {
   const [modalImage, setModalImage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
-
     // Check localStorage first
     try {
       const stored = localStorage.getItem("medmatch_prescriptions");
       if (stored) {
         const list: PrescriptionRecord[] = JSON.parse(stored);
-        const match = list.find((p) => p.id?.toString() === id.toString());
-        if (match) {
-          setRx(match);
-          return;
+        if (list.length > 0) {
+          if (id) {
+            const match = list.find((p) => p.id?.toString() === id.toString());
+            if (match) {
+              setRx(match);
+              return;
+            }
+          } else {
+            // No ID specified in URL: default to most recent scanned prescription
+            setRx(list[0]);
+            return;
+          }
         }
       }
     } catch (e) {
@@ -112,11 +119,12 @@ function PrescriptionDetailContent() {
     }
 
     // Check fallback mocks
-    if (defaultMockPrescriptions[id]) {
-      setRx(defaultMockPrescriptions[id]);
+    const targetId = id || "1";
+    if (defaultMockPrescriptions[targetId]) {
+      setRx(defaultMockPrescriptions[targetId]);
     } else {
-      setRx({
-        id,
+      setRx(defaultMockPrescriptions["1"] || {
+        id: targetId,
         doc: "Dr. Medical Specialist",
         hospital: "General Healthcare Center",
         diag: "Clinical Prescription Record",
@@ -165,6 +173,9 @@ function PrescriptionDetailContent() {
             </h1>
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-300">
               {rx.status ? rx.status.charAt(0).toUpperCase() + rx.status.slice(1) : "Active"}
+            </span>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono font-semibold border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300" title="Clinical Prescription Reference">
+              {formatPrescriptionId(rx.id)}
             </span>
             {rx.source === "ocr_cross_verified" && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
