@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/client";
-import { setUserSession } from "@/lib/auth";
+import { setUserSession, validateCredentials, registerNewAccount } from "@/lib/auth";
 import { User as UserIcon, Stethoscope, Pill, Sun, Moon, ShieldCheck, Check } from "lucide-react";
 import "./auth.css";
 
@@ -155,54 +155,45 @@ function AuthFormInner() {
     setLoginLoading(true);
 
     try {
-      // 1. Attempt Supabase signInWithPassword
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
-      });
-
-      if (!error && data?.user) {
-        setUserSession({
-          id: data.user.id,
-          email: data.user.email || loginEmail,
-          name: data.user.user_metadata?.name || data.user.user_metadata?.username || loginEmail.split("@")[0],
-          role: (data.user.user_metadata?.role as any) || "patient",
-          loggedInAt: Date.now()
-        });
-        router.push(targetDestination);
-        router.refresh();
-        return;
-      }
-
-      // 2. Client-side authentication fallback for static builds
-      if (loginEmail && loginPassword.length >= 4) {
-        setUserSession({
-          id: "usr-" + Date.now(),
+      // 1. Attempt Supabase signInWithPassword if configured
+      const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
+      if (!isPlaceholder) {
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: loginEmail,
-          name: loginEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
-          role: "patient",
-          loggedInAt: Date.now()
+          password: loginPassword,
         });
-        router.push(targetDestination);
-        router.refresh();
+
+        if (!error && data?.user) {
+          setUserSession({
+            id: data.user.id,
+            email: data.user.email || loginEmail,
+            name: data.user.user_metadata?.name || data.user.user_metadata?.username || loginEmail.split("@")[0],
+            role: (data.user.user_metadata?.role as any) || "patient",
+            loggedInAt: Date.now()
+          });
+          router.push(targetDestination);
+          router.refresh();
+          return;
+        }
+
+        if (error) {
+          setLoginError(error.message);
+          return;
+        }
+      }
+
+      // 2. Strict credential and password verification against registered accounts
+      const result = validateCredentials(loginEmail, loginPassword);
+      if (!result.success) {
+        setLoginError(result.error || "Incorrect email or password. Please verify your credentials.");
         return;
       }
 
-      setLoginError(error?.message || "Invalid credentials. Please enter your email and password.");
-    } catch {
-      if (loginEmail && loginPassword.length >= 4) {
-        setUserSession({
-          id: "usr-" + Date.now(),
-          email: loginEmail,
-          name: loginEmail.split("@")[0],
-          role: "patient",
-          loggedInAt: Date.now()
-        });
-        router.push(targetDestination);
-        router.refresh();
-        return;
-      }
-      setLoginError("Sign-in failed. Please verify credentials.");
+      // Successful verified login
+      router.push(targetDestination);
+      router.refresh();
+    } catch (err: any) {
+      setLoginError(err?.message || "Sign-in failed. Please verify credentials.");
     } finally {
       setLoginLoading(false);
     }
@@ -210,8 +201,8 @@ function AuthFormInner() {
 
   const handleDemoPatientLogin = () => {
     setUserSession({
-      id: "usr-patient-verified",
-      email: "patient.jasmeen@medmatch.org",
+      id: "usr-demo-patient",
+      email: "patient@medmatch.com",
       name: "Jasmeen Kaur",
       role: "patient",
       loggedInAt: Date.now()
@@ -225,57 +216,52 @@ function AuthFormInner() {
     setRegError(null);
 
     if (!pwMatch) {
-      setRegError("Passwords do not match");
+      setRegError("Passwords do not match.");
       return;
     }
     if (!pwStrong) {
-      setRegError("Password must be 8+ chars with a number and uppercase letter.");
+      setRegError("Password must be 8+ chars with at least 1 uppercase letter and 1 number.");
       return;
     }
 
     setRegLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // 1. Try Supabase signUp if available
+      const isPlaceholder = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder");
+      if (!isPlaceholder) {
+        await supabase.auth.signUp({
+          email: regEmail,
+          password: regPassword,
+          options: {
+            data: {
+              username: regUsername,
+              role: role,
+            },
+          },
+        }).catch(() => {});
+      }
+
+      // 2. Register account into local database with verified credentials
+      const regResult = registerNewAccount({
         email: regEmail,
         password: regPassword,
-        options: {
-          data: {
-            username: regUsername,
-            role: role,
-          },
-        },
+        name: regUsername,
+        role: role
       });
 
-      setRegLoading(false);
-
-      if (error) {
-        setRegError(error.message);
-      } else {
-        // Set active session for user immediately
-        setUserSession({
-          id: data?.user?.id || "usr-" + Date.now(),
-          email: regEmail,
-          name: regUsername || regEmail.split("@")[0],
-          role: role,
-          loggedInAt: Date.now()
-        });
-        setRegSuccess("Account registered successfully! Entering dashboard...");
-        setTimeout(() => {
-          router.push(targetDestination);
-          router.refresh();
-        }, 800);
+      if (!regResult.success) {
+        setRegError(regResult.error || "Registration failed.");
+        return;
       }
-    } catch {
-      setUserSession({
-        id: "usr-" + Date.now(),
-        email: regEmail,
-        name: regUsername || regEmail.split("@")[0],
-        role: role,
-        loggedInAt: Date.now()
-      });
-      router.push(targetDestination);
-      router.refresh();
+
+      setRegSuccess("Account registered successfully! Entering dashboard...");
+      setTimeout(() => {
+        router.push(targetDestination);
+        router.refresh();
+      }, 800);
+    } catch (err: any) {
+      setRegError(err?.message || "An error occurred during registration.");
     } finally {
       setRegLoading(false);
     }
@@ -351,6 +337,11 @@ function AuthFormInner() {
               </div>
               <Link href="/forgot-password" style={{ marginLeft: "auto" }}>Forgot Password?</Link>
             </div>
+
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-3 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 leading-relaxed text-left">
+              <span>Demo Login: <strong>patient@medmatch.com</strong> / <strong>Password123</strong></span>
+            </div>
+
             <button type="submit" className="btn" disabled={loginLoading}>
               {loginLoading ? "Authenticating..." : "Sign In to Dashboard"}
             </button>

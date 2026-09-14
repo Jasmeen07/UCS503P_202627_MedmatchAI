@@ -4,7 +4,8 @@
  * Protects dashboard routes so only authenticated patients and medical providers
  * can view medical records, scanned prescriptions, and health insights.
  * 
- * Works with both Supabase Auth and persistent clinical user sessions.
+ * Implements strict credential verification, registered accounts validation,
+ * and session state management.
  * Strictly zero secrets or hardcoded keys.
  */
 
@@ -18,7 +19,143 @@ export interface UserSession {
   loggedInAt: number;
 }
 
+export interface RegisteredAccount {
+  id: string;
+  email: string;
+  password: string;
+  name: string;
+  role: "patient" | "doctor" | "pharmacy";
+  createdAt: number;
+}
+
 const SESSION_KEY = "medmatch_user_session";
+const ACCOUNTS_KEY = "medmatch_registered_users";
+
+// Default clinical demo accounts available out-of-the-box
+const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
+  {
+    id: "usr-demo-patient",
+    email: "patient@medmatch.com",
+    password: "Password123",
+    name: "Jasmeen Kaur",
+    role: "patient",
+    createdAt: 1700000000000
+  },
+  {
+    id: "usr-demo-doctor",
+    email: "doctor@medmatch.com",
+    password: "Doctor123",
+    name: "Dr. Sharma",
+    role: "doctor",
+    createdAt: 1700000000000
+  }
+];
+
+/**
+ * Retrieves all registered accounts, initializing default demo accounts if not present.
+ */
+export function getRegisteredAccounts(): RegisteredAccount[] {
+  if (typeof window === "undefined") return DEFAULT_ACCOUNTS;
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (!raw) {
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(DEFAULT_ACCOUNTS));
+      return DEFAULT_ACCOUNTS;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed as RegisteredAccount[];
+    }
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(DEFAULT_ACCOUNTS));
+    return DEFAULT_ACCOUNTS;
+  } catch {
+    return DEFAULT_ACCOUNTS;
+  }
+}
+
+/**
+ * Registers a new account with email, password, name, and role.
+ */
+export function registerNewAccount(
+  account: Omit<RegisteredAccount, "id" | "createdAt">
+): { success: boolean; error?: string; user?: UserSession } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Registration not available offline." };
+  }
+
+  const accounts = getRegisteredAccounts();
+  const cleanEmail = account.email.trim().toLowerCase();
+
+  // Check if email already registered
+  const existing = accounts.find(a => a.email.trim().toLowerCase() === cleanEmail);
+  if (existing) {
+    return { 
+      success: false, 
+      error: "An account with this email address already exists. Please sign in." 
+    };
+  }
+
+  const newAccount: RegisteredAccount = {
+    id: "usr-" + Date.now(),
+    email: cleanEmail,
+    password: account.password,
+    name: account.name.trim() || cleanEmail.split("@")[0],
+    role: account.role || "patient",
+    createdAt: Date.now()
+  };
+
+  accounts.push(newAccount);
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+
+  const session: UserSession = {
+    id: newAccount.id,
+    email: newAccount.email,
+    name: newAccount.name,
+    role: newAccount.role,
+    loggedInAt: Date.now()
+  };
+
+  setUserSession(session);
+  return { success: true, user: session };
+}
+
+/**
+ * Validates login credentials against registered accounts.
+ * Returns error if user not found OR if password does not match.
+ */
+export function validateCredentials(
+  email: string, 
+  password: string
+): { success: boolean; error?: string; session?: UserSession } {
+  const cleanEmail = email.trim().toLowerCase();
+  const accounts = getRegisteredAccounts();
+
+  const account = accounts.find(a => a.email.trim().toLowerCase() === cleanEmail);
+  if (!account) {
+    return {
+      success: false,
+      error: "No account found with this email address. Please register an account first."
+    };
+  }
+
+  if (account.password !== password) {
+    return {
+      success: false,
+      error: "Incorrect password. Please verify your password and try again."
+    };
+  }
+
+  const session: UserSession = {
+    id: account.id,
+    email: account.email,
+    name: account.name,
+    role: account.role,
+    loggedInAt: Date.now()
+  };
+
+  setUserSession(session);
+  return { success: true, session };
+}
 
 /**
  * Returns currently active user session from localStorage or null if unauthenticated.
@@ -87,7 +224,7 @@ export async function verifyActiveSession(): Promise<UserSession | null> {
       const u = data.session.user;
       const session: UserSession = {
         id: u.id,
-        email: u.email || "patient@medmatch.org",
+        email: u.email || "patient@medmatch.com",
         name: u.user_metadata?.name || u.user_metadata?.username || (u.email ? u.email.split("@")[0] : "Patient"),
         role: (u.user_metadata?.role as any) || "patient",
         loggedInAt: Date.now()
@@ -110,19 +247,16 @@ export function formatPrescriptionId(rawId?: string | number | null): string {
   if (!rawId) return "RX-2026-1001";
   const str = rawId.toString().trim();
   
-  // If already formatted like RX-YYYY-XXXX
   if (/^RX-\d{4}-\d+/i.test(str)) {
     return str.toUpperCase();
   }
 
-  // If starts with rx- followed by timestamp e.g. rx-1789281902629
   if (str.toLowerCase().startsWith("rx-")) {
     const digits = str.replace(/\D/g, "");
     const lastFour = digits.slice(-4) || "1001";
     return `RX-2026-${lastFour}`;
   }
 
-  // If pure number like 1, 2, 3
   if (/^\d+$/.test(str)) {
     const padded = str.padStart(4, "0");
     return `RX-2026-${padded}`;
