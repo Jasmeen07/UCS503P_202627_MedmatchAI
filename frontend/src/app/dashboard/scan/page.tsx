@@ -25,6 +25,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { createClient } from "@/lib/client";
 import { extractWithGeminiApi } from "@/lib/gemini-client";
 import { generatePrescriptionId } from "@/lib/auth";
+import { addPatientPrescription, getActivePatientEmail } from "@/lib/patientData";
 
 interface MedicineItem {
   medicine_name: string;
@@ -349,17 +350,12 @@ export default function ScanPage() {
         created_at: new Date().toISOString(),
       };
 
-      // 1. Local Storage persistence
+      // 1. Patient-scoped persistence
       try {
-        const stored = localStorage.getItem("medmatch_prescriptions");
-        const list = stored ? JSON.parse(stored) : [];
-        list.unshift(newPrescription);
-        localStorage.setItem(
-          "medmatch_prescriptions",
-          JSON.stringify(list.slice(0, 25))
-        );
+        const activeEmail = getActivePatientEmail();
+        addPatientPrescription(newPrescription as any, activeEmail);
       } catch (storageErr) {
-        console.warn("Could not save to localStorage:", storageErr);
+        console.warn("Could not save to patient scoped storage:", storageErr);
       }
 
       // 2. Supabase persistence if user is logged in

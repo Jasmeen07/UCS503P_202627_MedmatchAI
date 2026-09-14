@@ -28,6 +28,12 @@ import {
   Check,
   RotateCcw
 } from "lucide-react";
+import { 
+  getPatientTreatmentGroups, 
+  savePatientTreatmentGroups, 
+  getPatientPrescriptions, 
+  getActivePatientEmail 
+} from "@/lib/patientData";
 
 export interface MedicationItem {
   id: string;
@@ -64,169 +70,8 @@ export interface TreatmentGroup {
   linkedPrescriptionIds: (string | number)[];
 }
 
-const initialTreatmentGroups: TreatmentGroup[] = [
-  {
-    id: "tg-1",
-    name: "Type 2 Diabetes Glycemic Care",
-    category: "metabolic",
-    conditionGoal: "Maintain HbA1c < 6.5% and stabilize fasting blood glucose under 110 mg/dL",
-    physician: "Dr. Sharma",
-    hospital: "City Hospital (Endocrinology)",
-    startDate: "Aug 2026 to Present",
-    status: "active",
-    theme: "emerald",
-    adherenceRate: 95,
-    nextMilestone: "Fasting Glucose & HbA1c in 18 days",
-    clinicalNotes: "Metformin ER dosage stabilized. Patient advised 30-min brisk walk post meals. Fasting levels trending favorably.",
-    linkedPrescriptionIds: ["1", "2"],
-    medications: [
-      {
-        id: "m-1",
-        name: "Metformin ER",
-        dosage: "500mg",
-        frequency: "Twice daily",
-        timing: "With breakfast & dinner",
-        instructions: "Take with food to minimize gastrointestinal discomfort",
-        takenToday: true,
-      },
-      {
-        id: "m-2",
-        name: "Glimepiride",
-        dosage: "1mg",
-        frequency: "Once daily",
-        timing: "Morning before meals",
-        instructions: "Do not skip breakfast after taking",
-        takenToday: true,
-      },
-      {
-        id: "m-3",
-        name: "Empagliflozin",
-        dosage: "10mg",
-        frequency: "Once daily",
-        timing: "Morning",
-        instructions: "Stay adequately hydrated throughout the day",
-        takenToday: false,
-      },
-    ],
-  },
-  {
-    id: "tg-2",
-    name: "Cardiovascular & Lipid Protocol",
-    category: "cardiovascular",
-    conditionGoal: "Target systolic BP < 130 mmHg and maintain LDL cholesterol < 70 mg/dL",
-    physician: "Dr. Singh",
-    hospital: "Max Healthcare (Cardiology)",
-    startDate: "Jun 2026 to Present",
-    status: "active",
-    theme: "terracotta",
-    adherenceRate: 92,
-    nextMilestone: "Lipid Panel & Renal Review in 24 days",
-    clinicalNotes: "Total cholesterol reduced from 220 mg/dL to 154 mg/dL. Morning blood pressure readings consistent at 122/78 mmHg.",
-    linkedPrescriptionIds: ["4"],
-    medications: [
-      {
-        id: "m-4",
-        name: "Atorvastatin",
-        dosage: "20mg",
-        frequency: "Once daily",
-        timing: "Bedtime",
-        instructions: "Avoid grapefruit or related citrus juices",
-        takenToday: true,
-      },
-      {
-        id: "m-5",
-        name: "Amlodipine",
-        dosage: "5mg",
-        frequency: "Once daily",
-        timing: "Morning",
-        instructions: "Take consistently at the same time each morning",
-        takenToday: true,
-      },
-      {
-        id: "m-6",
-        name: "Telmisartan",
-        dosage: "40mg",
-        frequency: "Once daily",
-        timing: "Morning",
-        instructions: "Monitor for occasional lightheadedness",
-        takenToday: true,
-      },
-    ],
-  },
-  {
-    id: "tg-3",
-    name: "Respiratory & Seasonal Allergy Defense",
-    category: "respiratory",
-    conditionGoal: "Prevent acute allergic rhinitis flares and suppress nocturnal airway hypersensitivity",
-    physician: "Dr. Mehta",
-    hospital: "Apollo Hospital (Pulmonology)",
-    startDate: "Jul 2026 to Present",
-    status: "monitoring",
-    theme: "amber",
-    adherenceRate: 88,
-    nextMilestone: "Peak Flow & Spirometry in 40 days",
-    clinicalNotes: "Pre-monsoon allergen protection protocol. Fluticasone spray for nasal mucosa, Cetirizine as PRN when symptomatic.",
-    linkedPrescriptionIds: ["3"],
-    medications: [
-      {
-        id: "m-7",
-        name: "Fluticasone Propionate",
-        dosage: "50mcg",
-        frequency: "Once daily",
-        timing: "Morning",
-        instructions: "2 sprays in each nostril; prime device before initial use",
-        takenToday: true,
-      },
-      {
-        id: "m-8",
-        name: "Cetirizine HCl",
-        dosage: "10mg",
-        frequency: "Once daily PRN",
-        timing: "Night when needed",
-        instructions: "May induce slight drowsiness; take before sleep",
-        takenToday: false,
-      },
-    ],
-  },
-  {
-    id: "tg-4",
-    name: "Metabolic Vitality & Micronutrient Care",
-    category: "preventative",
-    conditionGoal: "Replenish serum 25-OH Vitamin D deficiency and enhance cellular energy pathways",
-    physician: "Dr. Patel",
-    hospital: "Lifeline Clinic (Internal Medicine)",
-    startDate: "Jan 2026 to Present",
-    status: "active",
-    theme: "indigo",
-    adherenceRate: 98,
-    nextMilestone: "Vitamin D & B12 check in 60 days",
-    clinicalNotes: "Serum 25-OH Vitamin D restored from 14 ng/mL to 44 ng/mL. Weekly maintenance dosing working optimally.",
-    linkedPrescriptionIds: ["5"],
-    medications: [
-      {
-        id: "m-9",
-        name: "Cholecalciferol (D3)",
-        dosage: "60,000 IU",
-        frequency: "Once weekly",
-        timing: "Sunday with lunch",
-        instructions: "Consume with dietary fats or a glass of milk for absorption",
-        takenToday: true,
-      },
-      {
-        id: "m-10",
-        name: "Methylcobalamin & B-Complex",
-        dosage: "1500mcg",
-        frequency: "Once daily",
-        timing: "With breakfast",
-        instructions: "Take with water during morning meals",
-        takenToday: true,
-      },
-    ],
-  },
-];
-
 export default function TreatmentsPage() {
-  const [groups, setGroups] = useState<TreatmentGroup[]>(initialTreatmentGroups);
+  const [groups, setGroups] = useState<TreatmentGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<TreatmentGroup | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -253,37 +98,21 @@ export default function TreatmentsPage() {
   const [newMedTiming, setNewMedTiming] = useState("Morning");
   const [showAddMedForm, setShowAddMedForm] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from patient-scoped storage on mount
   useEffect(() => {
-    try {
-      const savedGroups = localStorage.getItem("medmatch_treatment_groups");
-      if (savedGroups) {
-        const parsed = JSON.parse(savedGroups);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setGroups(parsed);
-        }
-      }
+    const activeEmail = getActivePatientEmail();
+    const userGroups = getPatientTreatmentGroups(activeEmail);
+    setGroups(userGroups);
 
-      const savedRx = localStorage.getItem("medmatch_prescriptions");
-      if (savedRx) {
-        const parsedRx = JSON.parse(savedRx);
-        if (Array.isArray(parsedRx)) {
-          setStoredPrescriptions(parsedRx);
-        }
-      }
-    } catch (err) {
-      console.warn("Error reading localStorage:", err);
-    }
+    const userRx = getPatientPrescriptions(activeEmail);
+    setStoredPrescriptions(userRx);
   }, []);
 
-  // Save to localStorage
+  // Save to patient-scoped storage
   const saveGroups = (updated: TreatmentGroup[]) => {
     setGroups(updated);
-    try {
-      localStorage.setItem("medmatch_treatment_groups", JSON.stringify(updated));
-    } catch (err) {
-      console.error("Failed to save treatment groups:", err);
-    }
+    const activeEmail = getActivePatientEmail();
+    savePatientTreatmentGroups(updated, activeEmail);
   };
 
   // Toggle dose adherence

@@ -14,6 +14,11 @@ import {
   Sparkles
 } from "lucide-react";
 import { formatPrescriptionId } from "@/lib/auth";
+import { 
+  getPatientPrescriptions, 
+  getPatientPrescriptionById, 
+  getActivePatientEmail 
+} from "@/lib/patientData";
 
 interface MedicineDetail {
   medicine_name?: string;
@@ -52,42 +57,6 @@ interface PrescriptionRecord {
   meds?: MedicineDetail[] | number;
 }
 
-const defaultMockPrescriptions: Record<string, PrescriptionRecord> = {
-  "1": {
-    id: "1",
-    doc: "Dr. Sharma",
-    hospital: "City Hospital",
-    diag: "Upper Respiratory Infection",
-    date: "2026-09-01",
-    status: "active",
-    clinical_context: "Chest Congestion & Cough",
-    notes: "Rest and warm fluids. Return if fever persists beyond 3 days.",
-    overview: "Treatment regimen for acute upper respiratory infection focusing on symptom relief and infection control.",
-    medicines: [
-      { medicine_name: "Amoxicillin", dosage: "500mg", frequency: "Three times daily", duration: "5 days", instructions: "After food", intended_use: "Bacterial infection control", confidence: "high", needs_review: false },
-      { medicine_name: "Paracetamol", dosage: "650mg", frequency: "As needed (max 3/day)", duration: "3 days", instructions: "Take for fever or body ache", intended_use: "Fever and headache relief", confidence: "high", needs_review: false },
-      { medicine_name: "Cetirizine", dosage: "10mg", frequency: "Once daily at night", duration: "5 days", instructions: "May cause slight drowsiness", intended_use: "Runny nose and allergic rhinitis", confidence: "high", needs_review: false }
-    ]
-  },
-  "2": {
-    id: "2",
-    doc: "Dr. Patel",
-    hospital: "Lifeline Clinic",
-    diag: "Type 2 Diabetes",
-    date: "2026-08-15",
-    status: "active",
-    clinical_context: "Diabetes / High Sugar",
-    notes: "Follow up in 3 months with fasting blood sugar and HbA1c results.",
-    overview: "Glycemic management regimen combining biguanides, sulfonylureas, and cardiovascular lipid protection.",
-    medicines: [
-      { medicine_name: "Metformin", dosage: "500mg", frequency: "Twice daily", duration: "90 days", instructions: "Take with meals", intended_use: "Insulin sensitization and blood glucose reduction", confidence: "high", needs_review: false },
-      { medicine_name: "Glimepiride", dosage: "2mg", frequency: "Once daily", duration: "90 days", instructions: "Take before breakfast", intended_use: "Stimulates pancreatic insulin secretion", confidence: "high", needs_review: false },
-      { medicine_name: "Atorvastatin", dosage: "10mg", frequency: "Once daily", duration: "90 days", instructions: "Take at bedtime", intended_use: "Lowers LDL cholesterol and prevents cardiovascular events", confidence: "medium", needs_review: false },
-      { medicine_name: "Pregabalin", dosage: "50mg", frequency: "Once daily", duration: "30 days", instructions: "For neuropathic tingling", intended_use: "Diabetic peripheral neuropathy relief", confidence: "low", needs_review: true, candidate_suggestions: ["Pregabalin 50", "Gabapentin 100"] }
-    ]
-  }
-};
-
 function PrescriptionDetailContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -95,46 +64,22 @@ function PrescriptionDetailContent() {
   const [modalImage, setModalImage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check localStorage first
-    try {
-      const stored = localStorage.getItem("medmatch_prescriptions");
-      if (stored) {
-        const list: PrescriptionRecord[] = JSON.parse(stored);
-        if (list.length > 0) {
-          if (id) {
-            const match = list.find((p) => p.id?.toString() === id.toString());
-            if (match) {
-              setRx(match);
-              return;
-            }
-          } else {
-            // No ID specified in URL: default to most recent scanned prescription
-            setRx(list[0]);
-            return;
-          }
-        }
+    const activeEmail = getActivePatientEmail();
+    if (id) {
+      const match = getPatientPrescriptionById(id, activeEmail);
+      if (match) {
+        setRx(match as PrescriptionRecord);
+        return;
       }
-    } catch (e) {
-      console.warn("Error reading stored prescriptions:", e);
+    } else {
+      const list = getPatientPrescriptions(activeEmail);
+      if (list.length > 0) {
+        setRx(list[0] as PrescriptionRecord);
+        return;
+      }
     }
 
-    // Check fallback mocks
-    const targetId = id || "1";
-    if (defaultMockPrescriptions[targetId]) {
-      setRx(defaultMockPrescriptions[targetId]);
-    } else {
-      setRx(defaultMockPrescriptions["1"] || {
-        id: targetId,
-        doc: "Dr. Medical Specialist",
-        hospital: "General Healthcare Center",
-        diag: "Clinical Prescription Record",
-        date: new Date().toISOString().split("T")[0],
-        status: "active",
-        notes: "Prescription record details retrieved from local archive.",
-        overview: "Prescription medications recorded for patient treatment plan.",
-        medicines: []
-      });
-    }
+    setRx(null);
   }, [id]);
 
   if (!rx) {

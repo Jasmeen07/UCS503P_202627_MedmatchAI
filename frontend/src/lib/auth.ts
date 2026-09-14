@@ -34,6 +34,14 @@ const ACCOUNTS_KEY = "medmatch_registered_users";
 // Default clinical demo accounts available out-of-the-box
 const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
   {
+    id: "usr-jk-primary",
+    email: "jk0822123@gmail.com",
+    password: "Password123",
+    name: "Jasmeen Kaur",
+    role: "patient",
+    createdAt: 1700000000000
+  },
+  {
     id: "usr-demo-patient",
     email: "patient@medmatch.com",
     password: "Password123",
