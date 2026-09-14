@@ -90,6 +90,9 @@ export interface AppointmentItem {
   location: string;
   status: "upcoming" | "past";
   type: string;
+  specialty?: string;
+  notes?: string;
+  prepInstructions?: string;
 }
 
 export interface DoctorShareItem {
@@ -594,6 +597,26 @@ export function addPatientAppointment(apt: Omit<AppointmentItem, "id">, email?: 
   const updated = [newApt, ...current];
   savePatientAppointments(updated, email);
   return newApt;
+}
+
+export function updatePatientAppointment(
+  id: number | string,
+  patch: Partial<AppointmentItem>,
+  email?: string | null
+): AppointmentItem | null {
+  const current = getPatientAppointments(email);
+  let updatedItem: AppointmentItem | null = null;
+  const updated = current.map((a) => {
+    if (String(a.id) === String(id)) {
+      updatedItem = { ...a, ...patch };
+      return updatedItem;
+    }
+    return a;
+  });
+  if (updatedItem) {
+    savePatientAppointments(updated, email);
+  }
+  return updatedItem;
 }
 
 // ============================================================================

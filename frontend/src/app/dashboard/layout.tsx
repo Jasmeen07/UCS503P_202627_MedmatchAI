@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import "./dashboard.css";
@@ -17,18 +17,28 @@ import {
   Settings,
   LogOut,
   Bell,
-  Moon,
-  Sun,
   Search,
   ChevronDown,
   HelpCircle,
   HeartPulse,
   ShieldCheck,
-  User
+  User,
+  Pill,
+  ArrowRight,
+  X,
+  Sparkles
 } from "lucide-react";
 import { createClient } from "@/lib/client";
 import { assetPath } from "@/lib/utils";
 import { verifyActiveSession, clearUserSession, UserSession } from "@/lib/auth";
+import { 
+  getPatientPrescriptions, 
+  getPatientTreatmentGroups, 
+  getPatientAppointments, 
+  StoredPrescription,
+  TreatmentGroup,
+  AppointmentItem
+} from "@/lib/patientData";
 
 export default function DashboardLayout({
   children,
@@ -38,12 +48,19 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState("light");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [greeting, setGreeting] = useState("Good morning");
   const [isVerifying, setIsVerifying] = useState(true);
   const [userSession, setUserSession] = useState<UserSession | null>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Patient scoped search cache
+  const [patientPrescriptions, setPatientPrescriptions] = useState<StoredPrescription[]>([]);
+  const [patientTreatments, setPatientTreatments] = useState<TreatmentGroup[]>([]);
+  const [patientAppointments, setPatientAppointments] = useState<AppointmentItem[]>([]);
 
   // Authentication Gatekeeper
   useEffect(() => {
@@ -64,6 +81,13 @@ export default function DashboardLayout({
 
         setUserSession(session);
         setIsVerifying(false);
+
+        // Fetch patient records for quick search
+        if (session.email) {
+          setPatientPrescriptions(getPatientPrescriptions(session.email));
+          setPatientTreatments(getPatientTreatmentGroups(session.email));
+          setPatientAppointments(getPatientAppointments(session.email));
+        }
       } catch (err) {
         console.warn("Auth check error:", err);
         router.replace("/login");
@@ -75,7 +99,7 @@ export default function DashboardLayout({
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [router, pathname]);
 
   useEffect(() => {
     // Open sidebar by default only on large screens
@@ -83,10 +107,11 @@ export default function DashboardLayout({
       setSidebarOpen(true);
     }
 
-    // Check theme
-    if (document.documentElement.classList.contains("dark")) {
-      setTheme("dark");
-    }
+    // Force Light Mode - Disable Dark Mode
+    document.documentElement.classList.remove("dark");
+    try {
+      localStorage.removeItem("theme");
+    } catch {}
 
     // Indian Time Zone Greeting (Asia/Kolkata)
     const getIndianGreeting = () => {
@@ -117,14 +142,155 @@ export default function DashboardLayout({
     return () => clearInterval(interval);
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    if (newTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+  // Click outside to close search popover
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setSearchFocused(false);
+      }
     }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Multi-category search engine computed over patient records
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+
+    // Prescriptions & Medications
+    const matchedRxs: Array<{ id: string | number; title: string; subtitle: string; matchReason: string; href: string }> = [];
+    for (const rx of patientPrescriptions) {
+      const diagMatch = (rx.diag || "").toLowerCase().includes(q);
+      const docMatch = (rx.doc || "").toLowerCase().includes(q);
+      const hospMatch = (rx.hospital || "").toLowerCase().includes(q);
+      const matchedMeds: string[] = [];
+      if (Array.isArray(rx.medicines)) {
+        for (const m of rx.medicines) {
+          const mName = (m.name || m.medicine_name || "").toLowerCase();
+          if (mName.includes(q)) {
+            matchedMeds.push(m.name || m.medicine_name || "");
+          }
+        }
+      }
+
+      if (diagMatch || docMatch || hospMatch || matchedMeds.length > 0) {
+        let reason = "";
+        if (matchedMeds.length > 0) {
+          reason = `Contains: ${matchedMeds.join(", ")}`;
+        } else if (docMatch) {
+          reason = `Prescribed by ${rx.doc}`;
+        } else if (diagMatch) {
+          reason = `Diagnosis: ${rx.diag}`;
+        } else {
+          reason = `${rx.hospital}`;
+        }
+
+        matchedRxs.push({
+          id: rx.id,
+          title: rx.diag || "Prescription Record",
+          subtitle: `${rx.doc || "Doctor"} • ${rx.date || "Active"}`,
+          matchReason: reason,
+          href: `/dashboard/prescriptions/view?id=${rx.id}`
+        });
+      }
+    }
+
+    // Treatment Pathways
+    const matchedTreatments: Array<{ id: string; title: string; subtitle: string; href: string }> = [];
+    for (const tg of patientTreatments) {
+      const nameMatch = (tg.name || "").toLowerCase().includes(q);
+      const condMatch = (tg.conditionGoal || "").toLowerCase().includes(q);
+      const docMatch = (tg.physician || "").toLowerCase().includes(q);
+      const medMatch = (tg.medications || []).some(m => (m.name || "").toLowerCase().includes(q));
+
+      if (nameMatch || condMatch || docMatch || medMatch) {
+        matchedTreatments.push({
+          id: tg.id,
+          title: tg.name,
+          subtitle: `${tg.conditionGoal} • ${tg.medications?.length || 0} meds`,
+          href: `/dashboard/treatments`
+        });
+      }
+    }
+
+    // Appointments
+    const matchedAppointments: Array<{ id: string | number; title: string; subtitle: string; status: string; href: string }> = [];
+    for (const apt of patientAppointments) {
+      const titleMatch = (apt.title || "").toLowerCase().includes(q);
+      const docMatch = (apt.doc || "").toLowerCase().includes(q);
+      const locMatch = (apt.location || "").toLowerCase().includes(q);
+
+      if (titleMatch || docMatch || locMatch) {
+        matchedAppointments.push({
+          id: apt.id,
+          title: apt.title,
+          subtitle: `${apt.doc} • ${apt.date} at ${apt.time}`,
+          status: apt.status,
+          href: `/dashboard/appointments`
+        });
+      }
+    }
+
+    // Quick navigation shortcuts
+    const shortcuts: Array<{ title: string; subtitle: string; href: string }> = [];
+    if ("scan prescription upload ocr camera bill".includes(q) || q.includes("scan") || q.includes("upload")) {
+      shortcuts.push({
+        title: "Scan & Upload Prescription",
+        subtitle: "Analyze handwritten slips, digital PDFs, or medicine strips",
+        href: "/dashboard/scan"
+      });
+    }
+    if ("treatment group pathway condition regimen".includes(q) || q.includes("treat")) {
+      shortcuts.push({
+        title: "Treatment Pathways",
+        subtitle: "Group prescriptions by health conditions and care goals",
+        href: "/dashboard/treatments"
+      });
+    }
+    if ("appointment schedule visit doctor booking clinic".includes(q) || q.includes("app")) {
+      shortcuts.push({
+        title: "Consultation Appointments",
+        subtitle: "Manage doctor visits, follow-ups, and calendar schedules",
+        href: "/dashboard/appointments"
+      });
+    }
+    if ("interactions health insights food timing pharmacology warnings contraindicated".includes(q) || q.includes("interact") || q.includes("insight")) {
+      shortcuts.push({
+        title: "Clinical Health Insights",
+        subtitle: "Cross-reactivity screening, food warnings, and chronotherapy",
+        href: "/dashboard/insights"
+      });
+    }
+    if ("share doctor provider access permission privacy revoke".includes(q) || q.includes("share")) {
+      shortcuts.push({
+        title: "Doctor Access Sharing",
+        subtitle: "Manage view-only provider links and access permissions",
+        href: "/dashboard/sharing"
+      });
+    }
+
+    const totalCount = matchedRxs.length + matchedTreatments.length + matchedAppointments.length + shortcuts.length;
+
+    return {
+      prescriptions: matchedRxs.slice(0, 4),
+      treatments: matchedTreatments.slice(0, 3),
+      appointments: matchedAppointments.slice(0, 3),
+      shortcuts: shortcuts.slice(0, 2),
+      insightAction: {
+        title: `Screen "${searchQuery.trim()}" in Health Insights`,
+        subtitle: "Evaluate potential drug interactions and food-drug contraindications",
+        href: "/dashboard/insights"
+      },
+      totalCount
+    };
+  }, [searchQuery, patientPrescriptions, patientTreatments, patientAppointments]);
+
+  const handleSelectSearchResult = (href: string) => {
+    setSearchQuery("");
+    setSearchFocused(false);
+    setMobileSearchOpen(false);
+    router.push(href);
   };
 
   const handleLogout = async () => {
@@ -367,33 +533,233 @@ export default function DashboardLayout({
               </button>
             )}
 
-            <div className="relative w-full max-w-md hidden sm:block">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search medications, appointments, or providers..." 
-                className="w-full pl-9 pr-4 py-2 rounded-full text-xs bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-600 transition-all shadow-xs"
-              />
+            {/* SEARCH CONTAINER */}
+            <div ref={searchContainerRef} className="relative w-full max-w-md hidden sm:block">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input 
+                  type="text"
+                  value={searchQuery}
+                  onFocus={() => setSearchFocused(true)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSearchFocused(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setSearchFocused(false);
+                    }
+                  }}
+                  placeholder="Search medications, prescriptions, appointments..." 
+                  className="w-full pl-9 pr-8 py-2 rounded-full text-xs bg-white/90 border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/30 focus:border-teal-600 transition-all shadow-xs"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSearchFocused(false);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* SEARCH RESULTS DROPDOWN POPOVER */}
+              {searchFocused && searchQuery.trim().length > 0 && searchResults && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 max-h-[420px] overflow-y-auto">
+                  <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <span>Search results for <strong>&ldquo;{searchQuery}&rdquo;</strong></span>
+                    <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 font-semibold text-[10px]">
+                      {searchResults.totalCount} found
+                    </span>
+                  </div>
+
+                  {searchResults.totalCount === 0 ? (
+                    <div className="p-6 text-center">
+                      <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs font-semibold text-slate-700">No matching records found</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Try searching by medication name, doctor, diagnosis, or condition.
+                      </p>
+                      <button
+                        onClick={() => handleSelectSearchResult("/dashboard/insights")}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 text-xs font-semibold transition-colors"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                        Check &ldquo;{searchQuery.trim()}&rdquo; in Health Insights
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-2 space-y-3">
+                      {/* Prescriptions */}
+                      {searchResults.prescriptions.length > 0 && (
+                        <div>
+                          <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <Pill className="w-3 h-3 text-teal-600" /> Prescriptions & Medications
+                          </div>
+                          <div className="mt-1 space-y-1">
+                            {searchResults.prescriptions.map((rx) => (
+                              <button
+                                key={rx.id}
+                                onClick={() => handleSelectSearchResult(rx.href)}
+                                className="w-full text-left p-2 rounded-xl hover:bg-teal-50/60 transition-colors flex items-center justify-between group"
+                              >
+                                <div className="min-w-0 flex-1 pr-2">
+                                  <div className="text-xs font-semibold text-slate-800 truncate group-hover:text-teal-700">
+                                    {rx.title}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {rx.subtitle}
+                                  </div>
+                                  {rx.matchReason && (
+                                    <div className="text-[10px] text-teal-600 font-medium truncate mt-0.5">
+                                      {rx.matchReason}
+                                    </div>
+                                  )}
+                                </div>
+                                <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Treatment Pathways */}
+                      {searchResults.treatments.length > 0 && (
+                        <div>
+                          <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <Layers className="w-3 h-3 text-amber-600" /> Treatment Pathways
+                          </div>
+                          <div className="mt-1 space-y-1">
+                            {searchResults.treatments.map((tg) => (
+                              <button
+                                key={tg.id}
+                                onClick={() => handleSelectSearchResult(tg.href)}
+                                className="w-full text-left p-2 rounded-xl hover:bg-amber-50/60 transition-colors flex items-center justify-between group"
+                              >
+                                <div className="min-w-0 flex-1 pr-2">
+                                  <div className="text-xs font-semibold text-slate-800 truncate group-hover:text-amber-800">
+                                    {tg.title}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {tg.subtitle}
+                                  </div>
+                                </div>
+                                <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Appointments */}
+                      {searchResults.appointments.length > 0 && (
+                        <div>
+                          <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 text-emerald-600" /> Consultations & Appointments
+                          </div>
+                          <div className="mt-1 space-y-1">
+                            {searchResults.appointments.map((apt) => (
+                              <button
+                                key={apt.id}
+                                onClick={() => handleSelectSearchResult(apt.href)}
+                                className="w-full text-left p-2 rounded-xl hover:bg-emerald-50/60 transition-colors flex items-center justify-between group"
+                              >
+                                <div className="min-w-0 flex-1 pr-2">
+                                  <div className="text-xs font-semibold text-slate-800 truncate group-hover:text-emerald-700">
+                                    {apt.title}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {apt.subtitle}
+                                  </div>
+                                </div>
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase mr-2 ${
+                                  apt.status === "upcoming" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                                }`}>
+                                  {apt.status}
+                                </span>
+                                <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Shortcuts */}
+                      {searchResults.shortcuts.length > 0 && (
+                        <div>
+                          <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <Activity className="w-3 h-3 text-indigo-600" /> Actions & Modules
+                          </div>
+                          <div className="mt-1 space-y-1">
+                            {searchResults.shortcuts.map((sc, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => handleSelectSearchResult(sc.href)}
+                                className="w-full text-left p-2 rounded-xl hover:bg-indigo-50/60 transition-colors flex items-center justify-between group"
+                              >
+                                <div className="min-w-0 flex-1 pr-2">
+                                  <div className="text-xs font-semibold text-slate-800 truncate group-hover:text-indigo-700">
+                                    {sc.title}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {sc.subtitle}
+                                  </div>
+                                </div>
+                                <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Health Insights Quick Action */}
+                      <div className="pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => handleSelectSearchResult(searchResults.insightAction.href)}
+                          className="w-full text-left p-2 rounded-xl bg-teal-50/50 hover:bg-teal-50 transition-colors flex items-center justify-between group border border-teal-100/70"
+                        >
+                          <div className="min-w-0 flex-1 pr-2 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-teal-600 shrink-0" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-teal-800 truncate">
+                                {searchResults.insightAction.title}
+                              </div>
+                              <div className="text-[10px] text-teal-600 truncate">
+                                {searchResults.insightAction.subtitle}
+                              </div>
+                            </div>
+                          </div>
+                          <ArrowRight className="w-3.5 h-3.5 text-teal-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-3 pointer-events-auto relative">
+            {/* Mobile Search Button */}
             <button 
-              onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
-              title="Toggle theme"
+              onClick={() => setMobileSearchOpen(true)}
+              className="sm:hidden p-2 rounded-lg hover:bg-white/60 text-slate-600 transition-colors"
+              title="Search records"
+              aria-label="Search records"
             >
-              {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              <Search className="w-5 h-5 text-teal-700" />
             </button>
 
             <button 
-              className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors relative"
+              className="p-2 rounded-lg hover:bg-white/60 text-slate-600 transition-colors relative"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
             </button>
 
             {/* Profile Dropdown Indicator */}
@@ -441,6 +807,79 @@ export default function DashboardLayout({
           </div>
         </div>
       </main>
+
+      {/* MOBILE SEARCH MODAL OVERLAY */}
+      {mobileSearchOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col p-4 sm:hidden animate-in fade-in">
+          <div className="bg-white rounded-2xl p-4 shadow-2xl flex flex-col max-h-[85vh] border border-slate-200">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <Search className="w-4 h-4 text-teal-700 shrink-0" />
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search medicines, prescriptions, visits..."
+                className="w-full text-sm bg-transparent focus:outline-none text-slate-800"
+              />
+              <button
+                onClick={() => {
+                  setMobileSearchOpen(false);
+                  setSearchQuery("");
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto mt-2 space-y-2">
+              {searchQuery.trim().length > 0 && searchResults && (
+                <>
+                  {searchResults.totalCount === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-500">
+                      No matching records found for &ldquo;{searchQuery}&rdquo;.
+                    </div>
+                  ) : (
+                    <>
+                      {searchResults.prescriptions.map((rx) => (
+                        <button
+                          key={rx.id}
+                          onClick={() => handleSelectSearchResult(rx.href)}
+                          className="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-teal-50 text-xs text-slate-800"
+                        >
+                          <div className="font-semibold">{rx.title}</div>
+                          <div className="text-[11px] text-slate-500">{rx.subtitle}</div>
+                        </button>
+                      ))}
+                      {searchResults.treatments.map((tg) => (
+                        <button
+                          key={tg.id}
+                          onClick={() => handleSelectSearchResult(tg.href)}
+                          className="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-amber-50 text-xs text-slate-800"
+                        >
+                          <div className="font-semibold">{tg.title}</div>
+                          <div className="text-[11px] text-slate-500">{tg.subtitle}</div>
+                        </button>
+                      ))}
+                      {searchResults.appointments.map((apt) => (
+                        <button
+                          key={apt.id}
+                          onClick={() => handleSelectSearchResult(apt.href)}
+                          className="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 text-xs text-slate-800"
+                        >
+                          <div className="font-semibold">{apt.title}</div>
+                          <div className="text-[11px] text-slate-500">{apt.subtitle}</div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
