@@ -226,18 +226,6 @@ function AuthFormInner() {
     }
   };
 
-  const handleDemoPatientLogin = () => {
-    setUserSession({
-      id: "usr-demo-patient",
-      email: "patient@medmatch.com",
-      name: "Jasmeen Kaur",
-      role: "patient",
-      loggedInAt: Date.now()
-    });
-    router.push(targetDestination);
-    router.refresh();
-  };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegError(null);
@@ -376,18 +364,6 @@ function AuthFormInner() {
             <button type="submit" className="btn" disabled={loginLoading}>
               {loginLoading ? "Authenticating..." : "Sign In to Dashboard"}
             </button>
-
-            {/* ONE-CLICK DEMO ACCESS FOR PATIENT EVALUATION */}
-            <div className="mt-4 pt-3 border-t border-[var(--border)]">
-              <button
-                type="button"
-                onClick={handleDemoPatientLogin}
-                className="w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                Continue as Verified Patient (Instant Sign-In)
-              </button>
-            </div>
           </form>
         </div>
 
