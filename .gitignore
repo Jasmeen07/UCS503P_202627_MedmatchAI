@@ -52,3 +52,7 @@ tests/
 
 runs.json
 
+# Presentation and UML assets (keep local only)
+*.pptx
+~$*.pptx
+uml_diagrams/
