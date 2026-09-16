@@ -572,8 +572,10 @@ export const DEMO_DAILY_DOSES: DailyDoseItem[] = [
 // ============================================================================
 
 export function getPatientPrescriptions(email?: string | null): StoredPrescription[] {
-  if (typeof window === "undefined") return [];
   const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  if (typeof window === "undefined") {
+    return isDemoPatient(user) || user === "anonymous" ? [...DEMO_PRESCRIPTIONS] : [];
+  }
   const key = getPatientStorageKey("prescriptions", user);
 
   try {
@@ -625,8 +627,10 @@ export function getPatientPrescriptionById(id: string | number, email?: string |
 // ============================================================================
 
 export function getPatientTreatmentGroups(email?: string | null): TreatmentGroup[] {
-  if (typeof window === "undefined") return [];
   const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  if (typeof window === "undefined") {
+    return isDemoPatient(user) || user === "anonymous" ? [...DEMO_TREATMENT_GROUPS] : [];
+  }
   const key = getPatientStorageKey("treatments", user);
 
   try {
@@ -671,8 +675,10 @@ export function addPatientTreatmentGroup(group: TreatmentGroup, email?: string |
 // ============================================================================
 
 export function getPatientAppointments(email?: string | null): AppointmentItem[] {
-  if (typeof window === "undefined") return [];
   const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  if (typeof window === "undefined") {
+    return isDemoPatient(user) || user === "anonymous" ? [...DEMO_APPOINTMENTS] : [];
+  }
   const key = getPatientStorageKey("appointments", user);
 
   try {
@@ -730,19 +736,19 @@ export function updatePatientAppointment(
     }
     return a;
   });
-  if (updatedItem) {
-    savePatientAppointments(updated, email);
-  }
+  savePatientAppointments(updated, email);
   return updatedItem;
 }
 
 // ============================================================================
-// Scoped Doctor Sharing API
+// Scoped Doctor Access Shares API
 // ============================================================================
 
 export function getPatientShares(email?: string | null): DoctorShareItem[] {
-  if (typeof window === "undefined") return [];
   const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  if (typeof window === "undefined") {
+    return isDemoPatient(user) || user === "anonymous" ? [...DEMO_SHARES] : [];
+  }
   const key = getPatientStorageKey("shares", user);
 
   try {
