@@ -95,6 +95,97 @@ export interface AppointmentItem {
   prepInstructions?: string;
 }
 
+export interface DoctorRequest {
+  id: string | number;
+  patientName: string;
+  patientEmail: string;
+  patientUid: string;
+  reason: string;
+  date: string;
+  time: string;
+  specialty: string;
+  urgency: "Routine" | "Priority" | "Follow-up";
+  status: "pending" | "confirmed" | "rescheduled" | "completed";
+  dossierToken: string;
+  notes?: string;
+}
+
+export interface PresetDoctor {
+  id: string;
+  name: string;
+  specialty: string;
+  hospital: string;
+  regNo: string;
+  experience: string;
+  rating: string;
+  avatar: string;
+  availableDays: string;
+  defaultSlots: string[];
+}
+
+export const PRESET_DOCTORS: PresetDoctor[] = [
+  {
+    id: "dr-reeta",
+    name: "Dr. Reeta Bhambri",
+    specialty: "Obstetrics & Antenatal Care",
+    hospital: "Ranjit Maternity Clinic & Nursing Home",
+    regNo: "MCI-34182",
+    experience: "22 yrs exp",
+    rating: "4.9",
+    avatar: "RB",
+    availableDays: "Mon - Sat",
+    defaultSlots: ["10:30 AM", "11:45 AM", "02:30 PM", "05:00 PM"]
+  },
+  {
+    id: "dr-duggal",
+    name: "Dr. K.S. Duggal",
+    specialty: "General Surgery & Wound Care",
+    hospital: "Fortis Hospital (Surgery Wing)",
+    regNo: "MCI-48192",
+    experience: "18 yrs exp",
+    rating: "4.8",
+    avatar: "KD",
+    availableDays: "Mon, Wed, Fri",
+    defaultSlots: ["09:30 AM", "11:00 AM", "03:15 PM"]
+  },
+  {
+    id: "dr-sharma",
+    name: "Dr. A. Sharma",
+    specialty: "General Medicine & Chronic Care",
+    hospital: "City Hospital (OPD Block A)",
+    regNo: "DMC-18239",
+    experience: "15 yrs exp",
+    rating: "4.9",
+    avatar: "AS",
+    availableDays: "Daily",
+    defaultSlots: ["10:00 AM", "12:00 PM", "04:30 PM", "06:15 PM"]
+  },
+  {
+    id: "dr-patel",
+    name: "Dr. Sunita Patel",
+    specialty: "Endocrinology & Diabetes",
+    hospital: "Lifeline Clinic (Metabolic Suite)",
+    regNo: "MCI-55210",
+    experience: "14 yrs exp",
+    rating: "4.7",
+    avatar: "SP",
+    availableDays: "Tue, Thu, Sat",
+    defaultSlots: ["09:00 AM", "10:45 AM", "02:00 PM"]
+  },
+  {
+    id: "dr-gupta",
+    name: "Dr. R.K. Gupta",
+    specialty: "Ophthalmology & ENT",
+    hospital: "Vision & ENT Care Center",
+    regNo: "PBI-19842",
+    experience: "20 yrs exp",
+    rating: "4.8",
+    avatar: "RG",
+    availableDays: "Mon - Fri",
+    defaultSlots: ["11:15 AM", "01:00 PM", "05:30 PM"]
+  }
+];
+
 export interface DoctorShareItem {
   id: number | string;
   email: string;
@@ -711,14 +802,174 @@ export function savePatientAppointments(appointments: AppointmentItem[], email?:
   }
 }
 
+// ============================================================================
+// Doctor Portal Appointment Requests & Real-Time Sync API
+// ============================================================================
+
+export const INITIAL_DOCTOR_REQUESTS: DoctorRequest[] = [
+  {
+    id: "req-1",
+    patientName: "Simranjit Kaur",
+    patientEmail: "jk0822123@gmail.com",
+    patientUid: "PT-2026-LUD-8821",
+    reason: "Antenatal Ultrasound & 28-Week Gestational Review",
+    date: "Sept 18, 2026",
+    time: "10:30 AM",
+    specialty: "Obstetrics & Antenatal Care",
+    urgency: "Priority",
+    status: "confirmed",
+    dossierToken: "EMG-8821-VLT",
+    notes: "Patient reports mild ankle edema. Blood pressure stable. Folic acid and iron adherence reported regular."
+  },
+  {
+    id: "req-2",
+    patientName: "Harpreet Singh",
+    patientEmail: "harpreet.s@example.com",
+    patientUid: "PT-2026-LUD-3312",
+    reason: "Post-Operative Wound Inspection & Suture Removal",
+    date: "Sept 17, 2026",
+    time: "11:45 AM",
+    specialty: "General Surgery",
+    urgency: "Routine",
+    status: "confirmed",
+    dossierToken: "EMG-3312-VLT",
+    notes: "Day 10 post-laparoscopic follow-up. Sterile dressing intact."
+  },
+  {
+    id: "req-3",
+    patientName: "Amandeep Sharma",
+    patientEmail: "amandeep.sharma@example.com",
+    patientUid: "PT-2026-LUD-4091",
+    reason: "Routine Antenatal BP & Hemoglobin Assessment",
+    date: "Sept 19, 2026",
+    time: "05:15 PM",
+    specialty: "Obstetrics & Antenatal Care",
+    urgency: "Follow-up",
+    status: "pending",
+    dossierToken: "EMG-4091-VLT",
+    notes: "Second visit. Needs routine complete blood count review."
+  }
+];
+
+export function getDoctorRequests(): DoctorRequest[] {
+  if (typeof window === "undefined") return [...INITIAL_DOCTOR_REQUESTS];
+  try {
+    const raw = localStorage.getItem("medmatch_doctor_requests");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    localStorage.setItem("medmatch_doctor_requests", JSON.stringify(INITIAL_DOCTOR_REQUESTS));
+    return [...INITIAL_DOCTOR_REQUESTS];
+  } catch (e) {
+    console.warn("Error reading doctor requests:", e);
+    return [...INITIAL_DOCTOR_REQUESTS];
+  }
+}
+
+export function saveDoctorRequests(requests: DoctorRequest[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("medmatch_doctor_requests", JSON.stringify(requests));
+  } catch (e) {
+    console.error("Failed to save doctor requests:", e);
+  }
+}
+
+export function addDoctorRequest(req: Omit<DoctorRequest, "id">): DoctorRequest {
+  const current = getDoctorRequests();
+  const newReq: DoctorRequest = {
+    ...req,
+    id: `req-${Date.now()}`
+  };
+  const updated = [newReq, ...current];
+  saveDoctorRequests(updated);
+  return newReq;
+}
+
+export function syncDoctorRequestAction(
+  requestId: string | number,
+  action: "confirm" | "reschedule" | "complete",
+  payload?: { date?: string; time?: string }
+): void {
+  const requests = getDoctorRequests();
+  const target = requests.find(r => String(r.id) === String(requestId));
+  if (!target) return;
+
+  const updatedRequests = requests.map(r => {
+    if (String(r.id) === String(requestId)) {
+      if (action === "confirm") return { ...r, status: "confirmed" as const };
+      if (action === "reschedule" && payload) {
+        return { 
+          ...r, 
+          date: payload.date || r.date, 
+          time: payload.time || r.time, 
+          status: "rescheduled" as const 
+        };
+      }
+      if (action === "complete") return { ...r, status: "completed" as const };
+    }
+    return r;
+  });
+  saveDoctorRequests(updatedRequests);
+
+  // Sync to patient's scoped appointments if email is present
+  if (target.patientEmail) {
+    const appointments = getPatientAppointments(target.patientEmail);
+    const updatedApps = appointments.map(a => {
+      const isMatch = a.title === target.reason || String(a.id) === String(requestId).replace("req-", "");
+      if (isMatch) {
+        if (action === "confirm") return { ...a, status: "upcoming" as const };
+        if (action === "reschedule" && payload) {
+          return { 
+            ...a, 
+            date: payload.date || a.date, 
+            time: payload.time || a.time,
+            status: "upcoming" as const 
+          };
+        }
+        if (action === "complete") return { ...a, status: "past" as const };
+      }
+      return a;
+    });
+    savePatientAppointments(updatedApps, target.patientEmail);
+  }
+}
+
 export function addPatientAppointment(apt: Omit<AppointmentItem, "id">, email?: string | null): AppointmentItem {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
   const current = getPatientAppointments(email);
+  const newId = Date.now();
   const newApt: AppointmentItem = {
     ...apt,
-    id: Date.now()
+    id: newId
   };
   const updated = [newApt, ...current];
   savePatientAppointments(updated, email);
+
+  // Real-time synchronization to Doctor Portal
+  try {
+    const access = getPatientAccessControl(user);
+    const doctorReq: DoctorRequest = {
+      id: `req-${newId}`,
+      patientName: access.patientName || "Patient",
+      patientEmail: user,
+      patientUid: access.patientUid || "PT-2026-LUD-8821",
+      reason: apt.title,
+      date: apt.date,
+      time: apt.time,
+      specialty: apt.specialty || "General Medicine",
+      urgency: "Routine",
+      status: "confirmed",
+      dossierToken: access.token || "EMG-8821-VLT",
+      notes: apt.notes ? `${apt.notes} (Location: ${apt.location})` : `Booked via MedMatch Portal. Location: ${apt.location}`
+    };
+    const reqs = getDoctorRequests();
+    saveDoctorRequests([doctorReq, ...reqs.filter(r => r.id !== doctorReq.id)]);
+  } catch (e) {
+    console.warn("Could not sync appointment to doctor queue:", e);
+  }
+
   return newApt;
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -19,7 +20,13 @@ import {
   Stethoscope,
   ChevronRight,
   Info,
-  CalendarCheck
+  CalendarCheck,
+  Check,
+  ShieldCheck,
+  Star,
+  Sparkles,
+  Building2,
+  CheckCircle
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { 
@@ -29,22 +36,44 @@ import {
   addPatientAppointment, 
   updatePatientAppointment,
   getPatientPrescriptions,
-  getActivePatientEmail 
+  getActivePatientEmail,
+  PRESET_DOCTORS,
+  PresetDoctor
 } from "@/lib/patientData";
 
 const SPECIALTIES = [
   "General Medicine",
+  "Obstetrics & Antenatal Care",
   "Cardiology",
   "Endocrinology & Diabetes",
-  "Ophthalmology",
+  "General Surgery & Wound Care",
+  "Ophthalmology & ENT",
   "Pulmonology",
   "Neurology",
   "Orthopedics",
   "Dermatology"
 ];
 
+const QUICK_REASONS = [
+  "Routine Antenatal Ultrasound & Review",
+  "Post-Operative Wound Inspection",
+  "Blood Pressure & Diabetes Follow-up",
+  "Prescription Refill & Dosage Adjustment",
+  "Comprehensive Annual Health Check",
+  "Emergency Symptoms Follow-up"
+];
+
+const AVAILABLE_SLOTS = [
+  "09:30 AM",
+  "10:30 AM",
+  "11:45 AM",
+  "02:30 PM",
+  "04:00 PM",
+  "05:15 PM"
+];
+
 export default function AppointmentsPage() {
-  const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [view, setView] = useState<"upcoming" | "past" | "all" | "book">("upcoming");
   const [activeEmail, setActiveEmail] = useState<string>("");
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
   const [searchFilter, setSearchFilter] = useState("");
@@ -54,15 +83,23 @@ export default function AppointmentsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [rescheduleItem, setRescheduleItem] = useState<AppointmentItem | null>(null);
   const [detailItem, setDetailItem] = useState<AppointmentItem | null>(null);
+  const [confirmedBooking, setConfirmedBooking] = useState<AppointmentItem | null>(null);
 
-  // Create Form State
-  const [newTitle, setNewTitle] = useState("");
-  const [newDoc, setNewDoc] = useState("");
-  const [newSpecialty, setNewSpecialty] = useState("General Medicine");
-  const [newDate, setNewDate] = useState("");
-  const [newTime, setNewTime] = useState("");
-  const [newLocation, setNewLocation] = useState("");
-  const [newNotes, setNewNotes] = useState("");
+  // Selected Preset Doctor State
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>("dr-reeta");
+
+  // Create Form State with reliable defaults
+  const [newTitle, setNewTitle] = useState("Antenatal Ultrasound & Review");
+  const [newDoc, setNewDoc] = useState("Dr. Reeta Bhambri");
+  const [newSpecialty, setNewSpecialty] = useState("Obstetrics & Antenatal Care");
+  const [newDate, setNewDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  });
+  const [newTime, setNewTime] = useState("10:30 AM");
+  const [newLocation, setNewLocation] = useState("Ranjit Maternity Clinic & Nursing Home");
+  const [newNotes, setNewNotes] = useState("Bring past scan reports and blood panel sheets.");
 
   // Reschedule Form State
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -96,7 +133,7 @@ export default function AppointmentsPage() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((current) => (current === msg ? null : current));
-    }, 3500);
+    }, 4000);
   };
 
   // Filtered Appointments
@@ -115,6 +152,33 @@ export default function AppointmentsPage() {
     });
   }, [appointments, view, searchFilter]);
 
+  // Handle Selecting a Verified Doctor
+  const handleSelectDoctor = (doc: PresetDoctor) => {
+    setSelectedDoctorId(doc.id);
+    setNewDoc(doc.name);
+    setNewSpecialty(doc.specialty);
+    setNewLocation(doc.hospital);
+    if (doc.defaultSlots.length > 0) {
+      setNewTime(doc.defaultSlots[0]);
+    }
+    if (doc.id === "dr-reeta") {
+      setNewTitle("Antenatal Ultrasound & Review");
+      setNewNotes("Bring prior ultrasound records and hemoglobin panel.");
+    } else if (doc.id === "dr-duggal") {
+      setNewTitle("Post-Operative Wound Inspection & Suture Check");
+      setNewNotes("Wound inspection. Dressing replacement required.");
+    } else if (doc.id === "dr-sharma") {
+      setNewTitle("Comprehensive General Health & BP Review");
+      setNewNotes("Bring daily blood pressure log.");
+    } else if (doc.id === "dr-patel") {
+      setNewTitle("Diabetes & Metabolic Profile Review");
+      setNewNotes("Fasting 8 hours prior required for fasting blood sugar.");
+    } else if (doc.id === "dr-gupta") {
+      setNewTitle("Comprehensive Eye & Vision Exam");
+      setNewNotes("Wear corrective glasses if currently prescribed.");
+    }
+  };
+
   // Handle Quick Date Selection
   const setQuickDate = (offsetDays: number, isReschedule = false) => {
     const d = new Date();
@@ -127,22 +191,23 @@ export default function AppointmentsPage() {
     }
   };
 
-  // Create Appointment
-  const handleCreateAppointment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newDoc.trim()) return;
+  // Create & Confirm Appointment
+  const handleCreateAppointment = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const finalDoc = newDoc.trim() || "Dr. Reeta Bhambri";
+    const finalTitle = newTitle.trim() || "General Consultation Review";
 
     const colors = [
-      "var(--dash-terracotta)", 
+      "var(--dash-teal)", 
       "var(--dash-sage)", 
+      "var(--dash-terracotta)", 
       "var(--dash-amber)", 
-      "var(--dash-teal)",
       "var(--dash-indigo)"
     ];
     const pickedColor = colors[appointments.length % colors.length];
 
     let formattedDate = newDate;
-    if (newDate) {
+    if (newDate && newDate.includes("-")) {
       try {
         const parts = newDate.split("-");
         if (parts.length === 3) {
@@ -150,15 +215,17 @@ export default function AppointmentsPage() {
           formattedDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
         }
       } catch {}
-    } else {
-      formattedDate = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } else if (!newDate) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      formattedDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     }
 
     const created = addPatientAppointment({
-      title: newTitle.trim(),
-      doc: newDoc.trim(),
+      title: finalTitle,
+      doc: finalDoc,
       date: formattedDate,
-      time: newTime || "10:00 AM",
+      time: newTime || "10:30 AM",
       location: newLocation.trim() || "Main Consultation Suite",
       status: "upcoming",
       type: pickedColor,
@@ -168,16 +235,9 @@ export default function AppointmentsPage() {
 
     setAppointments((prev) => [created, ...prev]);
     setIsCreateOpen(false);
-    showToast(`Appointment scheduled with ${created.doc} for ${created.date}!`);
-
-    // Reset fields
-    setNewTitle("");
-    setNewDoc("");
-    setNewSpecialty("General Medicine");
-    setNewDate("");
-    setNewTime("");
-    setNewLocation("");
-    setNewNotes("");
+    setConfirmedBooking(created);
+    setView("upcoming");
+    showToast(`Appointment confirmed with ${created.doc} for ${created.date} at ${created.time}!`);
   };
 
   // Open Reschedule Modal
@@ -318,13 +378,27 @@ export default function AppointmentsPage() {
         title="Appointments & Consultations" 
         subtitle="Schedule visits, track medical consultations, and sync follow-ups"
         action={
-          <button 
-            onClick={() => setIsCreateOpen(true)}
-            className="dash-btn-primary flex items-center gap-2 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            New Appointment
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                setView("book");
+                setIsCreateOpen(false);
+              }}
+              className={`dash-btn-primary flex items-center gap-2 shadow-sm ${
+                view === "book" ? "ring-2 ring-teal-400" : ""
+              }`}
+            >
+              <CalendarPlus className="w-4 h-4" />
+              Book Consultation
+            </button>
+            <button 
+              onClick={() => setIsCreateOpen(true)}
+              className="dash-btn-secondary flex items-center gap-2 text-xs font-semibold py-2 px-3"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Quick Form
+            </button>
+          </div>
         }
       />
 
@@ -370,6 +444,18 @@ export default function AppointmentsPage() {
           >
             All ({appointments.length})
           </button>
+          <button 
+            onClick={() => setView("book")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              view === "book" 
+                ? "bg-teal-700 text-white shadow-xs" 
+                : "text-teal-700 dark:text-teal-400 hover:text-teal-800 font-bold"
+            }`}
+          >
+            <CalendarPlus className="w-3.5 h-3.5" />
+            <span>Book Consultation</span>
+            <span className="text-[10px] bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200 px-1.5 py-0.2 rounded-full font-bold">New</span>
+          </button>
         </div>
 
         {/* Search Input within Appointments */}
@@ -393,189 +479,440 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* APPOINTMENT CARDS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredApps.map((apt) => {
-          const isUpcoming = apt.status === "upcoming";
+      {/* BOOK CONSULTATION TAB CONTENT */}
+      {view === "book" ? (
+        <div className="space-y-8 bg-[var(--dash-surface)] border border-[var(--dash-border)] rounded-2xl p-6 sm:p-8 shadow-xs animate-in fade-in duration-300">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider mb-1">
+              <Sparkles className="w-4 h-4" />
+              <span>Direct Clinic Consultation &amp; Slot Locking</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-[var(--dash-text)]">
+              Book Medical Consultation
+            </h2>
+            <p className="text-xs sm:text-sm text-[var(--dash-text-secondary)] mt-1">
+              Select an accredited physician, pick a convenient time slot, and lock your visit. Your appointment will sync directly to the doctor’s portal and your personal health dashboard.
+            </p>
+          </div>
 
-          return (
-            <div 
-              key={apt.id} 
-              className="dash-card card-interactive flex flex-col h-full border-t-[4px] rounded-2xl bg-[var(--dash-surface)] border border-[var(--dash-border)] transition-all hover:shadow-md"
-              style={{ borderTopColor: apt.type || "var(--dash-sage)" }}
-            >
-              <div className="p-5 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="min-w-0 pr-2">
-                    <h3 
-                      onClick={() => setDetailItem(apt)}
-                      className="font-bold text-base text-[var(--dash-text)] hover:text-[var(--dash-sage)] transition-colors cursor-pointer truncate"
-                      title="Click to view consultation details"
+          <form onSubmit={handleCreateAppointment} className="space-y-8">
+            {/* STEP 1: SELECT SPECIALIST */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-[var(--dash-text)] uppercase tracking-wider">
+                  Step 1: Select Verified Specialist Doctor
+                </label>
+                <span className="text-[11px] text-teal-700 dark:text-teal-400 font-medium">
+                  {PRESET_DOCTORS.length} Specialists Available
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {PRESET_DOCTORS.map((doc) => {
+                  const isSelected = selectedDoctorId === doc.id;
+                  return (
+                    <div
+                      key={doc.id}
+                      onClick={() => handleSelectDoctor(doc)}
+                      className={`cursor-pointer rounded-2xl p-4 border transition-all relative flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-teal-50/80 dark:bg-teal-950/30 border-teal-600 dark:border-teal-500 shadow-sm ring-2 ring-teal-500/30"
+                          : "bg-[var(--dash-surface-warm)]/40 border-[var(--dash-border)] hover:border-teal-400 dark:hover:border-teal-600"
+                      }`}
                     >
-                      {apt.title}
-                    </h3>
-                    {apt.specialty && (
-                      <span className="inline-block text-[10px] font-semibold text-[var(--dash-text-tertiary)] uppercase tracking-wider mt-0.5">
-                        {apt.specialty}
-                      </span>
+                      {isSelected && (
+                        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-teal-700 text-white flex items-center justify-center shadow-xs">
+                          <Check className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                            {doc.avatar}
+                          </div>
+                          <div className="min-w-0 pr-5">
+                            <h4 className="font-bold text-sm text-[var(--dash-text)] flex items-center gap-1.5">
+                              <span className="truncate">{doc.name}</span>
+                              <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                            </h4>
+                            <p className="text-xs text-teal-700 dark:text-teal-400 font-medium line-clamp-1">
+                              {doc.specialty}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 space-y-1 text-xs text-[var(--dash-text-secondary)]">
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-[var(--dash-text-tertiary)] shrink-0" />
+                            <span className="truncate">{doc.hospital}</span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400 font-semibold">
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {doc.rating}
+                            </span>
+                            <span>•</span>
+                            <span>{doc.experience}</span>
+                            <span>•</span>
+                            <span className="font-mono text-[11px]">{doc.regNo}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-[var(--dash-border)] flex items-center justify-between text-[11px]">
+                        <span className="text-[var(--dash-text-tertiary)]">Slots: {doc.availableDays}</span>
+                        <span className={`font-semibold ${isSelected ? "text-teal-700 dark:text-teal-300" : "text-[var(--dash-text-secondary)]"}`}>
+                          {isSelected ? "Selected ✓" : "Select Doctor →"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* STEP 2: CONSULTATION REASON */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-[var(--dash-text)] uppercase tracking-wider">
+                Step 2: Consultation Reason or Health Concern
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_REASONS.map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setNewTitle(reason)}
+                    className={`text-xs px-3 py-1.5 rounded-xl border transition-all ${
+                      newTitle === reason
+                        ? "bg-teal-700 text-white border-teal-700 font-semibold shadow-xs"
+                        : "bg-[var(--dash-surface-warm)] text-[var(--dash-text)] border-[var(--dash-border)] hover:bg-[var(--dash-border)]/40"
+                    }`}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                required
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Or type custom reason (e.g., Post-Operative Wound Inspection, ECG review)"
+                className="w-full px-4 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+              />
+            </div>
+
+            {/* STEP 3: PREFERRED DATE & AVAILABLE TIME SLOT */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-[var(--dash-text)] uppercase tracking-wider">
+                  Step 3: Select Date &amp; Available Time Slot
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setQuickDate(1)}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] font-medium"
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDate(3)}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] font-medium"
+                  >
+                    +3 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDate(7)}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] font-medium"
+                  >
+                    +1 Week
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <span className="block text-[11px] text-[var(--dash-text-tertiary)] mb-1">Appointment Date:</span>
+                  <input
+                    type="date"
+                    required
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <span className="block text-[11px] text-[var(--dash-text-tertiary)] mb-1">Available Clinic Slots:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {AVAILABLE_SLOTS.map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setNewTime(slot)}
+                        className={`text-xs px-3.5 py-2 rounded-xl border font-semibold transition-all flex items-center gap-1.5 ${
+                          newTime === slot
+                            ? "bg-teal-700 text-white border-teal-700 shadow-xs"
+                            : "bg-[var(--dash-surface-warm)] text-[var(--dash-text)] border-[var(--dash-border)] hover:bg-[var(--dash-border)]/50"
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 4: CLINIC LOCATION & PREPARATION CHECKLIST */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-[var(--dash-text)] uppercase tracking-wider mb-1.5">
+                  Clinic / Hospital Location
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[var(--dash-text)] uppercase tracking-wider mb-1.5">
+                  Preparation Instructions / Checklist
+                </label>
+                <input
+                  type="text"
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  placeholder="e.g. Fasting 8 hrs, bring past scan reports"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                />
+              </div>
+            </div>
+
+            {/* BOOKING SUMMARY & SUBMIT */}
+            <div className="pt-6 border-t border-[var(--dash-border)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[var(--dash-surface-warm)]/40 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-6 sm:p-8 rounded-b-2xl">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    Consultation with <strong>{newDoc}</strong> • {newTime} on {newDate}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--dash-text-tertiary)]">
+                  Locks slot automatically with double-booking prevention in Doctor Portal.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setView("upcoming")}
+                  className="dash-btn-secondary px-4 py-2.5 text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="dash-btn-primary px-6 py-2.5 text-xs font-bold shadow-md flex items-center justify-center gap-2 w-full sm:w-auto"
+                >
+                  <CalendarCheck className="w-4 h-4" />
+                  Confirm &amp; Book Consultation
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      ) : (
+        /* APPOINTMENT CARDS GRID */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredApps.map((apt) => {
+            const isUpcoming = apt.status === "upcoming";
+
+            return (
+              <div 
+                key={apt.id} 
+                className="dash-card card-interactive flex flex-col h-full border-t-[4px] rounded-2xl bg-[var(--dash-surface)] border border-[var(--dash-border)] transition-all hover:shadow-md"
+                style={{ borderTopColor: apt.type || "var(--dash-sage)" }}
+              >
+                <div className="p-5 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="min-w-0 pr-2">
+                      <h3 
+                        onClick={() => setDetailItem(apt)}
+                        className="font-bold text-base text-[var(--dash-text)] hover:text-[var(--dash-sage)] transition-colors cursor-pointer truncate"
+                        title="Click to view consultation details"
+                      >
+                        {apt.title}
+                      </h3>
+                      {apt.specialty && (
+                        <span className="inline-block text-[10px] font-semibold text-[var(--dash-text-tertiary)] uppercase tracking-wider mt-0.5">
+                          {apt.specialty}
+                        </span>
+                      )}
+                    </div>
+
+                    <span className={`dash-pill shrink-0 ${
+                      isUpcoming 
+                        ? "bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] font-semibold" 
+                        : "bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)]"
+                    }`}>
+                      {isUpcoming ? "Upcoming" : "Completed"}
+                    </span>
+                  </div>
+                  
+                  {/* Meta details */}
+                  <div className="space-y-2.5 my-3 flex-1">
+                    <div className="flex items-center gap-2.5 text-[var(--dash-text-secondary)] text-xs">
+                      <div className="w-6 h-6 rounded-md bg-[var(--dash-surface-warm)] flex items-center justify-center text-[var(--dash-text)]">
+                        <User className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-semibold text-[var(--dash-text)]">{apt.doc}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs bg-[var(--dash-bg)] p-2 rounded-xl border border-[var(--dash-border)]">
+                      <div className="flex items-center gap-1.5 w-1/2">
+                        <CalendarIcon className="w-3.5 h-3.5 text-[var(--dash-sage)] shrink-0" />
+                        <span className="truncate font-medium">{apt.date}</span>
+                      </div>
+                      <div className="w-px h-4 bg-[var(--dash-border)]" />
+                      <div className="flex items-center gap-1.5 w-1/2">
+                        <Clock className="w-3.5 h-3.5 text-[var(--dash-amber)] shrink-0" />
+                        <span className="truncate font-medium">{apt.time}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2 text-[var(--dash-text-secondary)] text-xs">
+                      <MapPin className="w-3.5 h-3.5 text-[var(--dash-text-tertiary)] mt-0.5 shrink-0" />
+                      <span className="line-clamp-1">{apt.location}</span>
+                    </div>
+
+                    {apt.notes && (
+                      <div className="p-2 rounded-lg bg-[var(--dash-surface-warm)]/70 text-[11px] text-[var(--dash-text-secondary)] border border-[var(--dash-border)]/50 line-clamp-2">
+                        <strong>Prep:</strong> {apt.notes}
+                      </div>
                     )}
                   </div>
 
-                  <span className={`dash-pill shrink-0 ${
-                    isUpcoming 
-                      ? "bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] font-semibold" 
-                      : "bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)]"
-                  }`}>
-                    {isUpcoming ? "Upcoming" : "Completed"}
-                  </span>
-                </div>
-                
-                {/* Meta details */}
-                <div className="space-y-2.5 my-3 flex-1">
-                  <div className="flex items-center gap-2.5 text-[var(--dash-text-secondary)] text-xs">
-                    <div className="w-6 h-6 rounded-md bg-[var(--dash-surface-warm)] flex items-center justify-center text-[var(--dash-text)]">
-                      <User className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="font-semibold text-[var(--dash-text)]">{apt.doc}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs bg-[var(--dash-bg)] p-2 rounded-xl border border-[var(--dash-border)]">
-                    <div className="flex items-center gap-1.5 w-1/2">
-                      <CalendarIcon className="w-3.5 h-3.5 text-[var(--dash-sage)] shrink-0" />
-                      <span className="truncate font-medium">{apt.date}</span>
-                    </div>
-                    <div className="w-px h-4 bg-[var(--dash-border)]" />
-                    <div className="flex items-center gap-1.5 w-1/2">
-                      <Clock className="w-3.5 h-3.5 text-[var(--dash-amber)] shrink-0" />
-                      <span className="truncate font-medium">{apt.time}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2 text-[var(--dash-text-secondary)] text-xs">
-                    <MapPin className="w-3.5 h-3.5 text-[var(--dash-text-tertiary)] mt-0.5 shrink-0" />
-                    <span className="line-clamp-1">{apt.location}</span>
-                  </div>
-
-                  {apt.notes && (
-                    <div className="p-2 rounded-lg bg-[var(--dash-surface-warm)]/70 text-[11px] text-[var(--dash-text-secondary)] border border-[var(--dash-border)]/50 line-clamp-2">
-                      <strong>Prep:</strong> {apt.notes}
+                  {/* Calendar Sync row for Upcoming */}
+                  {isUpcoming && (
+                    <div className="pt-3 border-t border-[var(--dash-border)]/60 flex items-center justify-between text-[11px]">
+                      <span className="text-[var(--dash-text-tertiary)] font-medium">Calendar:</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openGoogleCalendar(apt)}
+                          className="text-teal-700 hover:text-teal-800 font-semibold inline-flex items-center gap-1 hover:underline"
+                          title="Add to Google Calendar"
+                        >
+                          Google <ExternalLink className="w-3 h-3" />
+                        </button>
+                        <span className="text-slate-300">•</span>
+                        <button
+                          onClick={() => downloadIcsFile(apt)}
+                          className="text-slate-600 hover:text-slate-800 font-semibold inline-flex items-center gap-1 hover:underline"
+                          title="Download .ics event file"
+                        >
+                          .ICS <Download className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* Calendar Sync row for Upcoming */}
-                {isUpcoming && (
-                  <div className="pt-3 border-t border-[var(--dash-border)]/60 flex items-center justify-between text-[11px]">
-                    <span className="text-[var(--dash-text-tertiary)] font-medium">Calendar:</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openGoogleCalendar(apt)}
-                        className="text-teal-700 hover:text-teal-800 font-semibold inline-flex items-center gap-1 hover:underline"
-                        title="Add to Google Calendar"
+                
+                {/* Card Footer Actions */}
+                <div className="p-3 border-t border-[var(--dash-border)] bg-[var(--dash-bg)]/40 flex items-center gap-2">
+                  {isUpcoming ? (
+                    <>
+                      <button 
+                        onClick={() => openRescheduleModal(apt)}
+                        className="dash-btn-secondary flex-1 py-1.5 text-xs font-semibold flex items-center justify-center gap-1"
                       >
-                        Google <ExternalLink className="w-3 h-3" />
+                        <RefreshCw className="w-3 h-3" /> Reschedule
                       </button>
-                      <span className="text-slate-300">•</span>
-                      <button
-                        onClick={() => downloadIcsFile(apt)}
-                        className="text-slate-600 hover:text-slate-800 font-semibold inline-flex items-center gap-1 hover:underline"
-                        title="Download .ics event file"
+                      <button 
+                        onClick={() => handleToggleCompleted(apt)}
+                        className="dash-btn-secondary flex-1 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/10 border-emerald-500/30 flex items-center justify-center gap-1"
+                        title="Mark consultation as completed"
                       >
-                        .ICS <Download className="w-3 h-3" />
+                        <CheckCircle2 className="w-3 h-3" /> Done
                       </button>
-                    </div>
-                  </div>
-                )}
+                      <button 
+                        onClick={() => handleCancelAppointment(apt.id, apt.title)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                        title="Cancel appointment"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => handleBookAgain(apt)}
+                        className="dash-btn-primary flex-1 py-1.5 text-xs font-semibold flex items-center justify-center gap-1"
+                      >
+                        <CalendarPlus className="w-3.5 h-3.5" /> Book Again
+                      </button>
+                      <button 
+                        onClick={() => handleToggleCompleted(apt)}
+                        className="dash-btn-secondary py-1.5 px-3 text-xs font-semibold"
+                        title="Move back to upcoming"
+                      >
+                        Undo
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              
-              {/* Card Footer Actions */}
-              <div className="p-3 border-t border-[var(--dash-border)] bg-[var(--dash-bg)]/40 flex items-center gap-2">
-                {isUpcoming ? (
-                  <>
-                    <button 
-                      onClick={() => openRescheduleModal(apt)}
-                      className="dash-btn-secondary flex-1 py-1.5 text-xs font-semibold flex items-center justify-center gap-1"
-                    >
-                      <RefreshCw className="w-3 h-3" /> Reschedule
-                    </button>
-                    <button 
-                      onClick={() => handleToggleCompleted(apt)}
-                      className="dash-btn-secondary flex-1 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/10 border-emerald-500/30 flex items-center justify-center gap-1"
-                      title="Mark consultation as completed"
-                    >
-                      <CheckCircle2 className="w-3 h-3" /> Done
-                    </button>
-                    <button 
-                      onClick={() => handleCancelAppointment(apt.id, apt.title)}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
-                      title="Cancel appointment"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button 
-                      onClick={() => handleBookAgain(apt)}
-                      className="dash-btn-primary flex-1 py-1.5 text-xs font-semibold flex items-center justify-center gap-1"
-                    >
-                      <CalendarPlus className="w-3.5 h-3.5" /> Book Again
-                    </button>
-                    <button 
-                      onClick={() => handleToggleCompleted(apt)}
-                      className="dash-btn-secondary py-1.5 px-3 text-xs font-semibold"
-                      title="Move back to upcoming"
-                    >
-                      Undo
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {/* Empty State */}
-        {filteredApps.length === 0 && (
-          <div className="col-span-full py-16 text-center dash-card bg-[var(--dash-surface)] border border-[var(--dash-border)] rounded-2xl p-8 shadow-xs">
-            <div className="w-14 h-14 rounded-2xl bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] flex items-center justify-center mx-auto mb-4">
-              <CalendarIcon className="w-7 h-7" />
+          {/* Empty State */}
+          {filteredApps.length === 0 && (
+            <div className="col-span-full py-16 text-center dash-card bg-[var(--dash-surface)] border border-[var(--dash-border)] rounded-2xl p-8 shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] flex items-center justify-center mx-auto mb-4">
+                <CalendarIcon className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--dash-text)] mb-1">
+                {searchFilter 
+                  ? "No Appointments Matching Filter"
+                  : view === "upcoming" 
+                  ? "No Upcoming Appointments" 
+                  : view === "past"
+                  ? "No Past Appointments Recorded"
+                  : "No Appointments Found"}
+              </h3>
+              <p className="text-sm text-[var(--dash-text-secondary)] max-w-md mx-auto mb-6">
+                {searchFilter 
+                  ? `No visits match "${searchFilter}". Try clearing your filter or searching for another doctor or clinic.`
+                  : view === "upcoming" 
+                  ? "You don't have any upcoming doctor consultations scheduled. Keep track of medical visits and specialist follow-ups here."
+                  : "No past medical visit history recorded yet."}
+              </p>
+              {searchFilter ? (
+                <button 
+                  onClick={() => setSearchFilter("")}
+                  className="dash-btn-secondary inline-flex items-center gap-2 text-xs px-4 py-2 rounded-xl"
+                >
+                  Clear Search Filter
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setView("book")}
+                  className="dash-btn-primary inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl shadow-sm"
+                >
+                  <CalendarPlus className="w-4 h-4" />
+                  Book a Consultation
+                </button>
+              )}
             </div>
-            <h3 className="text-lg font-bold text-[var(--dash-text)] mb-1">
-              {searchFilter 
-                ? "No Appointments Matching Filter"
-                : view === "upcoming" 
-                ? "No Upcoming Appointments" 
-                : view === "past"
-                ? "No Past Appointments Recorded"
-                : "No Appointments Found"}
-            </h3>
-            <p className="text-sm text-[var(--dash-text-secondary)] max-w-md mx-auto mb-6">
-              {searchFilter 
-                ? `No visits match "${searchFilter}". Try clearing your filter or searching for another doctor or clinic.`
-                : view === "upcoming" 
-                ? "You don't have any upcoming doctor consultations scheduled. Keep track of medical visits and specialist follow-ups here."
-                : "No past medical visit history recorded yet."}
-            </p>
-            {searchFilter ? (
-              <button 
-                onClick={() => setSearchFilter("")}
-                className="dash-btn-secondary inline-flex items-center gap-2 text-xs px-4 py-2 rounded-xl"
-              >
-                Clear Search Filter
-              </button>
-            ) : (
-              <button 
-                onClick={() => setIsCreateOpen(true)}
-                className="dash-btn-primary inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Schedule Appointment
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* SCHEDULE APPOINTMENT MODAL */}
       {isCreateOpen && (
@@ -600,12 +937,40 @@ export default function AppointmentsPage() {
             </div>
 
             <form onSubmit={handleCreateAppointment} className="space-y-4">
-              {/* Doctor Auto-suggestions from prescriptions */}
+              {/* Verified Specialist Doctor Selection */}
+              <div className="p-3 rounded-xl bg-[var(--dash-surface-warm)]/60 border border-[var(--dash-border)] space-y-2">
+                <div className="text-[11px] font-bold text-[var(--dash-text)] uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                    Verified Clinic Specialists:
+                  </span>
+                  <span className="text-[10px] text-teal-700 dark:text-teal-400 font-normal">Instant Slot Lock</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_DOCTORS.map((doc) => (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      onClick={() => handleSelectDoctor(doc)}
+                      className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                        selectedDoctorId === doc.id
+                          ? "bg-teal-700 text-white border-teal-700 font-semibold shadow-xs"
+                          : "bg-[var(--dash-surface)] text-[var(--dash-text)] border-[var(--dash-border)] hover:bg-[var(--dash-surface-warm)]"
+                      }`}
+                    >
+                      <span>{doc.name}</span>
+                      <span className="text-[10px] opacity-75">({doc.specialty.split(" ")[0]})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Doctor Auto-suggestions from prescriptions if any */}
               {treatingDoctors.length > 0 && (
-                <div className="p-3 rounded-xl bg-[var(--dash-surface-warm)]/60 border border-[var(--dash-border)]">
+                <div className="p-3 rounded-xl bg-[var(--dash-surface-warm)]/40 border border-[var(--dash-border)]">
                   <div className="text-[11px] font-semibold text-[var(--dash-text-secondary)] mb-1.5 flex items-center gap-1.5">
                     <Stethoscope className="w-3.5 h-3.5 text-[var(--dash-sage)]" />
-                    Select from Your Treating Doctors:
+                    Or From Your Past Prescriptions:
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {treatingDoctors.map((td) => (
@@ -630,16 +995,30 @@ export default function AppointmentsPage() {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider mb-1.5">
-                  Consultation Reason / Title *
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider">
+                    Consultation Reason / Title *
+                  </label>
+                  <div className="flex flex-wrap gap-1">
+                    {QUICK_REASONS.slice(0, 3).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setNewTitle(r)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
+                      >
+                        {r.split(" ")[0]} {r.split(" ")[1]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <input 
                   type="text" 
                   required
-                  placeholder="e.g. Quarterly Diabetes Review, ECG Evaluation" 
+                  placeholder="e.g. Antenatal Ultrasound & Review, BP Evaluation" 
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                 />
               </div>
 
@@ -651,10 +1030,10 @@ export default function AppointmentsPage() {
                   <input 
                     type="text" 
                     required
-                    placeholder="e.g. Dr. A. Sharma" 
+                    placeholder="e.g. Dr. Reeta Bhambri" 
                     value={newDoc}
                     onChange={(e) => setNewDoc(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                   />
                 </div>
 
@@ -665,7 +1044,7 @@ export default function AppointmentsPage() {
                   <select
                     value={newSpecialty}
                     onChange={(e) => setNewSpecialty(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                   >
                     {SPECIALTIES.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -678,7 +1057,7 @@ export default function AppointmentsPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider">
-                    Consultation Date & Time
+                    Consultation Date &amp; Slot
                   </label>
                   <div className="flex items-center gap-1">
                     <button
@@ -695,29 +1074,41 @@ export default function AppointmentsPage() {
                     >
                       +1 Week
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDate(30)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
-                    >
-                      +1 Month
-                    </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 mb-2">
                   <input 
                     type="date" 
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                   />
                   <input 
-                    type="time" 
+                    type="text" 
                     value={newTime}
                     onChange={(e) => setNewTime(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
+                    placeholder="Time slot"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                   />
+                </div>
+
+                {/* Slot quick chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  {AVAILABLE_SLOTS.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setNewTime(slot)}
+                      className={`text-[11px] px-2 py-1 rounded-lg border font-medium transition-all ${
+                        newTime === slot
+                          ? "bg-teal-700 text-white border-teal-700"
+                          : "bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] border-[var(--dash-border)] hover:bg-[var(--dash-border)]/50"
+                      }`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -987,6 +1378,122 @@ export default function AppointmentsPage() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BOOKING CONFIRMED VOUCHER MODAL */}
+      {confirmedBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="dash-card bg-[var(--dash-surface)] border border-emerald-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6 relative overflow-hidden">
+            {/* Top decorative stripe */}
+            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-teal-600 via-emerald-500 to-teal-700" />
+
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shadow-xs">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                    Booking Confirmed
+                  </span>
+                  <h3 className="text-xl font-bold text-[var(--dash-text)] mt-1">
+                    Consultation Scheduled!
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setConfirmedBooking(null)}
+                className="w-8 h-8 rounded-lg hover:bg-[var(--dash-surface-warm)] flex items-center justify-center text-[var(--dash-text-tertiary)] hover:text-[var(--dash-text)]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Booking Reference Box */}
+            <div className="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/40 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 dark:text-slate-400">Booking Reference:</span>
+                <span className="font-mono font-bold text-teal-800 dark:text-teal-200 text-sm">
+                  APT-2026-LUD-{confirmedBooking.id.toString().slice(-4)}
+                </span>
+              </div>
+              <div className="h-px bg-teal-200/60 dark:bg-teal-800/40" />
+              <div className="space-y-2 text-xs">
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Consultation:</span>
+                  <strong className="text-slate-900 dark:text-slate-100 text-right">{confirmedBooking.title}</strong>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Physician:</span>
+                  <strong className="text-teal-700 dark:text-teal-300 text-right">{confirmedBooking.doc}</strong>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Specialty:</span>
+                  <span className="text-slate-700 dark:text-slate-300 text-right">{confirmedBooking.specialty || "General Medicine"}</span>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Date &amp; Time:</span>
+                  <strong className="text-slate-900 dark:text-slate-100 text-right">{confirmedBooking.date} at {confirmedBooking.time}</strong>
+                </div>
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Clinic Location:</span>
+                  <span className="text-slate-700 dark:text-slate-300 text-right max-w-[240px]">{confirmedBooking.location}</span>
+                </div>
+              </div>
+            </div>
+
+            {confirmedBooking.notes && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-[var(--dash-text)]">
+                <span className="font-bold text-amber-800 dark:text-amber-300 block mb-0.5">
+                  Preparation Instructions:
+                </span>
+                <p className="text-[11px] text-[var(--dash-text-secondary)]">{confirmedBooking.notes}</p>
+              </div>
+            )}
+
+            {/* Calendar & Sync Actions */}
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => openGoogleCalendar(confirmedBooking)}
+                  className="dash-btn-secondary py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-teal-700" />
+                  Google Calendar
+                </button>
+                <button
+                  onClick={() => downloadIcsFile(confirmedBooking)}
+                  className="dash-btn-secondary py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-700" />
+                  Download (.ICS)
+                </button>
+              </div>
+
+              <Link
+                href="/doctor"
+                className="w-full text-xs font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/40 p-2.5 rounded-xl hover:bg-teal-100/60 transition-colors flex items-center justify-between"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+                  View in Doctor Portal Queue (/doctor)
+                </span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                  Slot Locked ✓
+                </span>
+              </Link>
+            </div>
+
+            <div className="pt-3 border-t border-[var(--dash-border)] flex items-center justify-end">
+              <button
+                onClick={() => setConfirmedBooking(null)}
+                className="dash-btn-primary px-5 py-2 text-xs font-bold shadow-sm"
+              >
+                Done &amp; View Upcoming
+              </button>
             </div>
           </div>
         </div>

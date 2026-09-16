@@ -38,73 +38,20 @@ import {
   getPatientDossier,
   PatientDossierData,
   getPatientAccessControl,
-  verifyDoctorAccess
+  verifyDoctorAccess,
+  DoctorRequest,
+  getDoctorRequests,
+  syncDoctorRequestAction
 } from "@/lib/patientData";
-
-interface DoctorRequest {
-  id: string | number;
-  patientName: string;
-  patientEmail: string;
-  patientUid: string;
-  reason: string;
-  date: string;
-  time: string;
-  specialty: string;
-  urgency: "Routine" | "Priority" | "Follow-up";
-  status: "pending" | "confirmed" | "rescheduled" | "completed";
-  dossierToken: string;
-  notes?: string;
-}
-
-const INITIAL_REQUESTS: DoctorRequest[] = [
-  {
-    id: "req-1",
-    patientName: "Simranjit Kaur",
-    patientEmail: "jk0822123@gmail.com",
-    patientUid: "PT-2026-LUD-8821",
-    reason: "Antenatal Ultrasound & 28-Week Gestational Review",
-    date: "Sept 18, 2026",
-    time: "10:30 AM",
-    specialty: "Obstetrics & Antenatal Care",
-    urgency: "Priority",
-    status: "pending",
-    dossierToken: "EMG-8821-VLT",
-    notes: "Patient reports mild ankle edema. Blood pressure stable. Folic acid and iron adherence reported regular."
-  },
-  {
-    id: "req-2",
-    patientName: "Harpreet Singh",
-    patientEmail: "harpreet.s@example.com",
-    patientUid: "PT-2026-LUD-3312",
-    reason: "Post-Operative Wound Inspection & Suture Removal",
-    date: "Sept 17, 2026",
-    time: "11:45 AM",
-    specialty: "General Surgery",
-    urgency: "Routine",
-    status: "confirmed",
-    dossierToken: "EMG-3312-VLT",
-    notes: "Day 10 post-laparoscopic follow-up. Sterile dressing intact."
-  },
-  {
-    id: "req-3",
-    patientName: "Amandeep Sharma",
-    patientEmail: "amandeep.sharma@example.com",
-    patientUid: "PT-2026-LUD-4091",
-    reason: "Routine Antenatal BP & Hemoglobin Assessment",
-    date: "Sept 19, 2026",
-    time: "05:15 PM",
-    specialty: "Obstetrics & Antenatal Care",
-    urgency: "Follow-up",
-    status: "pending",
-    dossierToken: "EMG-4091-VLT",
-    notes: "Second visit. Needs routine complete blood count review."
-  }
-];
 
 export default function DoctorPortalPage() {
   const router = useRouter();
-  const [requests, setRequests] = useState<DoctorRequest[]>(INITIAL_REQUESTS);
+  const [requests, setRequests] = useState<DoctorRequest[]>([]);
   const [activeTab, setActiveTab] = useState<"requests" | "schedule" | "calibration">("requests");
+
+  useEffect(() => {
+    setRequests(getDoctorRequests());
+  }, []);
 
   // Dual-mode Patient Access State
   const [accessMode, setAccessMode] = useState<"passcode" | "breakglass">("passcode");
@@ -173,7 +120,8 @@ export default function DoctorPortalPage() {
   };
 
   const handleAccept = (req: DoctorRequest) => {
-    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "confirmed" } : r));
+    syncDoctorRequestAction(req.id, "confirm");
+    setRequests(getDoctorRequests());
     showToast(`Slot confirmed for ${req.patientName}! Clinic Scheduler locked calendar slot at ${req.time}.`);
   };
 
@@ -185,18 +133,19 @@ export default function DoctorPortalPage() {
     e.preventDefault();
     if (!rescheduleModalItem) return;
 
-    setRequests(prev => prev.map(r => 
-      r.id === rescheduleModalItem.id 
-        ? { ...r, date: newRescheduleDate, time: newRescheduleTime, status: "rescheduled" } 
-        : r
-    ));
+    syncDoctorRequestAction(rescheduleModalItem.id, "reschedule", {
+      date: newRescheduleDate,
+      time: newRescheduleTime
+    });
+    setRequests(getDoctorRequests());
 
     showToast(`Slot rescheduled for ${rescheduleModalItem.patientName} to ${newRescheduleDate} at ${newRescheduleTime}.`);
     setRescheduleModalItem(null);
   };
 
   const handleMarkCompleted = (id: string | number) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: "completed" } : r));
+    syncDoctorRequestAction(id, "complete");
+    setRequests(getDoctorRequests());
     showToast("Consultation marked completed and clinical notes archived.");
   };
 

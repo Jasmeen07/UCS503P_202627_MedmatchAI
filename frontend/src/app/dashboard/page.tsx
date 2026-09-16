@@ -18,6 +18,8 @@ import {
   getPatientDailyDoses, 
   togglePatientDailyDose, 
   getActivePatientEmail,
+  getPatientAppointments,
+  AppointmentItem,
   DailyDoseItem,
   StoredPrescription
 } from "@/lib/patientData";
@@ -28,6 +30,7 @@ export default function DashboardOverview() {
   const [patientEmail, setPatientEmail] = useState("");
   const [doses, setDoses] = useState<DailyDoseItem[]>([]);
   const [recentPrescriptions, setRecentPrescriptions] = useState<StoredPrescription[]>([]);
+  const [nextAppointment, setNextAppointment] = useState<AppointmentItem | null>(null);
 
   useEffect(() => {
     const date = new Date();
@@ -48,6 +51,10 @@ export default function DashboardOverview() {
 
     const userDoses = getPatientDailyDoses(activeEmail);
     setDoses(userDoses);
+
+    const userAppointments = getPatientAppointments(activeEmail);
+    const nextApp = userAppointments.find((a) => a.status === "upcoming");
+    setNextAppointment(nextApp || null);
   }, []);
 
   const [greeting, setGreeting] = useState("");
@@ -169,6 +176,14 @@ export default function DashboardOverview() {
             </svg>
           </div>
 
+          {/* Editorial Side Caption — placed safely to the left of the artwork, completely clear of the topbar account profile */}
+          <div className="hidden xl:flex flex-col justify-center text-slate-500 dark:text-slate-400 font-editorial-serif italic text-xs tracking-wider space-y-1 pr-6 pt-24 select-none shrink-0 z-10">
+            <p>People.</p>
+            <p>Care.</p>
+            <p>Better together.</p>
+            <div className="w-5 h-px bg-slate-400/50 dark:bg-slate-600 mt-2"></div>
+          </div>
+
           {/* Doctor consultation artwork with seamless radial alpha blend reaching the very top */}
           <div 
             className="relative w-full max-w-[520px] lg:max-w-[600px] xl:max-w-[680px] pointer-events-none select-none z-10"
@@ -182,14 +197,6 @@ export default function DashboardOverview() {
               alt="Physician consultation" 
               className="w-full h-auto object-contain mix-blend-multiply opacity-88 dark:opacity-75 dark:mix-blend-screen transition-opacity"
             />
-          </div>
-
-          {/* Editorial Side Caption */}
-          <div className="hidden xl:flex flex-col justify-center text-slate-500 dark:text-slate-400 font-editorial-serif italic text-xs tracking-wider space-y-1 pl-4 pt-16 select-none shrink-0 z-10">
-            <p>People.</p>
-            <p>Care.</p>
-            <p>Better together.</p>
-            <div className="w-5 h-px bg-slate-400/50 dark:bg-slate-600 mt-2"></div>
           </div>
         </div>
       </section>
@@ -339,6 +346,45 @@ export default function DashboardOverview() {
           )}
         </div>
       </section>
+
+      {/* =========================================================================
+          NEXT SCHEDULED CONSULTATION (Real-time Appointment Sync)
+          ========================================================================= */}
+      {nextAppointment && (
+        <section className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-teal-50/90 via-emerald-50/40 to-white dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-slate-900 border border-teal-200/80 dark:border-teal-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200">
+                  Next Scheduled Consultation
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  • {nextAppointment.specialty || "Clinical Review"}
+                </span>
+              </div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 mt-1">
+                {nextAppointment.title} with {nextAppointment.doc}
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                {nextAppointment.date} at {nextAppointment.time} • {nextAppointment.location}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            <Link
+              href="/dashboard/appointments"
+              className="w-full sm:w-auto text-xs font-semibold px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white transition-colors text-center shadow-xs inline-flex items-center justify-center gap-1.5"
+            >
+              <span>Manage Appointments</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* =========================================================================
           DISCREET QUICK-ACCESS LINKS (Zero Functionality Lost)
