@@ -750,24 +750,6 @@ export default function ScanPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Direct Upload Self-Testing Ribbon for Prescription 2 */}
-                <div className="rounded-2xl border border-dashed border-teal-300 dark:border-teal-700/80 bg-teal-50/50 dark:bg-teal-950/20 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 text-xs text-teal-900 dark:text-teal-200">
-                    <span className="w-6 h-6 rounded-full bg-teal-200 dark:bg-teal-800 text-teal-900 dark:text-teal-100 font-bold flex items-center justify-center shrink-0 text-[11px]">
-                      2
-                    </span>
-                    <div>
-                      <strong className="font-semibold">Prescription 2 (Kajal - 24y F, Acute UTI) is unmounted from display:</strong>
-                      <span className="text-slate-600 dark:text-slate-300 ml-1">
-                        Test live handwriting deciphering yourself by dragging or uploading the prescription file into the upload zone below.
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-medium text-teal-700 dark:text-teal-300 shrink-0 px-2.5 py-1 rounded-full bg-white/70 dark:bg-slate-800/60 border border-teal-200 dark:border-teal-800 self-start sm:self-auto">
-                    Ready for Upload Test ↓
-                  </span>
-                </div>
               </div>
             )}
 
@@ -971,7 +953,7 @@ export default function ScanPage() {
                         </p>
                         {isProcessing && (
                           <p className="text-[11px] text-teal-600 dark:text-teal-400 font-medium flex items-center gap-1.5 mt-1">
-                            <Sparkles className="w-3 h-3 animate-spin" />
+                            <Loader2 className="w-3 h-3 animate-spin" />
                             Laser HUD: Scanning handwritten lines...
                           </p>
                         )}
@@ -1079,7 +1061,7 @@ export default function ScanPage() {
           {isProcessing && (
             <div className="p-3.5 rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50/70 dark:bg-teal-950/40 text-xs text-teal-900 dark:text-teal-200 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-2.5">
-                <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400 animate-spin shrink-0" />
+                <Loader2 className="w-4 h-4 text-teal-600 dark:text-teal-400 animate-spin shrink-0" />
                 <span className="font-medium">
                   {verificationFile
                     ? "Laser HUD Active: Cross-verifying cursive handwriting with printed pharmacy receipt..."
@@ -1181,7 +1163,7 @@ export default function ScanPage() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs px-2.5 py-1 rounded border border-teal-300 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-300 font-medium flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   Calibrated Doctor: Dr. Reeta Bhambri
                 </span>
                 {clinicalContext && (
@@ -1428,7 +1410,7 @@ export default function ScanPage() {
                           med.candidate_suggestions.length > 0 && (
                             <div className="p-2.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5">
                               <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-400">
-                                <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                                <CheckCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                                 <span>
                                   Condition-Matched Candidates (
                                   {clinicalContext || "Clinical Context"}):
