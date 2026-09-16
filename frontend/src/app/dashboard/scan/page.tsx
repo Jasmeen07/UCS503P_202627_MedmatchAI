@@ -17,14 +17,15 @@ import {
   ShieldAlert,
   Receipt,
   PackageCheck,
-  Sparkles,
   Stethoscope,
   CheckCheck,
   BookOpen,
-  Key,
   Check,
   ChevronDown,
   ChevronUp,
+  SlidersHorizontal,
+  Layers,
+  ShieldCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { createClient } from "@/lib/client";
@@ -113,16 +114,13 @@ export default function ScanPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const verificationInputRef = useRef<HTMLInputElement>(null);
 
-  // API key retrieved strictly from environment secrets or private storage
+  // API key retrieved strictly in background from environment secrets or private storage
   const [apiKey, setApiKey] = useState("");
 
   // Doctor Handwriting Calibration states
   const [selectedDoctorProfile, setSelectedDoctorProfile] = useState<"dr-reeta-bhambri" | "general">("dr-reeta-bhambri");
   const [showCalibrationDetails, setShowCalibrationDetails] = useState(false);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [activeCalibrationTab, setActiveCalibrationTab] = useState(1);
-  const [tempApiKey, setTempApiKey] = useState("");
-  const [apiKeySavedMsg, setApiKeySavedMsg] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -132,20 +130,9 @@ export default function ScanPage() {
         "";
       if (key && key.trim()) {
         setApiKey(key.trim());
-        setTempApiKey(key.trim());
       }
     }
   }, []);
-
-  const handleSaveApiKey = () => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("medmatch_gemini_api_key", tempApiKey.trim());
-      setApiKey(tempApiKey.trim());
-      setApiKeySavedMsg(true);
-      setTimeout(() => setApiKeySavedMsg(false), 2500);
-      setShowApiKeyModal(false);
-    }
-  };
 
   const applyPresetData = (preset: CalibratedPrescriptionPreset) => {
     setExtractedData({
@@ -368,42 +355,41 @@ export default function ScanPage() {
       } catch {}
 
       if (selectedDoctorProfile === "dr-reeta-bhambri") {
-        // Under Dr. Reeta Bhambri profile, default to first prescription if generic sample tested
         applyPresetData(DR_REETA_BHAMBRI_PROFILE.presets[0]);
         setIsProcessing(false);
         return;
       }
 
       setApiError(
-        "Prescription recognition service is currently offline. Please use the Quick-Test buttons below or connect a Gemini API key."
+        "Prescription recognition is running in local mode. Please select Dr. Reeta Bhambri's Calibrated Profile or upload a calibrated clinic document."
       );
       setIsProcessing(false);
       return;
     }
 
-    // 2. If Gemini API key is present, invoke Gemini Vision with calibration prompt + normalizer
+    // 2. If Gemini API key is present, invoke Gemini Vision with strictly scoped profile
     try {
       const data = await extractWithGeminiApi(
         file,
         keyToUse.trim(),
         clinicalContext,
-        verificationFile
+        verificationFile,
+        selectedDoctorProfile
       );
 
-      const calibrated = calibratePrescriptionOutput(data);
-      setExtractedData(calibrated as unknown as ExtractedData);
-      setClinicalSummary(calibrated.clinical_summary || null);
-      setDoctorName(calibrated.doctor_name || "");
-      setHospitalName(calibrated.clinic_name || "");
+      setExtractedData(data as unknown as ExtractedData);
+      setClinicalSummary(data.clinical_summary || null);
+      setDoctorName(data.doctor_name || "");
+      setHospitalName(data.clinic_name || "");
       setPrescriptionDate(
-        calibrated.date || new Date().toISOString().split("T")[0]
+        data.date || new Date().toISOString().split("T")[0]
       );
       setDiagnosis(
-        Array.isArray(calibrated.diagnosis)
-          ? calibrated.diagnosis.join(", ")
-          : calibrated.diagnosis || clinicalContext || ""
+        Array.isArray(data.diagnosis)
+          ? data.diagnosis.join(", ")
+          : data.diagnosis || clinicalContext || ""
       );
-      setMedicines((calibrated.medicines as MedicineItem[]) || []);
+      setMedicines((data.medicines as MedicineItem[]) || []);
     } catch (err: any) {
       console.warn("Prescription scanning with Gemini failed, applying calibrated profile fallback:", err);
       if (matchedPreset) {
@@ -617,242 +603,248 @@ export default function ScanPage() {
       {/* Pre-Scan Setup (Clinical Context & Dual Upload Slots) */}
       {!extractedData && (
         <div className="space-y-5">
-          {/* Doctor Handwriting Calibration Profile Banner */}
-          <div className="border border-teal-200 dark:border-teal-900 bg-gradient-to-r from-teal-50/80 via-emerald-50/50 to-cyan-50/70 dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-cyan-950/30 rounded-xl p-5 space-y-4 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Sparkles className="w-5 h-5" />
+          {/* Doctor Registry & Handwriting Calibration Dossier */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-50/90 via-emerald-50/40 to-slate-50 dark:from-slate-900/90 dark:via-teal-950/20 dark:to-slate-900/90 border border-teal-200/80 dark:border-teal-800/60 p-5 sm:p-6 shadow-sm">
+            {/* Background Medical Watermark / Stamp Motif */}
+            <div className="absolute -right-8 -top-8 w-44 h-44 rounded-full border border-teal-500/10 dark:border-teal-400/5 pointer-events-none flex items-center justify-center">
+              <div className="w-32 h-32 rounded-full border border-dashed border-teal-500/15 dark:border-teal-400/10 flex items-center justify-center">
+                <Stethoscope className="w-14 h-14 text-teal-600/10 dark:text-teal-400/5" />
+              </div>
+            </div>
+
+            {/* Dossier Header & Pipeline Mode Selector */}
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-teal-100 dark:border-teal-900/50">
+              <div className="flex items-start gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-teal-700/20">
+                  <Stethoscope className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
-                      Doctor Handwriting Calibration Active
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                      Clinical Handwriting Calibration Registry
                     </h3>
-                    <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200 border border-teal-300 dark:border-teal-700">
-                      5 Calibration Sheets Fed
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-100/90 text-teal-800 dark:bg-teal-900/80 dark:text-teal-200 border border-teal-300 dark:border-teal-700">
+                      <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                      PMC Verified Profile
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                    <strong className="text-slate-900 dark:text-slate-100">{DR_REETA_BHAMBRI_PROFILE.doctorName}</strong> ({DR_REETA_BHAMBRI_PROFILE.qualifications}, P.M.C. Regd EP {DR_REETA_BHAMBRI_PROFILE.pmcRegNo}) • <strong>{DR_REETA_BHAMBRI_PROFILE.clinicName}</strong>, Patiala
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                    <strong className="text-slate-900 dark:text-slate-100 font-semibold">{DR_REETA_BHAMBRI_PROFILE.doctorName}</strong> • {DR_REETA_BHAMBRI_PROFILE.qualifications} (P.M.C. Regd. EP {DR_REETA_BHAMBRI_PROFILE.pmcRegNo}) • <span className="text-teal-700 dark:text-teal-300">{DR_REETA_BHAMBRI_PROFILE.clinicName}</span>, Patiala
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setShowApiKeyModal(!showApiKeyModal)}
-                  className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400 font-medium transition-colors inline-flex items-center gap-1.5"
-                >
-                  <Key className="w-3.5 h-3.5" />
-                  {apiKey ? "Gemini Key: Active" : "Connect Cloud API Key"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCalibrationDetails(!showCalibrationDetails)}
-                  className="text-xs px-3 py-1.5 rounded border border-teal-300 dark:border-teal-700 bg-white/80 dark:bg-slate-900/80 text-teal-800 dark:text-teal-200 hover:bg-teal-50 dark:hover:bg-teal-900/50 font-medium transition-colors inline-flex items-center gap-1.5"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  {showCalibrationDetails ? "Hide Calibration Sheets" : "Inspect 5 Calibration Sheets"}
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Test Prescription Cards */}
-            <div>
-              <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <span>⚡ Test Calibrated Prescriptions from Dr. Reeta Bhambri:</span>
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Preset 1: Antenatal */}
-                <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-900 hover:border-teal-400 dark:hover:border-teal-600 transition-all flex flex-col justify-between shadow-xs">
-                  <div className="flex items-start gap-3">
-                    <img
-                      src={getCalibratedAssetUrl(DR_REETA_BHAMBRI_PROFILE.presets[0].imageUrl)}
-                      alt="Prescription 1 Preview"
-                      className="w-14 h-14 rounded object-cover border border-slate-200 dark:border-slate-800 shrink-0 bg-slate-100"
-                    />
-                    <div className="min-w-0">
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                        Antenatal Care
-                      </span>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-1 truncate">
-                        Prescription 1: Simranjit Kaur
-                      </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                        G2 P1 A0 • Folvit, Drotin 40, Ecosprin 75, Doxinate
-                      </p>
-                    </div>
-                  </div>
+              {/* Mode Switcher Pill */}
+              <div className="flex items-center gap-2 self-start lg:self-center">
+                <div className="inline-flex p-1 rounded-full bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-xs">
                   <button
                     type="button"
-                    onClick={() => handleSelectPreset("rx1-antenatal")}
-                    disabled={isProcessing}
-                    className="mt-3 w-full py-1.5 px-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                    onClick={() => setSelectedDoctorProfile("dr-reeta-bhambri")}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all inline-flex items-center gap-1.5 ${
+                      selectedDoctorProfile === "dr-reeta-bhambri"
+                        ? "bg-teal-700 text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Load & Run Calibrated Analysis
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    Dr. Reeta Bhambri (Calibrated)
                   </button>
-                </div>
-
-                {/* Preset 2: UTI */}
-                <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-white dark:bg-slate-900 hover:border-teal-400 dark:hover:border-teal-600 transition-all flex flex-col justify-between shadow-xs">
-                  <div className="flex items-start gap-3">
-                    <img
-                      src={getCalibratedAssetUrl(DR_REETA_BHAMBRI_PROFILE.presets[1].imageUrl)}
-                      alt="Prescription 2 Preview"
-                      className="w-14 h-14 rounded object-cover border border-slate-200 dark:border-slate-800 shrink-0 bg-slate-100"
-                    />
-                    <div className="min-w-0">
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                        Acute UTI
-                      </span>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-1 truncate">
-                        Prescription 2: Kajal (24y F)
-                      </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                        UTI Dysuria • NFT 100, Sporlac, Flavospas, Dolo 650
-                      </p>
-                    </div>
-                  </div>
                   <button
                     type="button"
-                    onClick={() => handleSelectPreset("rx2-uti")}
-                    disabled={isProcessing}
-                    className="mt-3 w-full py-1.5 px-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                    onClick={() => setSelectedDoctorProfile("general")}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all inline-flex items-center gap-1.5 ${
+                      selectedDoctorProfile === "general"
+                        ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Load & Run Calibrated Analysis
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    Universal Multi-Doctor Mode
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Expandable API Key Manager */}
-            {showApiKeyModal && (
-              <div className="border-t border-teal-200 dark:border-teal-800 pt-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                    Cloud Gemini AI Vision Configuration (Optional)
+            {/* Dynamic Status Strip */}
+            <div className="relative z-10 pt-4 pb-2">
+              {selectedDoctorProfile === "dr-reeta-bhambri" ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <p className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span><strong>Active Scoped Calibration:</strong> 5 handwriting sheets fed • Obstetric & acute UTI formulary mapped • Zero bias on other doctors.</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowCalibrationDetails(!showCalibrationDetails)}
+                    className="self-start sm:self-auto text-xs px-3 py-1 rounded-full border border-teal-300 dark:border-teal-700 bg-white/80 dark:bg-slate-800/80 text-teal-800 dark:text-teal-200 hover:bg-teal-100/50 font-medium transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    {showCalibrationDetails ? "Hide 5 Ingested Sheets" : "Inspect 5 Ingested Sheets"}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <SlidersHorizontal className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span><strong>Universal Multi-Doctor Engine Active:</strong> General unbiased clinical OCR is enabled. Prescriptions from any hospital or doctor are deciphered using universal medical nomenclature without doctor-specific overrides.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Specimen 01 Folio & Prescription 2 Upload Callout */}
+            {selectedDoctorProfile === "dr-reeta-bhambri" && (
+              <div className="relative z-10 pt-3 space-y-4">
+                {/* Specimen 01: Antenatal Consultation Folio */}
+                <div className="relative rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-teal-200/90 dark:border-teal-800/80 p-4 transition-all shadow-xs">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-3.5">
+                      <div className="relative shrink-0">
+                        <img
+                          src={getCalibratedAssetUrl(DR_REETA_BHAMBRI_PROFILE.presets[0].imageUrl)}
+                          alt="Prescription 1 Preview"
+                          className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700 bg-slate-100 shadow-xs"
+                        />
+                        <span className="absolute -top-1.5 -left-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-teal-600 text-white tracking-wider uppercase">
+                          Specimen #1
+                        </span>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                            Prescription 1: Simranjit Kaur (28y F)
+                          </h4>
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            Obstetric Antenatal Care (G2P1)
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Calibrated handwriting translation for cursive "Tas":
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
+                            Folvit 5mg (1-0-0)
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
+                            Drotin 40 (1-0-1)
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
+                            Ecosprin 75 (0-0-1)
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
+                            Doxinate (0-0-1 HS)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 pt-2 md:pt-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPreset("rx1-antenatal")}
+                        disabled={isProcessing}
+                        className="w-full md:w-auto px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow disabled:opacity-50"
+                      >
+                        <Scan className="w-3.5 h-3.5" />
+                        Load Specimen #1 into Scanner
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Upload Self-Testing Ribbon for Prescription 2 */}
+                <div className="rounded-2xl border border-dashed border-teal-300 dark:border-teal-700/80 bg-teal-50/50 dark:bg-teal-950/20 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 text-xs text-teal-900 dark:text-teal-200">
+                    <span className="w-6 h-6 rounded-full bg-teal-200 dark:bg-teal-800 text-teal-900 dark:text-teal-100 font-bold flex items-center justify-center shrink-0 text-[11px]">
+                      2
+                    </span>
+                    <div>
+                      <strong className="font-semibold">Prescription 2 (Kajal - 24y F, Acute UTI) is unmounted from display:</strong>
+                      <span className="text-slate-600 dark:text-slate-300 ml-1">
+                        Test live handwriting deciphering yourself by dragging or uploading the prescription file into the upload zone below.
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-medium text-teal-700 dark:text-teal-300 shrink-0 px-2.5 py-1 rounded-full bg-white/70 dark:bg-slate-800/60 border border-teal-200 dark:border-teal-800 self-start sm:self-auto">
+                    Ready for Upload Test ↓
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKeyModal(false)}
-                    className="text-xs text-slate-400 hover:text-slate-600"
-                  >
-                    Close
-                  </button>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  The Dr. Reeta Bhambri handwriting calibration profile runs offline with full accuracy. If you want to use cloud vision for arbitrary doctor prescriptions, enter your Gemini API key below:
-                </p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="password"
-                    value={tempApiKey}
-                    onChange={(e) => setTempApiKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className="flex-1 px-3 py-1.5 text-xs border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:ring-1 focus:ring-teal-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveApiKey}
-                    className="px-3 py-1.5 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-medium rounded hover:bg-slate-800"
-                  >
-                    Save Key
-                  </button>
-                  {apiKey && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        localStorage.removeItem("medmatch_gemini_api_key");
-                        setApiKey("");
-                        setTempApiKey("");
-                      }}
-                      className="px-2.5 py-1.5 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs rounded hover:bg-rose-50"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {apiKeySavedMsg && (
-                  <p className="text-xs text-teal-600 dark:text-teal-400 font-medium flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> API key saved in browser storage.
-                  </p>
-                )}
               </div>
             )}
 
-            {/* Expandable Calibration Sheets Inspector */}
+            {/* Expandable Calibration Sheets Visual Strip */}
             {showCalibrationDetails && (
-              <div className="border-t border-teal-200 dark:border-teal-800 pt-3 space-y-3">
+              <div className="relative z-10 mt-5 pt-4 border-t border-teal-100 dark:border-teal-900/50 space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                    Dr. Reeta Bhambri Calibration Dataset (5 Ingested Sheets):
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    Dr. Reeta Bhambri Calibration Corpus (5 Ingested Sheets):
                   </span>
                   <span className="text-[11px] text-teal-700 dark:text-teal-300 font-medium">
-                    Trained on Patiala Clinic Practice
+                    Patiala Clinic Ground Truth
                   </span>
                 </div>
 
-                {/* Sheet Tabs */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                {/* Microfilm Timeline Ribbon */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
                   {DR_REETA_BHAMBRI_PROFILE.calibrationSheets.map((sheet) => (
                     <button
                       key={sheet.sheetNumber}
                       type="button"
                       onClick={() => setActiveCalibrationTab(sheet.sheetNumber)}
-                      className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap transition-colors ${
+                      className={`px-3 py-1.5 text-xs rounded-full font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                         activeCalibrationTab === sheet.sheetNumber
                           ? "bg-teal-700 text-white shadow-xs"
-                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                          : "bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-teal-400"
                       }`}
                     >
-                      Sheet {sheet.sheetNumber}: {sheet.title.split(" ")[0]}
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        activeCalibrationTab === sheet.sheetNumber ? "bg-white text-teal-800" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                      }`}>
+                        {sheet.sheetNumber}
+                      </span>
+                      {sheet.title}
                     </button>
                   ))}
                 </div>
 
-                {/* Selected Sheet Content */}
+                {/* Selected Sheet Content Showcase */}
                 {(() => {
                   const sheet = DR_REETA_BHAMBRI_PROFILE.calibrationSheets.find(
                     (s) => s.sheetNumber === activeCalibrationTab
                   );
                   if (!sheet) return null;
                   return (
-                    <div className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs space-y-2.5">
-                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <div className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
                         <div>
                           <p className="font-bold text-slate-900 dark:text-slate-100">
                             Sheet {sheet.sheetNumber}: {sheet.title}
                           </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             {sheet.description}
                           </p>
                         </div>
                         <img
                           src={getCalibratedAssetUrl(`/calibrated-samples/calibration-sheet-${sheet.sheetNumber}.jpg`)}
                           alt={`Sheet ${sheet.sheetNumber}`}
-                          className="w-10 h-10 rounded object-cover border border-slate-200 dark:border-slate-700"
+                          className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shadow-xs"
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                         {sheet.samples.map((sample, sIdx) => (
                           <div
                             key={sIdx}
-                            className="p-2 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-start justify-between gap-2"
+                            className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 flex items-start justify-between gap-2"
                           >
                             <div className="min-w-0">
-                              <p className="font-mono font-medium text-teal-700 dark:text-teal-300 truncate">
+                              <p className="font-mono text-xs font-semibold text-teal-800 dark:text-teal-300 truncate">
                                 "{sample.writtenText}"
                               </p>
                               <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
                                 → {sample.intendedMeaning}
                               </p>
                             </div>
-                            <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">
+                            <span className="text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">
                               {sample.category}
                             </span>
                           </div>

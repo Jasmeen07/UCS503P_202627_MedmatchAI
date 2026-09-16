@@ -51,7 +51,11 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function buildPrompt(clinicalContext?: string, hasVerificationFile?: boolean): string {
+function buildPrompt(
+  clinicalContext?: string,
+  hasVerificationFile?: boolean,
+  doctorProfileId?: string
+): string {
   let prompt = `You are an expert clinical pharmacist assistant analyzing a real doctor's prescription (common in Indian medical practice).
 Indian doctors write brand names like Dolo 650, Stemlo, Stamlo, Avas, Asomex, Thyrox, Thyronorm, Augmentin, Azithral, Glycomet, Rigler Forte, Muphyline, Mucolite, Zifi, etc.
 Dosage timings are written as shorthand: "1-0-1", "0-0-1", "1-0-0", or with arrows/dots.
@@ -82,8 +86,11 @@ For items verified against the secondary document, set "verified_source" to "pha
 `;
   }
 
-  // Inject Doctor Handwriting Calibration Knowledge (Dr. Reeta Bhambri & general clinical formulary)
-  prompt += getDoctorCalibrationPrompt();
+  // Doctor Calibration Prompt is strictly scoped: only injected if Dr. Reeta Bhambri profile is selected.
+  // When analyzing other doctors, prompt remains 100% universal and unbiased.
+  if (doctorProfileId === "dr-reeta-bhambri") {
+    prompt += getDoctorCalibrationPrompt();
+  }
 
   prompt += `
 IMPORTANT EXTRACTION REQUIREMENTS:
@@ -146,16 +153,17 @@ export async function extractWithGeminiApi(
   file: File,
   apiKey: string,
   clinicalContext?: string,
-  verificationFile?: File | null
+  verificationFile?: File | null,
+  doctorProfileId?: string
 ): Promise<ExtractedData> {
   if (!apiKey || !apiKey.trim()) {
-    throw new Error("No Gemini API key provided. Please connect an API key.");
+    throw new Error("No Gemini API key provided. Please configure NEXT_PUBLIC_GEMINI_API_KEY.");
   }
 
   const base64Data = await fileToBase64(file);
   const mimeType = file.type || "image/jpeg";
   const hasVerification = Boolean(verificationFile && verificationFile.size > 0);
-  const promptText = buildPrompt(clinicalContext, hasVerification);
+  const promptText = buildPrompt(clinicalContext, hasVerification, doctorProfileId);
 
   const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
     { text: promptText },
@@ -273,7 +281,14 @@ export async function extractWithGeminiApi(
         other_notes: parsed.other_notes || "",
       };
 
-      return calibratePrescriptionOutput(result);
+      if (doctorProfileId === "dr-reeta-bhambri") {
+        return calibratePrescriptionOutput(result, undefined, { force: true });
+      } else if (doctorProfileId === "general") {
+        return result; // Pure unbiased universal extraction
+      } else {
+        // Auto-detect: only calibrate if letterhead explicitly references Dr. Reeta Bhambri
+        return calibratePrescriptionOutput(result, undefined, { force: false });
+      }
     } catch (e: any) {
       lastErrorMsg = e?.message || "Extraction failed";
       console.warn(`Error invoking ${model}:`, e);
