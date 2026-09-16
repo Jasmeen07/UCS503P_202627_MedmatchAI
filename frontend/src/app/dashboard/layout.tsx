@@ -48,6 +48,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const cleanPath = (pathname || "").replace(/\/$/, "");
+  const isOverview = cleanPath === "/dashboard" || cleanPath.endsWith("/dashboard");
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -465,7 +467,8 @@ export default function DashboardLayout({
             {/* Navigation Links */}
             <nav className="px-3 space-y-1 mt-2">
               {navLinks.map((link) => {
-                const isActive = pathname === link.href;
+                const cleanHref = link.href.replace(/\/$/, "");
+                const isActive = cleanPath === cleanHref || cleanPath.endsWith(cleanHref);
                 const Icon = link.icon;
                 
                 return (
@@ -844,8 +847,8 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* Page Content */}
-        <div className={`flex-1 h-full overflow-y-auto px-6 sm:px-10 lg:px-12 ${pathname === "/dashboard" ? "pt-0 pb-20" : "pt-20 pb-20"}`}>
+        {/* Page Content — Starts from pt-0 on overview so hero visual bleeds to the top */}
+        <div className={`flex-1 h-full overflow-y-auto px-6 sm:px-10 lg:px-12 ${isOverview ? "pt-0 pb-20" : "pt-20 pb-20"}`}>
           <div className="max-w-[1280px] mx-auto w-full h-full">
             {children}
           </div>

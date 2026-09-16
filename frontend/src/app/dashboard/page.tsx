@@ -136,7 +136,7 @@ export default function DashboardOverview() {
         </div>
 
         {/* Right Doctor Consultation Visual — Reaches all the way UP to the very start of the page */}
-        <div className="relative flex items-start justify-end shrink-0 md:w-[540px] lg:w-[620px] xl:w-[720px] pt-0">
+        <div className="relative flex items-start justify-end shrink-0 md:w-[540px] lg:w-[620px] xl:w-[720px] pt-0 -mt-3 sm:-mt-5 md:-mt-7 lg:-mt-9">
           {/* Dedicated Wave Contour Layer locked to the Doctor Illustration */}
           <div className="absolute -inset-x-12 -top-10 bottom-0 pointer-events-none select-none z-0">
             <svg 
