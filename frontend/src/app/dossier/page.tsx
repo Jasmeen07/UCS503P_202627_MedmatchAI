@@ -33,24 +33,41 @@ import {
 } from "@/lib/patientData";
 
 export default function PatientDossierPage() {
-  const [dossier, setDossier] = useState<PatientDossierData>(() => getPatientDossier());
-  const [prescriptions, setPrescriptions] = useState<StoredPrescription[]>(() => getPatientPrescriptions());
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    // Check if token is passed via query params in browser
+  const [dossier, setDossier] = useState<PatientDossierData>(() => {
     let tokenParam: string | null = null;
+    let patientParam: string | null = null;
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       tokenParam = params.get("token");
+      patientParam = params.get("patient");
+    }
+    return getPatientDossier(patientParam, tokenParam);
+  });
+  const [prescriptions, setPrescriptions] = useState<StoredPrescription[]>(() => {
+    let tokenParam: string | null = null;
+    let patientParam: string | null = null;
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      tokenParam = params.get("token");
+      patientParam = params.get("patient");
+    }
+    const initial = getPatientDossier(patientParam, tokenParam);
+    return initial.prescriptions || getPatientPrescriptions();
+  });
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let tokenParam: string | null = null;
+    let patientParam: string | null = null;
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      tokenParam = params.get("token");
+      patientParam = params.get("patient");
     }
 
-    const email = getActivePatientEmail();
-    const data = getPatientDossier(email, tokenParam);
+    const data = getPatientDossier(patientParam, tokenParam);
     setDossier(data);
-
-    const rxs = getPatientPrescriptions(email);
-    setPrescriptions(rxs);
+    setPrescriptions(data.prescriptions || getPatientPrescriptions(data.email));
   }, []);
 
   const handlePrint = () => {
@@ -128,6 +145,53 @@ export default function PatientDossierPage() {
           </div>
         </div>
       </header>
+
+      {/* Patient Dossier Switcher (Hidden in Print) */}
+      <div className="bg-white border-b border-slate-200 py-2.5 px-4 sm:px-8 print:hidden">
+        <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 font-medium">Selected Dossier:</span>
+            <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              {dossier.patientName}
+            </span>
+            <span className="font-mono text-slate-400 text-[11px]">({dossier.token})</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-slate-400 text-[11px] hidden md:inline">Inspect Patient:</span>
+            <Link
+              href="/dossier?token=EMG-8821-VLT"
+              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                dossier.token.includes("8821") 
+                  ? "bg-emerald-600 text-white shadow-xs" 
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Simranjit Kaur (Antenatal)
+            </Link>
+            <Link
+              href="/dossier?token=EMG-3312-VLT"
+              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                dossier.token.includes("3312") 
+                  ? "bg-emerald-600 text-white shadow-xs" 
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Harpreet Singh (Post-Op)
+            </Link>
+            <Link
+              href="/dossier?token=EMG-4091-VLT"
+              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
+                dossier.token.includes("4091") 
+                  ? "bg-emerald-600 text-white shadow-xs" 
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Amandeep Sharma (Trimester I)
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {/* Main Dossier Container */}
       <main className="max-w-5xl mx-auto px-4 sm:px-8 py-8 print:p-0 print:max-w-none">
@@ -216,12 +280,14 @@ export default function PatientDossierPage() {
               ))}
             </div>
 
-            <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <strong>Active Gestational Safeguard:</strong> Patient is in Trimester II (Week 28). Cross-reference all antibiotic, antihypertensive, and analgesics against pregnancy category criteria before prescribing.
+            {dossier.clinicalAlertBanner && (
+              <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Clinical Directive:</strong> {dossier.clinicalAlertBanner}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Condition Episodes Timeline (UC-04 Direct Implementation) */}

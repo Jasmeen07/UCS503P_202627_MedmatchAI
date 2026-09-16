@@ -917,6 +917,8 @@ export interface PatientDossierData {
     prescribedBy: string;
     episodeName: string;
   }>;
+  clinicalAlertBanner?: string;
+  prescriptions?: StoredPrescription[];
   token: string;
   generatedAt: string;
   expiresAt: string;
@@ -952,11 +954,240 @@ export function generateEmergencyToken(email?: string | null): string {
   return newToken;
 }
 
-export function getPatientDossier(email?: string | null, tokenOverride?: string | null): PatientDossierData {
-  const user = (email || getActivePatientEmail()).trim().toLowerCase();
-  const isDemo = isDemoPatient(user) || user === "anonymous" || user.includes("jk082") || user.includes("patient");
-  const token = tokenOverride || getEmergencyToken(user);
+// ----------------------------------------------------------------------------
+// Dedicated Dossier Profiles for Clinic Demo Patients
+// ----------------------------------------------------------------------------
 
+function getHarpreetSinghDossier(token: string): PatientDossierData {
+  const now = new Date();
+  const generatedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const expiresDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const expiresAt = expiresDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const episodes: ClinicalEpisode[] = [
+    {
+      id: "ep-h-1",
+      title: "Post-Operative Recovery & Wound Care (Laparoscopic Cholecystectomy)",
+      category: "surgical",
+      status: "active",
+      physician: "Dr. K.S. Duggal",
+      hospital: "Fortis Hospital (General Surgery)",
+      dateRange: "Sept 2026 to Present",
+      clinicalNotes: "Day 10 post-laparoscopic cholecystectomy. Four puncture port sites clean, healing per primam with no discharge. Mild umbilical tenderness on deep palpation. Advised to avoid heavy lifting and maintain sterile dressing.",
+      medications: [
+        { name: "Cefuroxime Axetil", dosage: "500mg", frequency: "Twice daily (BD)", instructions: "After food for 7 days" },
+        { name: "Chymoral Forte", dosage: "2 tablets", frequency: "Three times daily (TDS)", instructions: "Empty stomach with water" },
+        { name: "Paracetamol", dosage: "650mg", frequency: "SOS (As needed)", instructions: "Take only for fever or acute wound ache" }
+      ]
+    },
+    {
+      id: "ep-h-2",
+      title: "Essential Hypertension & Cardiovascular Review",
+      category: "cardiovascular",
+      status: "monitoring",
+      physician: "Dr. A.K. Mehta",
+      hospital: "Apollo Clinics (Cardiology)",
+      dateRange: "Jun 2026 to Present",
+      clinicalNotes: "Post-surgical resting blood pressure 128/82 mmHg. Maintained on Calcium Channel Blocker therapy. No signs of peripheral pedal edema.",
+      medications: [
+        { name: "Amlodipine", dosage: "5mg", frequency: "Once daily (OD)", instructions: "Take at night before sleep" },
+        { name: "Telmisartan", dosage: "40mg", frequency: "Once daily (OD)", instructions: "Take in the morning with water" }
+      ]
+    },
+    {
+      id: "ep-h-3",
+      title: "Bile Reflux & Post-Cholecystectomy Dyspepsia",
+      category: "gastro",
+      status: "active",
+      physician: "Dr. Sharma",
+      hospital: "City Hospital (Gastroenterology)",
+      dateRange: "Aug 2026 to Present",
+      clinicalNotes: "Patient experienced mild morning bilious bitterness. Started on Rabeprazole 20mg. Low-fat dietary guidelines reinforced.",
+      medications: [
+        { name: "Rabeprazole Sodium", dosage: "20mg", frequency: "Once daily (OD)", instructions: "Take 30 minutes before first meal" }
+      ]
+    }
+  ];
+
+  const activeMedications = [
+    { name: "Cefuroxime Axetil", dosage: "500mg", frequency: "Twice daily (BD)", timing: "Morning & Night after meals", instructions: "Second-generation cephalosporin prophylaxis", prescribedBy: "Dr. K.S. Duggal", episodeName: "Post-Operative Recovery" },
+    { name: "Chymoral Forte", dosage: "2 tablets", frequency: "Three times daily (TDS)", timing: "Morning, Afternoon & Night", instructions: "Enzymatic reduction of post-surgical edema", prescribedBy: "Dr. K.S. Duggal", episodeName: "Post-Operative Recovery" },
+    { name: "Rabeprazole Sodium", dosage: "20mg", frequency: "Once daily (OD)", timing: "Morning before breakfast", instructions: "Acid secretion suppression and bile gastritis relief", prescribedBy: "Dr. Sharma", episodeName: "Bile Reflux Care" },
+    { name: "Amlodipine", dosage: "5mg", frequency: "Once daily (OD)", timing: "Night at bedtime", instructions: "Arterial vasodilation for BP control", prescribedBy: "Dr. A.K. Mehta", episodeName: "Essential Hypertension" },
+    { name: "Telmisartan", dosage: "40mg", frequency: "Once daily (OD)", timing: "Morning at 8:00 AM", instructions: "Angiotensin receptor blocker", prescribedBy: "Dr. A.K. Mehta", episodeName: "Essential Hypertension" }
+  ];
+
+  const prescriptions: StoredPrescription[] = [
+    {
+      id: "h-rx-1",
+      doc: "Dr. K.S. Duggal",
+      hospital: "Fortis Hospital",
+      diag: "Post-Cholecystectomy Suture Check",
+      date: "2026-09-07",
+      meds: 3,
+      status: "active",
+      source: "calibrated_ocr",
+      conf: "high",
+      medicines: [
+        { medicine_name: "Cefuroxime Axetil", dosage: "500mg", frequency: "Twice daily", duration: "7 days" },
+        { medicine_name: "Chymoral Forte", dosage: "2 tablets", frequency: "Three times daily", duration: "5 days" }
+      ]
+    },
+    {
+      id: "h-rx-2",
+      doc: "Dr. A.K. Mehta",
+      hospital: "Apollo Clinics",
+      diag: "Hypertension Maintenance",
+      date: "2026-08-20",
+      meds: 2,
+      status: "active",
+      source: "manual",
+      conf: "high",
+      medicines: [
+        { medicine_name: "Amlodipine", dosage: "5mg", frequency: "Once daily", duration: "90 days" },
+        { medicine_name: "Telmisartan", dosage: "40mg", frequency: "Once daily", duration: "90 days" }
+      ]
+    }
+  ];
+
+  return {
+    patientName: "Harpreet Singh",
+    email: "harpreet.s@example.com",
+    ageGender: "48 Y / Male",
+    bloodGroup: "O+ (Rh Positive)",
+    patientUid: "PT-2026-LUD-3312",
+    emergencyContact: {
+      name: "Gurpreet Kaur",
+      relation: "Spouse",
+      phone: "+91 98141-77820"
+    },
+    allergies: [
+      { substance: "NSAIDs (Diclofenac & Ibuprofen)", reaction: "Acute Peptic Ulceration & Bronchospasm", severity: "High" },
+      { substance: "Iodine Radiopaque Contrast Media", reaction: "Facial angioedema and erythematous rash", severity: "Moderate" }
+    ],
+    chronicConditions: [
+      "Post-Operative Day 10 (Laparoscopic Cholecystectomy)",
+      "Essential Hypertension (Stage 1 - Medicated)",
+      "Bile Reflux Gastritis"
+    ],
+    clinicalAlertBanner: "Surgical Wound Integrity: Day 10 post-laparoscopic cholecystectomy. Subcostal port sites clean, sutures intact. Strictly avoid NSAIDs (Diclofenac/Ibuprofen) due to high-risk hypersensitivity history.",
+    episodes,
+    activeMedications,
+    prescriptions,
+    token,
+    generatedAt,
+    expiresAt
+  };
+}
+
+function getAmandeepSharmaDossier(token: string): PatientDossierData {
+  const now = new Date();
+  const generatedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const expiresDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const expiresAt = expiresDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const episodes: ClinicalEpisode[] = [
+    {
+      id: "ep-a-1",
+      title: "First Trimester Antenatal Routine & Micronutrient Protocol",
+      category: "preventative",
+      status: "active",
+      physician: "Dr. Reeta Bhambri",
+      hospital: "Ranjit Maternity Clinic & Nursing Home",
+      dateRange: "Aug 2026 to Present",
+      clinicalNotes: "Gestational age 11 weeks. Booking ultrasound confirms single viable intrauterine fetus (FHR: 156 bpm, CRL: 44mm). Mild nausea (emesis gravidarum) controlled with Doxylamine. Maternal Hb 11.8 g/dL, blood group A+. Nuchal Translucency (NT) scan scheduled at 12+4 weeks.",
+      medications: [
+        { name: "Folic Acid", dosage: "5mg", frequency: "Once daily (OD)", instructions: "Take with water after morning breakfast" },
+        { name: "Doxinate (Doxylamine + Pyridoxine)", dosage: "10mg/10mg", frequency: "Once daily (OD)", instructions: "Take at bedtime for morning sickness relief" },
+        { name: "Cholecalciferol (Vitamin D3)", dosage: "1,000 IU", frequency: "Once daily (OD)", instructions: "With morning milk or meal" }
+      ]
+    },
+    {
+      id: "ep-a-2",
+      title: "Seasonal Allergic Rhinitis & Sinonasal Hygiene",
+      category: "respiratory",
+      status: "monitoring",
+      physician: "Dr. Gupta",
+      hospital: "Vision & ENT Care Center",
+      dateRange: "Jul 2026 to Present",
+      clinicalNotes: "Recurrent paroxysmal sneezing and watery rhinorrhea. Given gestational status, oral decongestants and first-generation systemic antihistamines are avoided. Maintained on non-medicated isotonic saline nasal wash.",
+      medications: [
+        { name: "Isotonic Saline 0.9% Nasal Spray", dosage: "2 puffs/nostril", frequency: "As needed (SOS)", instructions: "Safe non-pharmacological mucosal lavage" }
+      ]
+    }
+  ];
+
+  const activeMedications = [
+    { name: "Folic Acid", dosage: "5mg", frequency: "Once daily (OD)", timing: "Morning after breakfast", instructions: "Essential neural tube prophylaxis in 1st trimester", prescribedBy: "Dr. Reeta Bhambri", episodeName: "First Trimester Antenatal Care" },
+    { name: "Doxinate (Doxylamine 10mg + B6 10mg)", dosage: "1 Tablet", frequency: "Once daily at bedtime", timing: "Night at 9:30 PM", instructions: "Prevents morning nausea & vomiting of pregnancy", prescribedBy: "Dr. Reeta Bhambri", episodeName: "First Trimester Antenatal Care" },
+    { name: "Cholecalciferol Drops", dosage: "1,000 IU", frequency: "Once daily (OD)", timing: "Morning with breakfast", instructions: "Gestational bone and immune support", prescribedBy: "Dr. Reeta Bhambri", episodeName: "First Trimester Antenatal Care" },
+    { name: "Saline Nasal Spray (0.9%)", dosage: "2 Puffs", frequency: "As needed (SOS)", timing: "Day or night during congestion", instructions: "Drug-free allergic rhinitis clearance", prescribedBy: "Dr. Gupta", episodeName: "Allergic Rhinitis" }
+  ];
+
+  const prescriptions: StoredPrescription[] = [
+    {
+      id: "a-rx-1",
+      doc: "Dr. Reeta Bhambri",
+      hospital: "Ranjit Hospital & Maternity Home",
+      diag: "Antenatal Booking (Trimester I - Week 11)",
+      date: "2026-09-02",
+      meds: 3,
+      status: "active",
+      source: "calibrated_ocr",
+      conf: "high",
+      medicines: [
+        { medicine_name: "Folic Acid", dosage: "5mg", frequency: "Once daily", duration: "90 days" },
+        { medicine_name: "Doxinate", dosage: "1 tablet", frequency: "At bedtime", duration: "30 days" }
+      ]
+    },
+    {
+      id: "a-rx-2",
+      doc: "Dr. Gupta",
+      hospital: "Vision & ENT Care Center",
+      diag: "Allergic Rhinitis (Pregnancy Safe)",
+      date: "2026-07-15",
+      meds: 1,
+      status: "active",
+      source: "manual",
+      conf: "high",
+      medicines: [
+        { medicine_name: "Saline Nasal Spray", dosage: "2 puffs", frequency: "PRN", duration: "60 days" }
+      ]
+    }
+  ];
+
+  return {
+    patientName: "Amandeep Sharma",
+    email: "amandeep.sharma@example.com",
+    ageGender: "29 Y / Female",
+    bloodGroup: "A+ (Rh Positive)",
+    patientUid: "PT-2026-LUD-4091",
+    emergencyContact: {
+      name: "Vikram Sharma",
+      relation: "Spouse",
+      phone: "+91 98882-65431"
+    },
+    allergies: [
+      { substance: "Macrolide Antibiotics (Erythromycin & Clarithromycin)", reaction: "Severe epigastric pain & intractable vomiting", severity: "Moderate" },
+      { substance: "Aspirin & Non-Selective Salicylates", reaction: "Mild facial flushing & rhinorrhea", severity: "Low" }
+    ],
+    chronicConditions: [
+      "Early Gestation Pregnancy (Trimester I — Week 11)",
+      "Emesis Gravidarum (Gestational Nausea)",
+      "Seasonal Allergic Rhinitis"
+    ],
+    clinicalAlertBanner: "First Trimester Gestational Safeguard: Patient is at 11 weeks gestation. First-trimester booking ultrasound completed. All prescribed therapies must have established Category A or B gestational safety profiles.",
+    episodes,
+    activeMedications,
+    prescriptions,
+    token,
+    generatedAt,
+    expiresAt
+  };
+}
+
+function getSimranjitKaurDossier(token: string): PatientDossierData {
+  const user = "jk0822123@gmail.com";
   const treatmentGroups = getPatientTreatmentGroups(user);
 
   const episodes: ClinicalEpisode[] = treatmentGroups.map(tg => ({
@@ -998,56 +1229,120 @@ export function getPatientDossier(email?: string | null, tokenOverride?: string 
   const expiresDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const expiresAt = expiresDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
-  if (isDemo) {
+  return {
+    patientName: "Simranjit Kaur",
+    email: user,
+    ageGender: "34 Y / Female",
+    bloodGroup: "B+ (Rh Positive)",
+    patientUid: "PT-2026-LUD-8821",
+    emergencyContact: {
+      name: "Jaswinder Singh",
+      relation: "Spouse",
+      phone: "+91 98765-43210"
+    },
+    allergies: [
+      { substance: "Penicillin / Amoxicillin", reaction: "Urticaria, Angioedema & Severe Rash", severity: "High" },
+      { substance: "Sulfonamides (Cotrimoxazole)", reaction: "Cutaneous drug eruption", severity: "Moderate" }
+    ],
+    chronicConditions: [
+      "Pregnancy (Trimester II — Week 28)",
+      "History of Recurrent Gestational UTI",
+      "Borderline Gestational Glycemia (Diet Controlled)"
+    ],
+    clinicalAlertBanner: "Active Gestational Safeguard: Patient is in Trimester II (Week 28). Cross-reference all antibiotic, antihypertensive, and analgesics against pregnancy category criteria before prescribing.",
+    episodes,
+    activeMedications,
+    prescriptions: DEMO_PRESCRIPTIONS,
+    token,
+    generatedAt,
+    expiresAt
+  };
+}
+
+export function getPatientDossier(email?: string | null, tokenOverride?: string | null): PatientDossierData {
+  const rawToken = (tokenOverride || "").trim().toUpperCase();
+  const rawEmail = (email || getActivePatientEmail()).trim().toLowerCase();
+
+  // 1. Route by token or patient identity for Harpreet Singh
+  if (rawToken.includes("3312") || rawEmail.includes("harpreet")) {
+    return getHarpreetSinghDossier(rawToken || "EMG-3312-VLT");
+  }
+
+  // 2. Route by token or patient identity for Amandeep Sharma
+  if (rawToken.includes("4091") || rawEmail.includes("amandeep")) {
+    return getAmandeepSharmaDossier(rawToken || "EMG-4091-VLT");
+  }
+
+  // 3. If a non-demo user is logged in and not looking up a specific demo token, return their scoped vault
+  if (!isDemoPatient(rawEmail) && rawEmail !== "anonymous" && !rawToken.includes("8821")) {
+    const user = rawEmail;
+    const token = rawToken || getEmergencyToken(user);
+    const treatmentGroups = getPatientTreatmentGroups(user);
+    const episodes: ClinicalEpisode[] = treatmentGroups.map(tg => ({
+      id: tg.id,
+      title: tg.name,
+      category: tg.category,
+      status: tg.status,
+      physician: tg.physician,
+      hospital: tg.hospital,
+      dateRange: tg.startDate,
+      clinicalNotes: tg.clinicalNotes,
+      medications: (tg.medications || []).map(m => ({
+        name: m.name,
+        dosage: m.dosage,
+        frequency: m.frequency,
+        instructions: m.instructions
+      }))
+    }));
+
+    const activeMedications: PatientDossierData["activeMedications"] = [];
+    treatmentGroups.forEach(tg => {
+      if (tg.status === "active" || tg.status === "monitoring") {
+        (tg.medications || []).forEach(m => {
+          activeMedications.push({
+            name: m.name,
+            dosage: m.dosage,
+            frequency: m.frequency,
+            timing: m.timing,
+            instructions: m.instructions || "As directed",
+            prescribedBy: tg.physician,
+            episodeName: tg.name
+          });
+        });
+      }
+    });
+
+    const now = new Date();
+    const generatedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const expiresDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const expiresAt = expiresDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
     return {
-      patientName: "Simranjit Kaur",
-      email: user === "anonymous" ? "jk0822123@gmail.com" : user,
-      ageGender: "34 Y / Female",
-      bloodGroup: "B+ (Rh Positive)",
-      patientUid: "PT-2026-LUD-8821",
+      patientName: user.split("@")[0].toUpperCase(),
+      email: user,
+      ageGender: "Patient / Verified",
+      bloodGroup: "O+ (Positive)",
+      patientUid: `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`,
       emergencyContact: {
-        name: "Jaswinder Singh",
-        relation: "Spouse",
-        phone: "+91 98765-43210"
+        name: "Primary Emergency Contact",
+        relation: "Family",
+        phone: "+91 98000-00000"
       },
       allergies: [
-        { substance: "Penicillin / Amoxicillin", reaction: "Urticaria, Angioedema & Severe Rash", severity: "High" },
-        { substance: "Sulfonamides (Cotrimoxazole)", reaction: "Cutaneous drug eruption", severity: "Moderate" }
+        { substance: "No Severe Drug Hypersensitivities Logged", reaction: "N/A", severity: "Low" }
       ],
-      chronicConditions: [
-        "Pregnancy (Trimester II — Week 28)",
-        "History of Recurrent Gestational UTI",
-        "Borderline Gestational Glycemia (Diet Controlled)"
-      ],
+      chronicConditions: treatmentGroups.map(tg => tg.name),
+      clinicalAlertBanner: "Patient Health Vault Record: Verified cryptographic snapshot from Cloud Firestore tenant vault.",
       episodes,
       activeMedications,
+      prescriptions: getPatientPrescriptions(user),
       token,
       generatedAt,
       expiresAt
     };
   }
 
-  // Non-demo patient
-  return {
-    patientName: user.split("@")[0].toUpperCase(),
-    email: user,
-    ageGender: "Patient / Verified",
-    bloodGroup: "O+ (Positive)",
-    patientUid: `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`,
-    emergencyContact: {
-      name: "Primary Emergency Contact",
-      relation: "Family",
-      phone: "+91 98000-00000"
-    },
-    allergies: [
-      { substance: "No Severe Food Allergies Recorded", reaction: "N/A", severity: "Low" }
-    ],
-    chronicConditions: treatmentGroups.map(tg => tg.name),
-    episodes,
-    activeMedications,
-    token,
-    generatedAt,
-    expiresAt
-  };
+  // 4. Default: Simranjit Kaur (EMG-8821-VLT)
+  return getSimranjitKaurDossier(rawToken || DEFAULT_EMERGENCY_TOKEN);
 }
 
