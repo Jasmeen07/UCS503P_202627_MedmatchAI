@@ -857,7 +857,7 @@ export default function DashboardLayout({
 
       {/* MOBILE SEARCH MODAL OVERLAY */}
       {mobileSearchOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col p-4 sm:hidden animate-in fade-in">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex flex-col p-4 sm:hidden animate-in fade-in">
           <div className="bg-white rounded-2xl p-4 shadow-2xl flex flex-col max-h-[85vh] border border-slate-200">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <Search className="w-4 h-4 text-teal-700 shrink-0" />

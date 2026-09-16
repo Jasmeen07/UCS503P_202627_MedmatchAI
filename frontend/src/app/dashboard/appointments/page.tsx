@@ -287,10 +287,22 @@ export default function AppointmentsPage() {
 
   // Book Again (Prefill Create Modal)
   const handleBookAgain = (apt: AppointmentItem) => {
-    setNewTitle(`Follow-up: ${apt.title}`);
+    const cleanTitle = apt.title.replace(/^(Follow-up:\s*)+/i, "").trim();
+    setNewTitle(`Follow-up: ${cleanTitle}`);
     setNewDoc(apt.doc);
     setNewLocation(apt.location);
     setNewSpecialty(apt.specialty || "General Medicine");
+    const matchedPreset = PRESET_DOCTORS.find(
+      (d) =>
+        d.name.toLowerCase().includes(apt.doc.toLowerCase()) ||
+        apt.doc.toLowerCase().includes(d.name.toLowerCase())
+    );
+    if (matchedPreset) {
+      setSelectedDoctorId(matchedPreset.id);
+      if (matchedPreset.defaultSlots.length > 0) {
+        setNewTime(matchedPreset.defaultSlots[0]);
+      }
+    }
     setIsCreateOpen(true);
   };
 
@@ -830,20 +842,20 @@ export default function AppointmentsPage() {
                     <>
                       <button 
                         onClick={() => openRescheduleModal(apt)}
-                        className="dash-btn-secondary flex-1 py-1.5 text-xs font-semibold flex items-center justify-center gap-1"
+                        className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 transition-colors flex items-center justify-center gap-1.5"
                       >
-                        <RefreshCw className="w-3 h-3" /> Reschedule
+                        <RefreshCw className="w-3 h-3 text-slate-500" /> Reschedule
                       </button>
                       <button 
                         onClick={() => handleToggleCompleted(apt)}
-                        className="dash-btn-secondary flex-1 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/10 border-emerald-500/30 flex items-center justify-center gap-1"
+                        className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 transition-colors flex items-center justify-center gap-1.5"
                         title="Mark consultation as completed"
                       >
-                        <CheckCircle2 className="w-3 h-3" /> Done
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Done
                       </button>
                       <button 
                         onClick={() => handleCancelAppointment(apt.id, apt.title)}
-                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                        className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                         title="Cancel appointment"
                       >
                         <X className="w-4 h-4" />
@@ -853,13 +865,13 @@ export default function AppointmentsPage() {
                     <>
                       <button 
                         onClick={() => handleBookAgain(apt)}
-                        className="dash-btn-primary flex-1 py-1.5 text-xs font-semibold flex items-center justify-center gap-1"
+                        className="flex-1 py-2 px-3 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-colors flex items-center justify-center gap-1.5"
                       >
                         <CalendarPlus className="w-3.5 h-3.5" /> Book Again
                       </button>
                       <button 
                         onClick={() => handleToggleCompleted(apt)}
-                        className="dash-btn-secondary py-1.5 px-3 text-xs font-semibold"
+                        className="py-2 px-3 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors"
                         title="Move back to upcoming"
                       >
                         Undo
@@ -916,35 +928,38 @@ export default function AppointmentsPage() {
 
       {/* SCHEDULE APPOINTMENT MODAL */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="dash-card bg-[var(--dash-surface)] border border-[var(--dash-border)] rounded-2xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--dash-border)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-3 sm:p-6 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl max-w-xl w-full shadow-2xl flex flex-col max-h-[88vh] overflow-hidden">
+            {/* STICKY HEADER */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center shadow-xs">
                   <CalendarPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[var(--dash-text)]">Schedule Medical Visit</h3>
-                  <p className="text-xs text-[var(--dash-text-secondary)]">Create a new consultation or routine check-up</p>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Schedule Medical Visit</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Lock an appointment with a verified specialist</p>
                 </div>
               </div>
               <button 
                 onClick={() => setIsCreateOpen(false)}
-                className="w-8 h-8 rounded-lg hover:bg-[var(--dash-surface-warm)] flex items-center justify-center text-[var(--dash-text-tertiary)] hover:text-[var(--dash-text)]"
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateAppointment} className="space-y-4">
+            {/* SCROLLABLE FORM BODY */}
+            <form onSubmit={handleCreateAppointment} id="schedule-apt-form" className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {/* Verified Specialist Doctor Selection */}
-              <div className="p-3 rounded-xl bg-[var(--dash-surface-warm)]/60 border border-[var(--dash-border)] space-y-2">
-                <div className="text-[11px] font-bold text-[var(--dash-text)] uppercase tracking-wider flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
+              <div className="p-3 rounded-2xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 space-y-2">
+                <div className="text-[11px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-teal-800 dark:text-teal-300">
                     <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
                     Verified Clinic Specialists:
                   </span>
-                  <span className="text-[10px] text-teal-700 dark:text-teal-400 font-normal">Instant Slot Lock</span>
+                  <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold">Instant Slot Lock</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {PRESET_DOCTORS.map((doc) => (
@@ -952,10 +967,10 @@ export default function AppointmentsPage() {
                       key={doc.id}
                       type="button"
                       onClick={() => handleSelectDoctor(doc)}
-                      className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                      className={`text-xs px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 ${
                         selectedDoctorId === doc.id
                           ? "bg-teal-700 text-white border-teal-700 font-semibold shadow-xs"
-                          : "bg-[var(--dash-surface)] text-[var(--dash-text)] border-[var(--dash-border)] hover:bg-[var(--dash-surface-warm)]"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
                       }`}
                     >
                       <span>{doc.name}</span>
@@ -965,12 +980,12 @@ export default function AppointmentsPage() {
                 </div>
               </div>
 
-              {/* Doctor Auto-suggestions from prescriptions if any */}
+              {/* Doctor Auto-suggestions from past prescriptions */}
               {treatingDoctors.length > 0 && (
-                <div className="p-3 rounded-xl bg-[var(--dash-surface-warm)]/40 border border-[var(--dash-border)]">
-                  <div className="text-[11px] font-semibold text-[var(--dash-text-secondary)] mb-1.5 flex items-center gap-1.5">
-                    <Stethoscope className="w-3.5 h-3.5 text-[var(--dash-sage)]" />
-                    Or From Your Past Prescriptions:
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60">
+                  <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1.5">
+                    <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+                    From Your Past Prescriptions:
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {treatingDoctors.map((td) => (
@@ -983,8 +998,8 @@ export default function AppointmentsPage() {
                         }}
                         className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
                           newDoc === td.name
-                            ? "bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] border-[var(--dash-sage)] font-semibold"
-                            : "bg-[var(--dash-surface)] text-[var(--dash-text)] border-[var(--dash-border)] hover:bg-[var(--dash-surface-warm)]"
+                            ? "bg-teal-100 text-teal-800 border-teal-300 font-semibold"
+                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
                         }`}
                       >
                         {td.name}
@@ -994,10 +1009,11 @@ export default function AppointmentsPage() {
                 </div>
               )}
 
+              {/* Reason */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider">
-                    Consultation Reason / Title *
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Consultation Reason / Concern *
                   </label>
                   <div className="flex flex-wrap gap-1">
                     {QUICK_REASONS.slice(0, 3).map((r) => (
@@ -1005,7 +1021,7 @@ export default function AppointmentsPage() {
                         key={r}
                         type="button"
                         onClick={() => setNewTitle(r)}
-                        className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
+                        className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                       >
                         {r.split(" ")[0]} {r.split(" ")[1]}
                       </button>
@@ -1018,14 +1034,15 @@ export default function AppointmentsPage() {
                   placeholder="e.g. Antenatal Ultrasound & Review, BP Evaluation" 
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                 />
               </div>
 
+              {/* Physician & Specialty */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider mb-1.5">
-                    Physician / Specialist Name *
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Physician Name *
                   </label>
                   <input 
                     type="text" 
@@ -1033,18 +1050,18 @@ export default function AppointmentsPage() {
                     placeholder="e.g. Dr. Reeta Bhambri" 
                     value={newDoc}
                     onChange={(e) => setNewDoc(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider mb-1.5">
-                    Clinical Department / Specialty
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                    Department / Specialty
                   </label>
                   <select
                     value={newSpecialty}
                     onChange={(e) => setNewSpecialty(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600 font-medium"
                   >
                     {SPECIALTIES.map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -1053,24 +1070,24 @@ export default function AppointmentsPage() {
                 </div>
               </div>
 
-              {/* Date & Time with Quick Picker Chips */}
+              {/* Date & Slot */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider">
-                    Consultation Date &amp; Slot
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Consultation Date &amp; Time Slot
                   </label>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setQuickDate(1)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
+                      className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 font-medium"
                     >
                       +Tomorrow
                     </button>
                     <button
                       type="button"
                       onClick={() => setQuickDate(7)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
+                      className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 font-medium"
                     >
                       +1 Week
                     </button>
@@ -1082,28 +1099,177 @@ export default function AppointmentsPage() {
                     type="date" 
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                   />
                   <input 
                     type="text" 
                     value={newTime}
                     onChange={(e) => setNewTime(e.target.value)}
                     placeholder="Time slot"
-                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600 font-medium"
                   />
                 </div>
 
-                {/* Slot quick chips */}
                 <div className="flex flex-wrap gap-1.5">
                   {AVAILABLE_SLOTS.map((slot) => (
                     <button
                       key={slot}
                       type="button"
                       onClick={() => setNewTime(slot)}
-                      className={`text-[11px] px-2 py-1 rounded-lg border font-medium transition-all ${
+                      className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-all ${
                         newTime === slot
-                          ? "bg-teal-700 text-white border-teal-700"
-                          : "bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] border-[var(--dash-border)] hover:bg-[var(--dash-border)]/50"
+                          ? "bg-teal-700 text-white border-teal-700 shadow-xs font-semibold"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Clinic / Hospital Location
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Ranjit Maternity Clinic & Nursing Home" 
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Preparation Checklist / Notes
+                </label>
+                <input 
+                  type="text"
+                  placeholder="e.g. Bring past ultrasound scan reports and blood panel sheets" 
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                />
+              </div>
+            </form>
+
+            {/* STICKY FOOTER - ALWAYS 100% VISIBLE AT ALL TIMES! */}
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between shrink-0">
+              <div className="text-xs text-slate-500 dark:text-slate-400 truncate pr-3">
+                Slot: <strong className="text-teal-700 dark:text-teal-300">{newDoc}</strong> ({newTime})
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCreateAppointment()}
+                  className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <CalendarCheck className="w-4 h-4" />
+                  <span>Confirm &amp; Book Appointment</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESCHEDULE APPOINTMENT MODAL */}
+      {rescheduleItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-3 sm:p-6 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl flex flex-col max-h-[88vh] overflow-hidden">
+            {/* Sticky Header */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Reschedule Visit</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{rescheduleItem.title} • {rescheduleItem.doc}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setRescheduleItem(null)}
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveReschedule} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-400">
+                Current: <strong>{rescheduleItem.date}</strong> at <strong>{rescheduleItem.time}</strong> ({rescheduleItem.location})
+              </div>
+
+              {/* Quick Date Chips */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    New Date &amp; Time
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setQuickDate(1, true)}
+                      className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 font-medium"
+                    >
+                      Tomorrow
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickDate(3, true)}
+                      className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 font-medium"
+                    >
+                      +3 Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickDate(7, true)}
+                      className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 font-medium"
+                    >
+                      +1 Week
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-2">
+                  <input 
+                    type="date" 
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  />
+                  <input 
+                    type="text" 
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                    placeholder="Time slot"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600 font-medium"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {AVAILABLE_SLOTS.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setRescheduleTime(slot)}
+                      className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-all ${
+                        rescheduleTime === slot
+                          ? "bg-teal-700 text-white border-teal-700 shadow-xs font-semibold"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200"
                       }`}
                     >
                       {slot}
@@ -1113,150 +1279,32 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider mb-1.5">
-                  Clinic / Hospital Location
-                </label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Apollo Hospital, Cardiology Block Room 302" 
-                  value={newLocation}
-                  onChange={(e) => setNewLocation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider mb-1.5">
-                  Preparation Checklist / Clinical Notes
-                </label>
-                <textarea 
-                  rows={2}
-                  placeholder="e.g. Fasting blood test required 8 hours prior, bring old ECG charts..." 
-                  value={newNotes}
-                  onChange={(e) => setNewNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--dash-border)]">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(false)}
-                  className="dash-btn-secondary px-4 py-2 text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="dash-btn-primary px-5 py-2 text-sm font-semibold"
-                >
-                  Schedule Appointment
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* RESCHEDULE APPOINTMENT MODAL */}
-      {rescheduleItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="dash-card bg-[var(--dash-surface)] border border-[var(--dash-border)] rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--dash-border)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center">
-                  <RefreshCw className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--dash-text)]">Reschedule Visit</h3>
-                  <p className="text-xs text-[var(--dash-text-secondary)]">{rescheduleItem.title} • {rescheduleItem.doc}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setRescheduleItem(null)}
-                className="w-8 h-8 rounded-lg hover:bg-[var(--dash-surface-warm)] flex items-center justify-center text-[var(--dash-text-tertiary)] hover:text-[var(--dash-text)]"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveReschedule} className="space-y-4">
-              <div className="p-3 rounded-xl bg-[var(--dash-bg)] border border-[var(--dash-border)] text-xs text-[var(--dash-text-secondary)]">
-                Current: <strong>{rescheduleItem.date}</strong> at <strong>{rescheduleItem.time}</strong> ({rescheduleItem.location})
-              </div>
-
-              {/* Quick Date Chips */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider">
-                    New Date & Time
-                  </label>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuickDate(1, true)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
-                    >
-                      Tomorrow
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDate(3, true)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
-                    >
-                      +3 Days
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickDate(7, true)}
-                      className="text-[10px] px-2 py-0.5 rounded bg-[var(--dash-surface-warm)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)]"
-                    >
-                      +1 Week
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <input 
-                    type="date" 
-                    value={rescheduleDate}
-                    onChange={(e) => setRescheduleDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
-                  />
-                  <input 
-                    type="time" 
-                    value={rescheduleTime}
-                    onChange={(e) => setRescheduleTime(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--dash-text-secondary)] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Consultation Location
                 </label>
                 <input 
                   type="text" 
                   value={rescheduleLocation}
                   onChange={(e) => setRescheduleLocation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--dash-border)]">
+              {/* Sticky Footer */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setRescheduleItem(null)}
-                  className="dash-btn-secondary px-4 py-2 text-sm"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="dash-btn-primary px-5 py-2 text-sm font-semibold"
+                  className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-2"
                 >
-                  Confirm Reschedule
+                  <CalendarCheck className="w-4 h-4" />
+                  <span>Confirm Reschedule</span>
                 </button>
               </div>
             </form>
@@ -1266,8 +1314,8 @@ export default function AppointmentsPage() {
 
       {/* DETAIL MODAL */}
       {detailItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="dash-card bg-[var(--dash-surface)] border border-[var(--dash-border)] rounded-2xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="dash-card bg-[var(--dash-surface)] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-[var(--dash-border)]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] flex items-center justify-center">
@@ -1284,7 +1332,8 @@ export default function AppointmentsPage() {
               </div>
               <button 
                 onClick={() => setDetailItem(null)}
-                className="w-8 h-8 rounded-lg hover:bg-[var(--dash-surface-warm)] flex items-center justify-center text-[var(--dash-text-tertiary)] hover:text-[var(--dash-text)]"
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1385,7 +1434,7 @@ export default function AppointmentsPage() {
 
       {/* BOOKING CONFIRMED VOUCHER MODAL */}
       {confirmedBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="dash-card bg-[var(--dash-surface)] border border-emerald-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6 relative overflow-hidden">
             {/* Top decorative stripe */}
             <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-teal-600 via-emerald-500 to-teal-700" />
@@ -1406,7 +1455,8 @@ export default function AppointmentsPage() {
               </div>
               <button
                 onClick={() => setConfirmedBooking(null)}
-                className="w-8 h-8 rounded-lg hover:bg-[var(--dash-surface-warm)] flex items-center justify-center text-[var(--dash-text-tertiary)] hover:text-[var(--dash-text)]"
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1487,10 +1537,10 @@ export default function AppointmentsPage() {
               </Link>
             </div>
 
-            <div className="pt-3 border-t border-[var(--dash-border)] flex items-center justify-end">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
               <button
                 onClick={() => setConfirmedBooking(null)}
-                className="dash-btn-primary px-5 py-2 text-xs font-bold shadow-sm"
+                className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all text-xs"
               >
                 Done &amp; View Upcoming
               </button>

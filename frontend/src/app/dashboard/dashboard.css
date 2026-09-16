@@ -107,32 +107,34 @@
 }
 
 .dash-btn-primary {
-  background-color: #0f172a;
-  color: white;
+  background-color: #0d9488;
+  color: #ffffff;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 12px;
   padding: 8px 16px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background-color 0.15s ease;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px 0 rgba(13, 148, 136, 0.2);
 }
 
 .dash-btn-primary:hover {
-  background-color: #1e293b;
+  background-color: #0f766e;
+  box-shadow: 0 4px 12px 0 rgba(13, 148, 136, 0.25);
 }
 
 .dark .dash-btn-primary {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #14b8a6;
+  color: #042f2e;
 }
 
 .dark .dash-btn-primary:hover {
-  background-color: #e2e8f0;
+  background-color: #2dd4bf;
 }
 
 .dash-btn-secondary {
