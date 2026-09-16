@@ -248,12 +248,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Course:** UCS503P — Software Engineering Capstone (Academic Year 2026–2027)
 - **Institution:** Thapar Institute of Engineering & Technology, Patiala
 - **Engineering Roles & Member Contributions:**
-  - **Jasmeen Kaur** (Roll: 102317185) — Lead ML & Backend Security Architect
+  - **Jasmeen Kaur** (Roll: 1024030103) — Lead ML & Backend Security Architect
     - Evaluated TrOCR & Florence-2 benchmarks; architected Gemini 3.6 Flash VLM pipeline.
     - Engineered Doctor Handwriting Calibration Engine with Dr. Reeta Bhambri dataset.
     - Implemented Anti-Bias Context Scoping and multi-tenant patient vault isolation.
     - Designed real-time Drug-Drug Interaction (DDI) screening matrix.
-  - **Maitri Mishra** (Roll: 102317166) — Lead Frontend & Systems Integration Engineer
+  - **Maitri Mishra** (Roll: 1024030124) — Lead Frontend & Systems Integration Engineer
     - Initialized monorepo scaffolding and FastAPI REST backend structure.
     - Built responsive clinical UI in Next.js 16 with accessible components and modals.
     - Implemented interactive appointment scheduler and condition timeline views.
