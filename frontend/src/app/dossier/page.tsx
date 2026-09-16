@@ -55,6 +55,14 @@ export default function PatientDossierPage() {
     return initial.prescriptions || getPatientPrescriptions();
   });
   const [copied, setCopied] = useState(false);
+  const [emergencyAudit, setEmergencyAudit] = useState<{
+    isEmergency: boolean;
+    docName: string;
+    docLic: string;
+    hospital: string;
+    reason: string;
+    auditId: string;
+  } | null>(null);
 
   useEffect(() => {
     let tokenParam: string | null = null;
@@ -63,6 +71,17 @@ export default function PatientDossierPage() {
       const params = new URLSearchParams(window.location.search);
       tokenParam = params.get("token");
       patientParam = params.get("patient");
+
+      if (params.get("emergency") === "true") {
+        setEmergencyAudit({
+          isEmergency: true,
+          docName: params.get("docName") || "Attending ER Clinician",
+          docLic: params.get("docLic") || "MCI-34182",
+          hospital: params.get("hospital") || "Emergency Resuscitation Center",
+          reason: params.get("reason") || "Acute Resuscitation & High-Risk Drug Allergy Screening",
+          auditId: params.get("auditId") || `BG-${Date.now().toString().slice(-6)}`
+        });
+      }
     }
 
     const data = getPatientDossier(patientParam, tokenParam);
@@ -195,6 +214,41 @@ export default function PatientDossierPage() {
 
       {/* Main Dossier Container */}
       <main className="max-w-5xl mx-auto px-4 sm:px-8 py-8 print:p-0 print:max-w-none">
+        {/* Emergency Break-Glass Protocol Notice */}
+        {emergencyAudit && (
+          <div className="bg-amber-500/10 border-2 border-amber-500 rounded-2xl p-4 sm:p-5 mb-6 text-slate-900 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold shrink-0 mt-0.5">
+                <AlertTriangle className="w-5 h-5 text-slate-950" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black uppercase px-2 py-0.5 rounded bg-amber-500 text-slate-950">
+                    Break-Glass Emergency Protocol Active
+                  </span>
+                  <span className="text-xs text-amber-900 font-bold">
+                    Authenticated Clinical Override
+                  </span>
+                </div>
+                <p className="text-sm text-slate-800 font-semibold mt-1">
+                  Attending Clinician: <span className="text-slate-950 font-bold">{emergencyAudit.docName}</span> (Reg #{emergencyAudit.docLic}) &bull; {emergencyAudit.hospital}
+                </p>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Clinical Indication: <span className="italic font-medium text-slate-800">{emergencyAudit.reason}</span>
+                </p>
+              </div>
+            </div>
+            <div className="text-left md:text-right shrink-0 bg-white/70 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-none border-amber-200 w-full sm:w-auto">
+              <span className="text-[11px] font-mono text-amber-950 font-bold bg-amber-200/80 px-2.5 py-1 rounded-lg inline-block">
+                Ledger ID: {emergencyAudit.auditId}
+              </span>
+              <span className="text-[10px] text-slate-500 block mt-1">
+                Stamped in Patient Security Audit Trail
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Printable Hospital Medical Banner */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-6 print:border-none print:shadow-none print:p-0 print:mb-4">
           

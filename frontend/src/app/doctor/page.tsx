@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Stethoscope, 
   Calendar, 
@@ -24,14 +25,20 @@ import {
   Lock, 
   CalendarCheck,
   Check,
-  X
+  X,
+  KeyRound,
+  ShieldAlert,
+  Key,
+  AlertTriangle
 } from "lucide-react";
 import { 
   getPatientAppointments, 
   AppointmentItem, 
   getActivePatientEmail,
   getPatientDossier,
-  PatientDossierData
+  PatientDossierData,
+  getPatientAccessControl,
+  verifyDoctorAccess
 } from "@/lib/patientData";
 
 interface DoctorRequest {
@@ -95,11 +102,24 @@ const INITIAL_REQUESTS: DoctorRequest[] = [
 ];
 
 export default function DoctorPortalPage() {
+  const router = useRouter();
   const [requests, setRequests] = useState<DoctorRequest[]>(INITIAL_REQUESTS);
-  const [searchToken, setSearchToken] = useState("EMG-8821-VLT");
-  const [tokenFeedback, setTokenFeedback] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"requests" | "schedule" | "calibration">("requests");
-  
+
+  // Dual-mode Patient Access State
+  const [accessMode, setAccessMode] = useState<"passcode" | "breakglass">("passcode");
+  const [patientQuery, setPatientQuery] = useState("PT-2026-LUD-8821");
+  const [passcodeInput, setPasscodeInput] = useState("882194");
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+  // Break-glass emergency state
+  const [emergencyDoctorName, setEmergencyDoctorName] = useState("Dr. Reeta Bhambri");
+  const [emergencyDoctorLicense, setEmergencyDoctorLicense] = useState("MCI-34182");
+  const [emergencyHospital, setEmergencyHospital] = useState("Ranjit Maternity Clinic & Emergency Center");
+  const [emergencyReason, setEmergencyReason] = useState("Acute Resuscitation & High-Risk Drug Allergy Screening");
+  const [emergencyAttestation, setEmergencyAttestation] = useState(false);
+  const [emergencyError, setEmergencyError] = useState<string | null>(null);
+
   // Reschedule Modal State
   const [rescheduleModalItem, setRescheduleModalItem] = useState<DoctorRequest | null>(null);
   const [newRescheduleDate, setNewRescheduleDate] = useState("Sept 20, 2026");
@@ -113,6 +133,43 @@ export default function DoctorPortalPage() {
     setTimeout(() => {
       setToast((curr) => (curr === msg ? null : curr));
     }, 4000);
+  };
+
+  const handleVerifyPasscode = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setAccessError(null);
+    const result = verifyDoctorAccess(patientQuery, passcodeInput);
+    if (!result.allowed) {
+      setAccessError(result.reason || "Access verification failed.");
+      return;
+    }
+    showToast(`Access granted for ${result.patientName}! Opening clinical dossier...`);
+    if (result.dossierUrl) {
+      router.push(result.dossierUrl);
+    }
+  };
+
+  const handleBreakGlass = (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmergencyError(null);
+    if (!emergencyAttestation) {
+      setEmergencyError("Mandatory certification: You must certify under clinical regulations that this is a life-threatening emergency.");
+      return;
+    }
+    const result = verifyDoctorAccess(patientQuery, undefined, {
+      doctorName: emergencyDoctorName,
+      doctorLicense: emergencyDoctorLicense,
+      hospital: emergencyHospital,
+      emergencyReason
+    });
+    if (!result.allowed) {
+      setEmergencyError(result.reason || "Emergency authentication failed.");
+      return;
+    }
+    showToast(`🚨 Emergency Break-Glass logged for ${result.patientName}!`);
+    if (result.dossierUrl) {
+      router.push(result.dossierUrl);
+    }
   };
 
   const handleAccept = (req: DoctorRequest) => {
@@ -203,40 +260,285 @@ export default function DoctorPortalPage() {
       {/* Main Body */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         
-        {/* Emergency QR Code & Dossier Scanner Banner */}
-        <div className="bg-gradient-to-r from-teal-900 to-emerald-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
-          <div className="relative z-10 max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-emerald-200 text-xs font-semibold border border-white/10">
-              <QrCode className="w-3.5 h-3.5" />
-              <span>UC-04: Emergency QR Scanning &amp; Verified Dossier Lookup</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Instant Patient Dossier Inspection
-            </h2>
-            <p className="text-sm text-teal-100/90 leading-relaxed">
-              Scan the patient&apos;s physical Emergency QR Code or enter their time-limited cryptographic access token to inspect their complete verified medical history, active medications, and contraindications.
-            </p>
-
-            {/* Quick Lookup Form */}
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-xl">
-              <div className="relative flex-1">
-                <input 
-                  type="text" 
-                  value={searchToken}
-                  onChange={(e) => setSearchToken(e.target.value)}
-                  placeholder="e.g. EMG-8821-VLT"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-teal-200/60 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono uppercase"
-                />
-                <QrCode className="w-4 h-4 text-teal-300 absolute left-3 top-3" />
+        {/* Patient-Authorized Verification & Emergency Break-Glass Access Portal (UC-04) */}
+        <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-emerald-950 text-white rounded-2xl p-6 sm:p-7 shadow-xl border border-teal-800/40 relative overflow-hidden">
+          <div className="relative z-10 space-y-4">
+            
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-emerald-300 text-xs font-semibold border border-white/10">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>UC-04: Patient Consent-Gated Access &amp; Emergency Break-Glass</span>
               </div>
-              <Link 
-                href={`/dossier?token=${encodeURIComponent(searchToken || "EMG-8821-VLT")}`}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
-              >
-                <span>Inspect Patient Dossier</span>
-                <ExternalLink className="w-4 h-4" />
-              </Link>
+
+              {/* Mode Toggle Switcher */}
+              <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccessMode("passcode");
+                    setAccessError(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                    accessMode === "passcode"
+                      ? "bg-emerald-500 text-slate-950 font-bold shadow-sm"
+                      : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Patient 6-Digit PIN (Routine Care)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccessMode("breakglass");
+                    setEmergencyError(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                    accessMode === "breakglass"
+                      ? "bg-rose-500 text-white font-bold shadow-sm"
+                      : "text-rose-300 hover:text-white"
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>🚨 Emergency Break-Glass (ER Override)</span>
+                </button>
+              </div>
             </div>
+
+            {/* Mode 1: Patient-Authorized Consultation (Friendly Phone + PIN) */}
+            {accessMode === "passcode" && (
+              <div className="space-y-4">
+                <div className="max-w-3xl">
+                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                    Patient-Authorized Consultation Verification
+                  </h2>
+                  <p className="text-xs sm:text-sm text-teal-100/90 leading-relaxed mt-1">
+                    Patients generate a dynamic 6-digit Doctor Passcode on their MedMatch mobile screen. Records remain cryptographically encrypted until the patient authorizes your consultation.
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyPasscode} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 max-w-3xl">
+                    <div className="sm:col-span-6 relative">
+                      <label className="block text-[11px] font-semibold text-teal-200 uppercase tracking-wider mb-1">
+                        Patient Mobile Number or UID
+                      </label>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          value={patientQuery}
+                          onChange={(e) => setPatientQuery(e.target.value)}
+                          placeholder="e.g. +91 98765-43210 or PT-8821"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-teal-200/50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-medium"
+                        />
+                        <User className="w-4 h-4 text-teal-300 absolute left-3 top-3" />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-3 relative">
+                      <label className="block text-[11px] font-semibold text-teal-200 uppercase tracking-wider mb-1">
+                        6-Digit Doctor PIN
+                      </label>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          maxLength={6}
+                          value={passcodeInput}
+                          onChange={(e) => setPasscodeInput(e.target.value.replace(/\D/g, ""))}
+                          placeholder="e.g. 882194"
+                          className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-teal-200/50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 font-mono tracking-widest text-center font-bold"
+                        />
+                        <Key className="w-3.5 h-3.5 text-teal-300 absolute left-2.5 top-3" />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-3 flex items-end">
+                      <button 
+                        type="submit"
+                        className="w-full py-2.5 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
+                      >
+                        <span>Verify &amp; Open</span>
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Clinic Patient Presets for Testing / Demonstrations */}
+                  <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
+                    <span className="text-slate-400 text-[11px]">Waiting Patients:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPatientQuery("PT-2026-LUD-8821");
+                        setPasscodeInput("882194");
+                        setAccessError(null);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-emerald-200 border border-white/10 transition-colors"
+                    >
+                      Simranjit Kaur (PIN: <strong>882194</strong>)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPatientQuery("PT-2026-LUD-3312");
+                        setPasscodeInput("331205");
+                        setAccessError(null);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-teal-200 border border-white/10 transition-colors"
+                    >
+                      Harpreet Singh (PIN: <strong>331205</strong>)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPatientQuery("PT-2026-LUD-4091");
+                        setPasscodeInput("409172");
+                        setAccessError(null);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-teal-200 border border-white/10 transition-colors"
+                    >
+                      Amandeep Sharma (PIN: <strong>409172</strong>)
+                    </button>
+                  </div>
+
+                  {accessError && (
+                    <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-200 text-xs flex items-center gap-2 max-w-3xl animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>{accessError}</span>
+                    </div>
+                  )}
+                </form>
+              </div>
+            )}
+
+            {/* Mode 2: Emergency Break-Glass Protocol */}
+            {accessMode === "breakglass" && (
+              <div className="space-y-4 bg-rose-950/40 rounded-xl p-4 sm:p-5 border border-rose-500/30">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <ShieldAlert className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                      <span>Emergency Clinical Override (Break-Glass Protocol)</span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white">
+                        Legally Audited
+                      </span>
+                    </h2>
+                    <p className="text-xs text-rose-200/90 leading-relaxed mt-0.5">
+                      Invoked only for acute trauma, anaphylaxis, or unconscious patients unable to provide consent. Requires verified physician credentials and mandatory clinical justification.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleBreakGlass} className="space-y-3.5 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-rose-200 uppercase tracking-wider mb-1">
+                        Attending Doctor Name
+                      </label>
+                      <input 
+                        type="text" 
+                        value={emergencyDoctorName}
+                        onChange={(e) => setEmergencyDoctorName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-xs focus:ring-2 focus:ring-rose-400 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-rose-200 uppercase tracking-wider mb-1">
+                        Medical Council Reg / License #
+                      </label>
+                      <input 
+                        type="text" 
+                        value={emergencyDoctorLicense}
+                        onChange={(e) => setEmergencyDoctorLicense(e.target.value)}
+                        placeholder="e.g. MCI-34182"
+                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white font-mono uppercase text-xs focus:ring-2 focus:ring-rose-400 focus:outline-none font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-rose-200 uppercase tracking-wider mb-1">
+                        Hospital / Department
+                      </label>
+                      <input 
+                        type="text" 
+                        value={emergencyHospital}
+                        onChange={(e) => setEmergencyHospital(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-xs focus:ring-2 focus:ring-rose-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-rose-200 uppercase tracking-wider mb-1">
+                        Target Patient Identifier
+                      </label>
+                      <select
+                        value={patientQuery}
+                        onChange={(e) => setPatientQuery(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-white/20 text-white text-xs focus:ring-2 focus:ring-rose-400 focus:outline-none"
+                      >
+                        <option value="PT-2026-LUD-8821">Simranjit Kaur (PT-2026-LUD-8821 / Antenatal Trimester II)</option>
+                        <option value="PT-2026-LUD-3312">Harpreet Singh (PT-2026-LUD-3312 / Post-Op Cholecystectomy)</option>
+                        <option value="PT-2026-LUD-4091">Amandeep Sharma (PT-2026-LUD-4091 / Antenatal Trimester I)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-rose-200 uppercase tracking-wider mb-1">
+                        Mandatory Emergency Clinical Indication
+                      </label>
+                      <select
+                        value={emergencyReason}
+                        onChange={(e) => setEmergencyReason(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-white/20 text-white text-xs focus:ring-2 focus:ring-rose-400 focus:outline-none"
+                      >
+                        <option value="Acute Resuscitation & High-Risk Drug Allergy Screening">Acute Resuscitation &amp; High-Risk Drug Allergy Screening</option>
+                        <option value="Unconscious ER Trauma Admission (GCS < 8)">Unconscious ER Trauma Admission (GCS &lt; 8)</option>
+                        <option value="Severe Anaphylaxis / Emergency Intubation Contraindication">Severe Anaphylaxis / Emergency Intubation Contraindication</option>
+                        <option value="Acute Hemorrhagic Shock / Obstetric Crisis">Acute Hemorrhagic Shock / Obstetric Crisis</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-black/40 rounded-lg border border-rose-500/20">
+                    <label className="flex items-start gap-2.5 text-xs text-rose-100 cursor-pointer">
+                      <input 
+                        type="checkbox"
+                        checked={emergencyAttestation}
+                        onChange={(e) => setEmergencyAttestation(e.target.checked)}
+                        className="mt-0.5 rounded text-rose-600 focus:ring-rose-500 w-4 h-4 border-rose-400"
+                      />
+                      <span>
+                        <strong>Legal &amp; Clinical Certification:</strong> I certify under Medical Council regulations and Indian Medical Ethics Code that this is an acute life-threatening emergency and the patient is incapable of providing consent. I understand this access is permanently recorded and subject to regulatory scrutiny.
+                      </span>
+                    </label>
+                  </div>
+
+                  {emergencyError && (
+                    <div className="p-2.5 rounded-lg bg-rose-600/30 border border-rose-400 text-rose-100 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-300 shrink-0" />
+                      <span>{emergencyError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm shadow-md transition-colors inline-flex items-center gap-2"
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                      <span>Authenticate &amp; Execute Break-Glass Override</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
           </div>
         </div>
 

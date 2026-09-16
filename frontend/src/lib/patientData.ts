@@ -954,6 +954,379 @@ export function generateEmergencyToken(email?: string | null): string {
   return newToken;
 }
 
+// ============================================================================
+// Patient Access Authorization & Emergency Break-Glass System (UC-04)
+// ============================================================================
+
+export interface AccessAuditEntry {
+  id: string;
+  timestamp: string;
+  accessorName: string;
+  accessorRole: "Consulting Doctor" | "Emergency Physician" | "Patient Self";
+  accessorLicense?: string;
+  hospital?: string;
+  accessType: "Passcode Verified" | "Emergency Break-Glass" | "QR Code Scanned";
+  reason?: string;
+  status: "Granted" | "Revoked" | "Emergency Logged";
+}
+
+export interface PatientAccessControl {
+  patientEmail: string;
+  patientName: string;
+  patientUid: string;
+  phoneNumber: string;
+  doctorPasscode: string; // Friendly 6-digit PIN e.g. "882194"
+  accessGranted: boolean;
+  token: string;
+  auditLog: AccessAuditEntry[];
+}
+
+export function getPatientAccessControl(email?: string | null): PatientAccessControl {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+
+  if (user === "harpreet.s@example.com" || user.includes("harpreet")) {
+    let accessGranted = true;
+    let passcode = "331205";
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(getPatientStorageKey("doctor_access_granted", user));
+        if (stored !== null) accessGranted = stored === "true";
+        const storedPin = localStorage.getItem(getPatientStorageKey("doctor_passcode", user));
+        if (storedPin) passcode = storedPin;
+      } catch {}
+    }
+    return {
+      patientEmail: "harpreet.s@example.com",
+      patientName: "Harpreet Singh",
+      patientUid: "PT-2026-LUD-3312",
+      phoneNumber: "+91 98881-23456",
+      doctorPasscode: passcode,
+      accessGranted,
+      token: "EMG-3312-VLT",
+      auditLog: [
+        {
+          id: "aud-h1",
+          timestamp: "Yesterday, 04:30 PM",
+          accessorName: "Dr. K.S. Duggal",
+          accessorRole: "Consulting Doctor",
+          accessorLicense: "MCI-48192",
+          hospital: "Fortis Hospital (Surgery)",
+          accessType: "Passcode Verified",
+          reason: "Post-Op Wound Review",
+          status: "Granted"
+        }
+      ]
+    };
+  }
+
+  if (user === "amandeep.sharma@example.com" || user.includes("amandeep")) {
+    let accessGranted = true;
+    let passcode = "409172";
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(getPatientStorageKey("doctor_access_granted", user));
+        if (stored !== null) accessGranted = stored === "true";
+        const storedPin = localStorage.getItem(getPatientStorageKey("doctor_passcode", user));
+        if (storedPin) passcode = storedPin;
+      } catch {}
+    }
+    return {
+      patientEmail: "amandeep.sharma@example.com",
+      patientName: "Amandeep Sharma",
+      patientUid: "PT-2026-LUD-4091",
+      phoneNumber: "+91 98882-65431",
+      doctorPasscode: passcode,
+      accessGranted,
+      token: "EMG-4091-VLT",
+      auditLog: [
+        {
+          id: "aud-a1",
+          timestamp: "Sep 15, 2026",
+          accessorName: "Dr. Gupta",
+          accessorRole: "Consulting Doctor",
+          accessorLicense: "DMC-18239",
+          hospital: "Vision & ENT Care Center",
+          accessType: "QR Code Scanned",
+          reason: "Allergic Rhinitis Consult",
+          status: "Granted"
+        }
+      ]
+    };
+  }
+
+  // Simranjit Kaur or Custom Registered User
+  const isDemo = isDemoPatient(user) || user === "anonymous";
+  const name = isDemo ? "Simranjit Kaur" : user.split("@")[0].toUpperCase();
+  const uid = isDemo ? "PT-2026-LUD-8821" : `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`;
+  const phone = isDemo ? "+91 98765-43210" : "+91 98000-00000";
+  const token = isDemo ? DEFAULT_EMERGENCY_TOKEN : getEmergencyToken(user);
+  const defaultPasscode = isDemo ? "882194" : "542918";
+
+  let doctorPasscode = defaultPasscode;
+  let accessGranted = true;
+  let auditLog: AccessAuditEntry[] = isDemo ? [
+    {
+      id: "aud-s1",
+      timestamp: "Today, 10:15 AM",
+      accessorName: "Dr. Reeta Bhambri",
+      accessorRole: "Consulting Doctor",
+      accessorLicense: "MCI-34182",
+      hospital: "Ranjit Maternity Clinic & Nursing Home",
+      accessType: "Passcode Verified",
+      reason: "Antenatal 28-Week Gestational Review",
+      status: "Granted"
+    },
+    {
+      id: "aud-s2",
+      timestamp: "Sep 12, 2026, 02:40 PM",
+      accessorName: "Dr. H.S. Virk",
+      accessorRole: "Consulting Doctor",
+      accessorLicense: "PBI-19842",
+      hospital: "City Care Super Speciality",
+      accessType: "QR Code Scanned",
+      reason: "Acute UTI Care Episode Consultation",
+      status: "Granted"
+    }
+  ] : [];
+
+  if (typeof window !== "undefined") {
+    try {
+      const storedPasscode = localStorage.getItem(getPatientStorageKey("doctor_passcode", user));
+      if (storedPasscode) doctorPasscode = storedPasscode;
+
+      const storedAccess = localStorage.getItem(getPatientStorageKey("doctor_access_granted", user));
+      if (storedAccess !== null) accessGranted = storedAccess === "true";
+
+      const storedAudits = localStorage.getItem(getPatientStorageKey("access_audit_log", user));
+      if (storedAudits) {
+        const parsed = JSON.parse(storedAudits);
+        if (Array.isArray(parsed) && parsed.length > 0) auditLog = parsed;
+      }
+    } catch {}
+  }
+
+  return {
+    patientEmail: isDemo ? "jk0822123@gmail.com" : user,
+    patientName: name,
+    patientUid: uid,
+    phoneNumber: phone,
+    doctorPasscode,
+    accessGranted,
+    token,
+    auditLog
+  };
+}
+
+export function setPatientDoctorAccessState(granted: boolean, email?: string | null): boolean {
+  if (typeof window === "undefined") return granted;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  try {
+    localStorage.setItem(getPatientStorageKey("doctor_access_granted", user), granted ? "true" : "false");
+    addPatientAccessAuditEntry({
+      accessorName: "Patient (Self)",
+      accessorRole: "Patient Self",
+      accessType: "Passcode Verified",
+      status: granted ? "Granted" : "Revoked",
+      reason: granted ? "Patient re-enabled doctor access pass" : "Patient paused / revoked external doctor access"
+    }, user);
+  } catch (e) {
+    console.warn("Failed to set doctor access state:", e);
+  }
+  return granted;
+}
+
+export function regeneratePatientDoctorPasscode(email?: string | null): string {
+  const newPin = String(Math.floor(100000 + Math.random() * 900000));
+  if (typeof window === "undefined") return newPin;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  try {
+    localStorage.setItem(getPatientStorageKey("doctor_passcode", user), newPin);
+    addPatientAccessAuditEntry({
+      accessorName: "Patient (Self)",
+      accessorRole: "Patient Self",
+      accessType: "Passcode Verified",
+      status: "Granted",
+      reason: `Generated new 6-digit Doctor Passcode: ${newPin}`
+    }, user);
+  } catch (e) {
+    console.warn("Failed to save new passcode:", e);
+  }
+  return newPin;
+}
+
+export function addPatientAccessAuditEntry(
+  entry: Omit<AccessAuditEntry, "id" | "timestamp">, 
+  email?: string | null
+): AccessAuditEntry {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const current = getPatientAccessControl(user);
+  const now = new Date();
+  const timestamp = now.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const newEntry: AccessAuditEntry = {
+    ...entry,
+    id: `aud-${Date.now()}`,
+    timestamp
+  };
+  const updatedLog = [newEntry, ...(current.auditLog || []).filter(a => a.id !== newEntry.id)];
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(getPatientStorageKey("access_audit_log", user), JSON.stringify(updatedLog));
+    } catch {}
+  }
+  return newEntry;
+}
+
+export function logEmergencyBreakGlassAccess(params: {
+  patientEmail: string;
+  doctorName: string;
+  doctorLicense: string;
+  hospital: string;
+  emergencyReason: string;
+}): AccessAuditEntry {
+  return addPatientAccessAuditEntry({
+    accessorName: params.doctorName,
+    accessorRole: "Emergency Physician",
+    accessorLicense: params.doctorLicense,
+    hospital: params.hospital,
+    accessType: "Emergency Break-Glass",
+    reason: params.emergencyReason,
+    status: "Emergency Logged"
+  }, params.patientEmail);
+}
+
+export interface DoctorAccessVerificationResult {
+  allowed: boolean;
+  reason?: string;
+  token?: string;
+  patientEmail?: string;
+  patientName?: string;
+  patientUid?: string;
+  phoneNumber?: string;
+  dossierUrl?: string;
+  isEmergencyOverride?: boolean;
+}
+
+export function verifyDoctorAccess(
+  query: string,
+  passcode?: string,
+  emergencyAuth?: {
+    doctorName: string;
+    doctorLicense: string;
+    hospital: string;
+    emergencyReason: string;
+  }
+): DoctorAccessVerificationResult {
+  const cleanQ = (query || "").trim().toLowerCase();
+  const cleanPin = (passcode || "").trim().replace(/\D/g, "");
+
+  // Match target patient
+  let targetEmail = "jk0822123@gmail.com";
+  let fallbackToken = "EMG-8821-VLT";
+
+  if (cleanQ.includes("3312") || cleanQ.includes("harpreet") || cleanQ.includes("9888123456") || cleanQ.includes("98881-23456")) {
+    targetEmail = "harpreet.s@example.com";
+    fallbackToken = "EMG-3312-VLT";
+  } else if (cleanQ.includes("4091") || cleanQ.includes("amandeep") || cleanQ.includes("9888265431") || cleanQ.includes("98882-65431")) {
+    targetEmail = "amandeep.sharma@example.com";
+    fallbackToken = "EMG-4091-VLT";
+  } else {
+    targetEmail = "jk0822123@gmail.com";
+    fallbackToken = "EMG-8821-VLT";
+  }
+
+  const access = getPatientAccessControl(targetEmail);
+
+  // 1. EMERGENCY BREAK-GLASS PROTOCOL (Doctor authenticated with license + emergency reason)
+  if (emergencyAuth) {
+    if (!emergencyAuth.doctorLicense || emergencyAuth.doctorLicense.trim().length < 4) {
+      return {
+        allowed: false,
+        reason: "Emergency Break-Glass requires a valid Medical Registration / License number (e.g. MCI-34182)."
+      };
+    }
+    if (!emergencyAuth.emergencyReason || emergencyAuth.emergencyReason.trim().length < 5) {
+      return {
+        allowed: false,
+        reason: "Mandatory emergency clinical justification must be recorded for legal audit compliance."
+      };
+    }
+
+    logEmergencyBreakGlassAccess({
+      patientEmail: targetEmail,
+      doctorName: emergencyAuth.doctorName || "Emergency Attending Physician",
+      doctorLicense: emergencyAuth.doctorLicense.trim().toUpperCase(),
+      hospital: emergencyAuth.hospital || "Emergency Trauma Department",
+      emergencyReason: emergencyAuth.emergencyReason.trim()
+    });
+
+    return {
+      allowed: true,
+      token: access.token || fallbackToken,
+      patientEmail: targetEmail,
+      patientName: access.patientName,
+      patientUid: access.patientUid,
+      phoneNumber: access.phoneNumber,
+      isEmergencyOverride: true,
+      dossierUrl: `/dossier?token=${access.token}&emergency=true&docName=${encodeURIComponent(emergencyAuth.doctorName)}&docLic=${encodeURIComponent(emergencyAuth.doctorLicense)}&reason=${encodeURIComponent(emergencyAuth.emergencyReason)}`
+    };
+  }
+
+  // 2. PATIENT AUTHORIZATION STATUS CHECK
+  if (!access.accessGranted) {
+    return {
+      allowed: false,
+      reason: `Patient ${access.patientName} has paused external doctor access. Please ask the patient to enable "Doctor Consultation Access" in their MedMatch app.`
+    };
+  }
+
+  // 3. TOKEN OR 6-DIGIT PASSCODE CHECK
+  const cleanQTokens = cleanQ.toUpperCase();
+  if (cleanQTokens === access.token || cleanQTokens.includes(access.token)) {
+    addPatientAccessAuditEntry({
+      accessorName: "Consulting Physician",
+      accessorRole: "Consulting Doctor",
+      accessType: "QR Code Scanned",
+      reason: "Scanned Patient Emergency QR Pass",
+      status: "Granted"
+    }, targetEmail);
+
+    return {
+      allowed: true,
+      token: access.token,
+      patientEmail: targetEmail,
+      patientName: access.patientName,
+      patientUid: access.patientUid,
+      phoneNumber: access.phoneNumber,
+      dossierUrl: `/dossier?token=${access.token}`
+    };
+  }
+
+  if (cleanPin && cleanPin === access.doctorPasscode) {
+    addPatientAccessAuditEntry({
+      accessorName: "Consulting Physician",
+      accessorRole: "Consulting Doctor",
+      accessType: "Passcode Verified",
+      reason: "Patient provided 6-digit Consultation PIN",
+      status: "Granted"
+    }, targetEmail);
+
+    return {
+      allowed: true,
+      token: access.token,
+      patientEmail: targetEmail,
+      patientName: access.patientName,
+      patientUid: access.patientUid,
+      phoneNumber: access.phoneNumber,
+      dossierUrl: `/dossier?token=${access.token}`
+    };
+  }
+
+  return {
+    allowed: false,
+    reason: `Invalid 6-digit Doctor PIN for ${access.patientName}. Ask the patient to verify the PIN shown in their MedMatch app (e.g. ${access.doctorPasscode}).`
+  };
+}
+
 // ----------------------------------------------------------------------------
 // Dedicated Dossier Profiles for Clinic Demo Patients
 // ----------------------------------------------------------------------------
