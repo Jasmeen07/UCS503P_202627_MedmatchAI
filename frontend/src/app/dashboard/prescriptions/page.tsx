@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Filter, LayoutGrid, List as ListIcon, FileText, CheckCircle2, AlertCircle, ScanLine } from "lucide-react";
+import { Plus, Filter, LayoutGrid, List as ListIcon, FileText, CheckCircle2, AlertCircle, ScanLine, Printer } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { 
   getPatientPrescriptions, 
@@ -29,12 +29,22 @@ export default function PrescriptionsPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <PageHeader 
         title="My Prescriptions" 
-        subtitle="Manage and track all your medical records"
+        subtitle="Manage, track, and export your clinical health records"
         action={
-          <Link href="/dashboard/scan" className="dash-btn-primary">
-            <Plus className="w-4 h-4" />
-            Add Prescription
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link 
+              href="/dossier" 
+              className="dash-btn-secondary inline-flex items-center gap-2 text-xs py-2 px-3.5"
+              title="Export complete health history and clinical dossier as PDF"
+            >
+              <Printer className="w-4 h-4 text-[var(--dash-text-secondary)]" />
+              <span>Export Health History (PDF)</span>
+            </Link>
+            <Link href="/dashboard/scan" className="dash-btn-primary inline-flex items-center gap-2 text-xs py-2 px-3.5">
+              <Plus className="w-4 h-4" />
+              <span>Add Prescription</span>
+            </Link>
+          </div>
         }
       />
 

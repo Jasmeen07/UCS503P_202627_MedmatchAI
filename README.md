@@ -153,10 +153,17 @@ Our team conducted extensive experimental iterations to solve handwritten clinic
 - Each patient vault is scoped strictly to their authenticated Firebase `UID`.
 - Zero cross-tenant data bleed: demo data is preserved exclusively in the primary demonstration account (`jk0822123@gmail.com`), while all newly registered user accounts receive pristine, private vaults with isolated storage.
 
-### 6. Clinical Care & Emergency QR Sharing
-- Generates encrypted, time-bounded QR codes enabling consulting emergency physicians to view a read-only clinical dossier without requiring patient login credentials.
-- Integrated clinic appointment booking with real-time doctor calendar conflict detection and slot locking.
-- One-click exportable PDF health dossier for referrals and insurance reimbursement.
+### 6. Clinical Care & Emergency QR Sharing (`/dashboard/sharing` & `/dossier`)
+- Generates encrypted, time-bounded Emergency QR codes enabling emergency physicians and consulting clinicians to view a read-only clinical dossier without requiring patient login credentials.
+- **Read-Only Patient Clinical Dossier (`/dossier`):** High-fidelity clinical snapshot displaying patient demographics, blood group, emergency contacts, active condition episodes (e.g. Antenatal Care, UTI), active verified medications, and documented allergy warnings (e.g. Penicillin hypersensitivity).
+- **Export Complete Patient Health History (PDF):** Clean, printable hospital letterhead format with `@media print` styles accessible from the Prescriptions and Sharing portals.
+
+### 7. Doctor Clinical Portal & Slot Locking Scheduler (`/doctor`)
+- Dedicated clinic workstation for medical practitioners (e.g. Dr. Reeta Bhambri, Ranjit Maternity Clinic & Nursing Home).
+- **Instant Patient Dossier Inspection:** Scan physical QR codes or enter emergency tokens (`EMG-8821-VLT`) to review verified clinical dossiers in-clinic.
+- **Consultation Slot Management:** Interactive queue where physicians can review incoming patient booking requests, accept slots (which activates the Clinic Scheduler actor to check conflicts and lock calendar slots), or reschedule with automated patient notification.
+- **Clinic Working Hours & Capacity:** Visualizes morning (10 AM–2 PM) and evening (5 PM–8 PM) session booking thresholds and conflict prevention safeguards.
+- **Doctor Handwriting Profile Status:** Monitors physician calibration metrics (+34.2% accuracy boost), custom formulation catalogs, and confusable pair rules.
 
 ---
 

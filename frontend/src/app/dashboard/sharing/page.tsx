@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   UserCheck, 
   Shield, 
@@ -10,17 +11,108 @@ import {
   Plus, 
   X, 
   CheckCircle2, 
-  FileText 
+  FileText,
+  QrCode,
+  Copy,
+  Check,
+  RefreshCw,
+  Printer,
+  ExternalLink,
+  Stethoscope,
+  Share2,
+  AlertCircle
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { 
   DoctorShareItem, 
   getPatientShares, 
-  savePatientShares, 
   addPatientShare, 
   revokePatientShare, 
-  getActivePatientEmail 
+  getActivePatientEmail,
+  getEmergencyToken,
+  generateEmergencyToken
 } from "@/lib/patientData";
+
+// Crisp SVG QR Code Component with Medical Cross Emblem
+function EmergencyQrCodeSvg({ token }: { token: string }) {
+  return (
+    <div className="relative p-3 bg-white rounded-2xl border-2 border-emerald-500/30 shadow-md inline-block">
+      <svg
+        viewBox="0 0 160 160"
+        width="144"
+        height="144"
+        className="w-36 h-36"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Background */}
+        <rect width="160" height="160" fill="#FFFFFF" rx="8" />
+
+        {/* Finder Pattern Top-Left */}
+        <rect x="14" y="14" width="38" height="38" rx="5" fill="#0F172A" />
+        <rect x="20" y="20" width="26" height="26" rx="3" fill="#FFFFFF" />
+        <rect x="26" y="26" width="14" height="14" rx="2" fill="#059669" />
+
+        {/* Finder Pattern Top-Right */}
+        <rect x="108" y="14" width="38" height="38" rx="5" fill="#0F172A" />
+        <rect x="114" y="20" width="26" height="26" rx="3" fill="#FFFFFF" />
+        <rect x="120" y="26" width="14" height="14" rx="2" fill="#059669" />
+
+        {/* Finder Pattern Bottom-Left */}
+        <rect x="14" y="108" width="38" height="38" rx="5" fill="#0F172A" />
+        <rect x="20" y="114" width="26" height="26" rx="3" fill="#FFFFFF" />
+        <rect x="26" y="120" width="14" height="14" rx="2" fill="#059669" />
+
+        {/* Timing Lines */}
+        <line x1="56" y1="28" x2="104" y2="28" stroke="#0F172A" stroke-width="3" stroke-dasharray="4,4" />
+        <line x1="28" y1="56" x2="28" y2="104" stroke="#0F172A" stroke-width="3" stroke-dasharray="4,4" />
+
+        {/* Data Matrix Glyphs */}
+        <rect x="62" y="14" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="76" y="18" width="6" height="6" rx="1.5" fill="#0F172A" />
+        <rect x="90" y="14" width="8" height="8" rx="1.5" fill="#0F172A" />
+
+        <rect x="60" y="38" width="7" height="7" rx="1.5" fill="#0F172A" />
+        <rect x="74" y="38" width="8" height="8" rx="1.5" fill="#059669" />
+        <rect x="88" y="42" width="6" height="6" rx="1.5" fill="#0F172A" />
+
+        <rect x="16" y="62" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="30" y="66" width="6" height="6" rx="1.5" fill="#0F172A" />
+        <rect x="42" y="60" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="110" y="62" width="7" height="7" rx="1.5" fill="#0F172A" />
+        <rect x="124" y="66" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="138" y="60" width="6" height="6" rx="1.5" fill="#0F172A" />
+
+        <rect x="14" y="78" width="6" height="6" rx="1.5" fill="#0F172A" />
+        <rect x="26" y="80" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="40" y="76" width="7" height="7" rx="1.5" fill="#0F172A" />
+        <rect x="112" y="78" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="126" y="80" width="6" height="6" rx="1.5" fill="#059669" />
+        <rect x="138" y="76" width="8" height="8" rx="1.5" fill="#0F172A" />
+
+        <rect x="62" y="112" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="78" y="116" width="6" height="6" rx="1.5" fill="#0F172A" />
+        <rect x="92" y="110" width="7" height="7" rx="1.5" fill="#0F172A" />
+
+        <rect x="60" y="132" width="7" height="7" rx="1.5" fill="#0F172A" />
+        <rect x="74" y="136" width="8" height="8" rx="1.5" fill="#059669" />
+        <rect x="88" y="130" width="6" height="6" rx="1.5" fill="#0F172A" />
+
+        <rect x="112" y="112" width="7" height="7" rx="1.5" fill="#0F172A" />
+        <rect x="126" y="116" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="138" y="110" width="6" height="6" rx="1.5" fill="#0F172A" />
+
+        <rect x="110" y="132" width="8" height="8" rx="1.5" fill="#0F172A" />
+        <rect x="124" y="134" width="6" height="6" rx="1.5" fill="#0F172A" />
+        <rect x="136" y="130" width="8" height="8" rx="1.5" fill="#059669" />
+
+        {/* Center Clinical Cross Emblem */}
+        <rect x="65" y="65" width="30" height="30" rx="7" fill="#FFFFFF" stroke="#059669" stroke-width="2" />
+        <rect x="77" y="70" width="6" height="20" rx="2" fill="#059669" />
+        <rect x="70" y="77" width="20" height="6" rx="2" fill="#059669" />
+      </svg>
+    </div>
+  );
+}
 
 export default function SharingPage() {
   const [activeEmail, setActiveEmail] = useState<string>("");
@@ -29,9 +121,17 @@ export default function SharingPage() {
   const [doctorEmail, setDoctorEmail] = useState("");
   const [scope, setScope] = useState("All Records");
   const [durationDays, setDurationDays] = useState("14 days");
+  
+  // Emergency QR Token State
+  const [emergencyToken, setEmergencyToken] = useState("EMG-8821-VLT");
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
   const [history, setHistory] = useState([
-    { id: 101, email: "dr.mehta@apollo.com", action: "Access Expired", date: "Sep 8, 2026" },
-    { id: 102, email: "dr.patel@hospital.com", action: "Viewed Prescription History", date: "Sep 5, 2026" },
+    { id: 101, email: "dr.reeta@ranjitmaternity.com", action: "Emergency QR Scanned", date: "Sep 16, 2026" },
+    { id: 102, email: "dr.mehta@apollo.com", action: "Access Expired", date: "Sep 8, 2026" },
+    { id: 103, email: "dr.patel@hospital.com", action: "Viewed Prescription History", date: "Sep 5, 2026" },
   ]);
 
   useEffect(() => {
@@ -39,7 +139,41 @@ export default function SharingPage() {
     setActiveEmail(email);
     const shares = getPatientShares(email);
     setActiveShares(shares);
+    const token = getEmergencyToken(email);
+    setEmergencyToken(token);
   }, []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => {
+      setToast((curr) => (curr === msg ? null : curr));
+    }, 3500);
+  };
+
+  const handleRegenerateToken = () => {
+    const newToken = generateEmergencyToken(activeEmail);
+    setEmergencyToken(newToken);
+    showToast(`New Emergency Pass generated: ${newToken}. Previous QR invalidated.`);
+  };
+
+  const handleCopyToken = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(emergencyToken);
+      setTokenCopied(true);
+      setTimeout(() => setTokenCopied(false), 2500);
+      showToast("Emergency token copied to clipboard!");
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/dossier?token=${emergencyToken}`;
+      navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+      showToast("Read-only dossier access link copied!");
+    }
+  };
 
   const handleGrantAccess = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +198,7 @@ export default function SharingPage() {
     setDoctorEmail("");
     setScope("All Records");
     setDurationDays("14 days");
+    showToast(`Access granted to ${doctorEmail.trim()} for ${durationDays}!`);
   };
 
   const handleRevoke = (id: number | string, emailToRevoke: string) => {
@@ -73,44 +208,140 @@ export default function SharingPage() {
       { id: Date.now(), email: emailToRevoke, action: "Access Revoked by Patient", date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
       ...prev
     ]);
+    showToast(`Access revoked for ${emailToRevoke}.`);
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-w-[1000px] mx-auto pb-12">
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-[1050px] mx-auto pb-12">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2.5 animate-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toast}</span>
+        </div>
+      )}
+
       <PageHeader 
-        title="Doctor Access" 
-        subtitle="Securely manage who can view your medical records"
+        title="Doctor Access & Emergency Sharing" 
+        subtitle="Manage temporary clinical access passes and emergency QR dossiers"
         action={
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="dash-btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Grant New Access
-          </button>
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/doctor"
+              className="dash-btn-secondary flex items-center gap-2 text-xs py-2"
+            >
+              <Stethoscope className="w-4 h-4 text-teal-600" />
+              Doctor Portal View
+            </Link>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="dash-btn-primary flex items-center gap-2 text-xs py-2"
+            >
+              <Plus className="w-4 h-4" />
+              Grant New Access
+            </button>
+          </div>
         }
       />
 
-      <div className="dash-card bg-gradient-to-r from-[var(--dash-surface)] to-[var(--dash-amber-bg)] p-6 sm:p-8 flex flex-col sm:flex-row gap-6 items-center sm:items-start border-[var(--dash-amber)]/30 rounded-2xl">
-        <div className="w-16 h-16 rounded-2xl bg-[var(--dash-amber)]/20 text-[var(--dash-amber)] flex items-center justify-center shrink-0">
-          <Shield className="w-8 h-8" />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold text-[var(--dash-text)] mb-2">You are in control</h2>
-          <p className="text-[var(--dash-text-secondary)] leading-relaxed mb-4">
-            Share temporary, view-only access to your prescriptions with healthcare providers. 
-            Links automatically expire, and you can revoke access at any time.
-          </p>
-          <div className="text-sm font-semibold text-[var(--dash-amber)] flex items-center gap-1.5">
-            Encrypted with clinical patient-provider isolation guard <Shield className="w-4 h-4" />
+      {/* UC-04 PROMINENT EMERGENCY QR CODE GENERATOR CARD */}
+      <div className="bg-white rounded-2xl border-2 border-emerald-500/40 p-6 sm:p-8 shadow-sm overflow-hidden relative">
+        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
+          
+          {/* QR Visual */}
+          <div className="flex flex-col items-center shrink-0">
+            <EmergencyQrCodeSvg token={emergencyToken} />
+            <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Valid • Auto-expires in 23h 48m</span>
+            </div>
           </div>
+
+          {/* Details & Actions */}
+          <div className="flex-1 space-y-4 text-center lg:text-left">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200 mb-2">
+                <Shield className="w-3.5 h-3.5 text-teal-600" />
+                <span>UC-04: Clinical Health Vault Emergency QR Sharing</span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">
+                Time-Limited Emergency Patient QR Pass
+              </h2>
+              <p className="text-sm text-slate-600 mt-1 leading-relaxed max-w-2xl">
+                Present this QR code to consulting physicians or hospital emergency departments. Scanning grants instantaneous read-only access to your verified clinical dossier, condition timelines, and drug allergy warnings without exposing editing permissions.
+              </p>
+            </div>
+
+            {/* Token Bar */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5 pt-1">
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 font-mono text-sm font-bold text-slate-800">
+                <span className="text-xs text-slate-400 font-sans font-normal uppercase">Token:</span>
+                <span>{emergencyToken}</span>
+              </div>
+
+              <button
+                onClick={handleCopyToken}
+                className="dash-btn-secondary text-xs px-3 py-2 flex items-center gap-1.5"
+                title="Copy Token to Clipboard"
+              >
+                {tokenCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{tokenCopied ? "Copied!" : "Copy Token"}</span>
+              </button>
+
+              <button
+                onClick={handleCopyLink}
+                className="dash-btn-secondary text-xs px-3 py-2 flex items-center gap-1.5"
+                title="Copy Shareable Link"
+              >
+                {linkCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5" />}
+                <span>{linkCopied ? "Link Copied!" : "Share Link"}</span>
+              </button>
+
+              <button
+                onClick={handleRegenerateToken}
+                className="text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-2 rounded-xl transition-colors flex items-center gap-1"
+                title="Regenerate Token"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Regenerate</span>
+              </button>
+            </div>
+
+            {/* Main Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
+              <Link
+                href={`/dossier?token=${emergencyToken}`}
+                className="dash-btn-primary text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-sm"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Preview Doctor Clinical Dossier</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+
+              <Link
+                href={`/dossier?token=${emergencyToken}`}
+                className="dash-btn-secondary text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 font-semibold"
+              >
+                <Printer className="w-4 h-4 text-slate-600" />
+                <span>Export Complete Health History (PDF)</span>
+              </Link>
+            </div>
+
+            <div className="text-xs text-slate-500 pt-1">
+              Physician or clinic operator?{" "}
+              <Link href="/doctor" className="text-teal-700 font-bold hover:underline inline-flex items-center gap-1">
+                Open Doctor Clinical Portal →
+              </Link>
+            </div>
+          </div>
+
         </div>
       </div>
 
       {/* ACTIVE ACCESS GRANTS */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-[var(--dash-text)]">Active Grants ({activeShares.length})</h3>
+          <h3 className="text-lg font-bold text-[var(--dash-text)]">Active Provider Grants ({activeShares.length})</h3>
         </div>
 
         {activeShares.length === 0 ? (
@@ -118,16 +349,16 @@ export default function SharingPage() {
             <div className="w-14 h-14 rounded-2xl bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] flex items-center justify-center mx-auto mb-4">
               <UserCheck className="w-7 h-7" />
             </div>
-            <h4 className="text-lg font-bold text-[var(--dash-text)] mb-1">No Active Doctor Shares</h4>
+            <h4 className="text-lg font-bold text-[var(--dash-text)] mb-1">No Specific Email Grants</h4>
             <p className="text-sm text-[var(--dash-text-secondary)] max-w-md mx-auto mb-6">
-              You have not granted access to any healthcare providers yet. When consulting a doctor or clinic, you can generate temporary access links here.
+              You haven&apos;t invited any specific physician emails. Your Emergency QR Pass above is active for in-clinic consultations.
             </p>
             <button 
               onClick={() => setIsModalOpen(true)}
               className="dash-btn-primary inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl shadow-sm"
             >
               <Plus className="w-4 h-4" />
-              Grant New Access
+              Grant Access to Doctor Email
             </button>
           </div>
         ) : (
@@ -158,7 +389,7 @@ export default function SharingPage() {
                   </div>
                   <button 
                     onClick={() => handleRevoke(share.id, share.email)}
-                    className="text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                    className="text-sm font-medium text-rose-600 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
                   >
                     <XCircle className="w-4 h-4" /> Revoke
                   </button>
@@ -171,7 +402,7 @@ export default function SharingPage() {
 
       {/* ACCESS AUDIT HISTORY */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-[var(--dash-text)]">Access History & Security Audit</h3>
+        <h3 className="text-lg font-bold text-[var(--dash-text)]">Access History &amp; Security Audit</h3>
         <div className="dash-card overflow-hidden rounded-2xl border border-[var(--dash-border)]">
           <div className="divide-y divide-[var(--dash-border)]">
             {history.map((item) => (
@@ -217,7 +448,7 @@ export default function SharingPage() {
                 <input 
                   type="email" 
                   required
-                  placeholder="e.g. dr.patel@hospital.org" 
+                  placeholder="e.g. dr.reeta@ranjitmaternity.com" 
                   value={doctorEmail}
                   onChange={(e) => setDoctorEmail(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] placeholder-[var(--dash-text-tertiary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
@@ -233,9 +464,10 @@ export default function SharingPage() {
                   onChange={(e) => setScope(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-bg)] text-[var(--dash-text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--dash-sage)]"
                 >
-                  <option value="All Records">All Records (Prescriptions, Regimens & Dosing)</option>
+                  <option value="All Records">All Records (Prescriptions, Regimens &amp; Dosing)</option>
                   <option value="Prescription History Only">Prescription History Only</option>
-                  <option value="Cardiovascular & Metabolic Dossier">Cardiovascular & Metabolic Dossier</option>
+                  <option value="Antenatal &amp; Maternal Health Dossier">Antenatal &amp; Maternal Health Dossier</option>
+                  <option value="Cardiovascular &amp; Metabolic Dossier">Cardiovascular &amp; Metabolic Dossier</option>
                   <option value="Active Medications Only">Active Medications Only</option>
                 </select>
               </div>
@@ -257,7 +489,7 @@ export default function SharingPage() {
               </div>
 
               <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-[var(--dash-text)] flex items-start gap-2.5">
-                <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <Shield className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span>Providers receive a read-only token. Access can be immediately revoked at any moment from this screen.</span>
               </div>
 
@@ -273,7 +505,7 @@ export default function SharingPage() {
                   type="submit"
                   className="dash-btn-primary px-5 py-2 text-sm font-semibold"
                 >
-                  Generate & Grant Access
+                  Generate &amp; Grant Access
                 </button>
               </div>
             </form>

@@ -26,7 +26,9 @@ import {
   Pill,
   ArrowRight,
   X,
-  Sparkles
+  Sparkles,
+  Stethoscope,
+  QrCode
 } from "lucide-react";
 import { createClient } from "@/lib/client";
 import { assetPath } from "@/lib/utils";
@@ -267,6 +269,20 @@ export default function DashboardLayout({
         title: "Doctor Access Sharing",
         subtitle: "Manage view-only provider links and access permissions",
         href: "/dashboard/sharing"
+      });
+    }
+    if ("doctor clinic portal physician schedule slot bhambri reeta".includes(q) || q.includes("doc")) {
+      shortcuts.push({
+        title: "Doctor Clinical Portal (UC-04)",
+        subtitle: "Manage doctor schedule, accept slots, and inspect patient dossiers",
+        href: "/doctor"
+      });
+    }
+    if ("dossier emergency qr export pdf health history".includes(q) || q.includes("dossier") || q.includes("pdf")) {
+      shortcuts.push({
+        title: "Read-Only Patient Clinical Dossier",
+        subtitle: "Emergency QR dossier snapshot and complete health history PDF",
+        href: "/dossier"
       });
     }
 
@@ -744,6 +760,16 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3 pointer-events-auto relative">
+            {/* Doctor Clinical Portal Quick Switch (UC-04) */}
+            <Link
+              href="/doctor"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200/80 text-xs font-bold shadow-xs transition-colors"
+              title="Doctor Clinical Portal (UC-04)"
+            >
+              <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+              <span>Doctor Portal</span>
+            </Link>
+
             {/* Mobile Search Button */}
             <button 
               onClick={() => setMobileSearchOpen(true)}
@@ -786,6 +812,24 @@ export default function DashboardLayout({
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                       {userSession?.email}
                     </p>
+                  </div>
+                  <div className="py-1 border-b border-slate-100 dark:border-slate-800">
+                    <Link
+                      href="/doctor"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-teal-700 hover:bg-teal-50 rounded-lg transition-colors text-left font-medium"
+                    >
+                      <Stethoscope className="w-4 h-4 text-teal-600" />
+                      Doctor Clinical Portal
+                    </Link>
+                    <Link
+                      href="/dossier"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left font-medium"
+                    >
+                      <FileText className="w-4 h-4 text-slate-500" />
+                      Emergency Dossier &amp; PDF
+                    </Link>
                   </div>
                   <button
                     onClick={handleLogout}

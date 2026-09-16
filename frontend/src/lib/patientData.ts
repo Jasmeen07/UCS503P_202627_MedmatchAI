@@ -267,6 +267,43 @@ export const DEMO_PRESCRIPTIONS: StoredPrescription[] = [
       { medicine_name: "Tramadol", dosage: "50mg", frequency: "As needed for acute pain", duration: "3 days", instructions: "Take only when required", intended_use: "Opioid analgesic", confidence: "high", needs_review: false },
       { medicine_name: "Chymoral Forte", dosage: "2 tablets", frequency: "Three times daily", duration: "5 days", instructions: "Empty stomach with water", intended_use: "Enzymatic reduction of post-traumatic edema", confidence: "medium", needs_review: false }
     ]
+  },
+  {
+    id: "7",
+    doc: "Dr. Reeta Bhambri",
+    hospital: "Ranjit Hospital & Maternity Home",
+    diag: "Antenatal Care (Trimester II)",
+    date: "2026-09-12",
+    meds: 3,
+    status: "active",
+    source: "calibrated_ocr",
+    conf: "high",
+    clinical_context: "Pregnancy Support & Antenatal Care",
+    notes: "Gestational age 28 weeks. Fetal heart rate regular (142 bpm). Hemoglobin 11.2 g/dL. Blood pressure 116/74 mmHg. Continue regular iron & calcium supplements.",
+    overview: "Nutritional and gestational prophylaxis protocol calibrated to Dr. Reeta Bhambri handwriting profile (+34.2% fidelity boost).",
+    medicines: [
+      { medicine_name: "Folvite (Folic Acid)", dosage: "5mg", frequency: "Once daily (OD)", duration: "60 days", instructions: "Morning after breakfast", intended_use: "Neural tube defect prevention and erythropoiesis", confidence: "high", needs_review: false },
+      { medicine_name: "Autrin (Iron + Vit B12)", dosage: "1 capsule", frequency: "Once daily (OD)", duration: "60 days", instructions: "Take with fresh citrus juice; avoid dairy within 2 hours", intended_use: "Maternal iron-deficiency anemia prophylaxis", confidence: "high", needs_review: false },
+      { medicine_name: "Shelcal 500 (Calcium + D3)", dosage: "500mg", frequency: "Once daily (OD)", duration: "60 days", instructions: "Evening with dinner", intended_use: "Fetal skeletal ossification and maternal bone density", confidence: "high", needs_review: false }
+    ]
+  },
+  {
+    id: "8",
+    doc: "Dr. H.S. Virk",
+    hospital: "City Care Super Speciality",
+    diag: "Urinary Tract Infection (UTI Episode)",
+    date: "2026-08-28",
+    meds: 2,
+    status: "completed",
+    source: "ocr_scan",
+    conf: "high",
+    clinical_context: "Acute Dysuria & Lower Abdominal Discomfort",
+    notes: "Follow-up urine culture sterile at day 10. Patient instructed on hydration protocol (min 3L water/day).",
+    overview: "Targeted antimicrobial therapy and urinary alkalinization for acute symptomatic cystitis.",
+    medicines: [
+      { medicine_name: "Nitrofurantoin (Macrodantin)", dosage: "100mg", frequency: "Twice daily (BD)", duration: "7 days", instructions: "Take with meals or milk", intended_use: "Urinary tract pathogen clearance (E. coli specific)", confidence: "high", needs_review: false },
+      { medicine_name: "Cital Liquid (Disodium Hydrogen Citrate)", dosage: "2 tsp in water", frequency: "Three times daily (TDS)", duration: "5 days", instructions: "Dilute in a full glass of water", intended_use: "Urinary alkalinizer for symptom relief", confidence: "high", needs_review: false }
+    ]
   }
 ];
 
@@ -428,14 +465,94 @@ export const DEMO_TREATMENT_GROUPS: TreatmentGroup[] = [
         takenToday: true,
       },
     ],
+  },
+  {
+    id: "tg-antenatal",
+    name: "Antenatal Care Episode (Pregnancy Trimester II)",
+    category: "preventative",
+    conditionGoal: "Optimal fetal growth, maternal hemoglobin > 11 g/dL, blood pressure normotensive",
+    physician: "Dr. Reeta Bhambri",
+    hospital: "Ranjit Maternity Clinic & Nursing Home",
+    startDate: "Jul 2026 to Present",
+    status: "active",
+    theme: "teal",
+    adherenceRate: 98,
+    nextMilestone: "Third Trimester Anomaly & Growth Ultrasound in 12 days",
+    clinicalNotes: "Gestational age 28 weeks. Regular maternal iron and calcium supplementation. BP 116/74 mmHg.",
+    linkedPrescriptionIds: ["7"],
+    medications: [
+      {
+        id: "m-folvite",
+        name: "Folvite (Folic Acid 5mg)",
+        dosage: "5mg",
+        frequency: "Once daily (OD)",
+        timing: "Morning after breakfast",
+        instructions: "Essential for gestational erythropoiesis",
+        takenToday: true,
+      },
+      {
+        id: "m-autrin",
+        name: "Autrin (Iron + Vitamin B12)",
+        dosage: "1 Capsule",
+        frequency: "Once daily (OD)",
+        timing: "After lunch with fresh lime juice",
+        instructions: "Do not take concurrently with dairy or tea",
+        takenToday: true,
+      },
+      {
+        id: "m-shelcal",
+        name: "Shelcal 500 (Calcium + Vit D3)",
+        dosage: "500mg",
+        frequency: "Once daily (OD)",
+        timing: "Evening after dinner",
+        instructions: "Take with water, minimum 4 hours separated from iron",
+        takenToday: false,
+      }
+    ]
+  },
+  {
+    id: "tg-uti",
+    name: "Acute UTI Episode (Urinary Tract Infection)",
+    category: "other",
+    conditionGoal: "Eradicate urinary pathogen, resolve dysuria, and restore sterile urine culture",
+    physician: "Dr. H.S. Virk",
+    hospital: "City Care Super Speciality",
+    startDate: "Aug 2026 (Resolved)",
+    status: "completed",
+    theme: "indigo",
+    adherenceRate: 100,
+    nextMilestone: "Episode successfully resolved — sterile repeat culture",
+    clinicalNotes: "7-day course of Nitrofurantoin completed. Dysuria completely resolved. Hydration protocol maintained.",
+    linkedPrescriptionIds: ["8"],
+    medications: [
+      {
+        id: "m-nitro",
+        name: "Nitrofurantoin (Macrodantin)",
+        dosage: "100mg",
+        frequency: "Twice daily (BD)",
+        timing: "With breakfast and dinner",
+        instructions: "Complete entire 7-day course without missing doses",
+        takenToday: false,
+      },
+      {
+        id: "m-cital",
+        name: "Cital Liquid",
+        dosage: "2 tsp",
+        frequency: "Three times daily (TDS)",
+        timing: "Diluted in full glass of water",
+        instructions: "Urine alkalinizer for symptom relief",
+        takenToday: false,
+      }
+    ]
   }
 ];
 
 export const DEMO_APPOINTMENTS: AppointmentItem[] = [
-  { id: 1, title: "Follow-up: Diabetes", doc: "Dr. Patel", date: "Sept 15, 2026", time: "10:00 AM", location: "Lifeline Clinic", status: "upcoming", type: "var(--dash-terracotta)" },
-  { id: 2, title: "Annual Check-up", doc: "Dr. Sharma", date: "Sept 22, 2026", time: "2:30 PM", location: "City Hospital", status: "upcoming", type: "var(--dash-sage)" },
-  { id: 3, title: "Eye Examination", doc: "Dr. Gupta", date: "Oct 1, 2026", time: "11:00 AM", location: "Vision Care Center", status: "upcoming", type: "var(--dash-amber)" },
-  { id: 4, title: "Blood Work Review", doc: "Dr. Mehta", date: "Aug 28, 2026", time: "9:15 AM", location: "Apollo Lab", status: "past", type: "var(--dash-text-tertiary)" }
+  { id: 10, title: "Antenatal Ultrasound & Review", doc: "Dr. Reeta Bhambri", date: "Sept 18, 2026", time: "10:30 AM", location: "Ranjit Maternity Clinic", status: "upcoming", type: "var(--dash-teal)", specialty: "Obstetrics & Gynaecology", notes: "28-week biometry, doppler ultrasound & hemoglobin panel review" },
+  { id: 1, title: "Follow-up: Diabetes", doc: "Dr. Patel", date: "Sept 15, 2026", time: "10:00 AM", location: "Lifeline Clinic", status: "upcoming", type: "var(--dash-terracotta)", specialty: "Endocrinology" },
+  { id: 2, title: "Annual Check-up", doc: "Dr. Sharma", date: "Sept 22, 2026", time: "2:30 PM", location: "City Hospital", status: "upcoming", type: "var(--dash-sage)", specialty: "General Medicine" },
+  { id: 3, title: "Eye Examination", doc: "Dr. Gupta", date: "Oct 1, 2026", time: "11:00 AM", location: "Vision Care Center", status: "upcoming", type: "var(--dash-amber)", specialty: "Ophthalmology" },
+  { id: 4, title: "Blood Work Review", doc: "Dr. Mehta", date: "Aug 28, 2026", time: "9:15 AM", location: "Apollo Lab", status: "past", type: "var(--dash-text-tertiary)", specialty: "Pathology" }
 ];
 
 export const DEMO_SHARES: DoctorShareItem[] = [
@@ -745,3 +862,186 @@ export function togglePatientDailyDose(id: string, email?: string | null): Daily
   savePatientDailyDoses(updated, email);
   return updated;
 }
+
+// ============================================================================
+// Clinical Health Vault & Emergency QR Dossier API (UC-04)
+// ============================================================================
+
+export interface ClinicalEpisode {
+  id: string;
+  title: string;
+  category: string;
+  status: "active" | "monitoring" | "resolved" | "completed";
+  physician: string;
+  hospital: string;
+  dateRange: string;
+  clinicalNotes: string;
+  medications: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+    instructions?: string;
+  }>;
+}
+
+export interface PatientDossierData {
+  patientName: string;
+  email: string;
+  ageGender: string;
+  bloodGroup: string;
+  patientUid: string;
+  emergencyContact: {
+    name: string;
+    relation: string;
+    phone: string;
+  };
+  allergies: Array<{
+    substance: string;
+    reaction: string;
+    severity: "High" | "Moderate" | "Low";
+  }>;
+  chronicConditions: string[];
+  episodes: ClinicalEpisode[];
+  activeMedications: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+    timing: string;
+    instructions: string;
+    prescribedBy: string;
+    episodeName: string;
+  }>;
+  token: string;
+  generatedAt: string;
+  expiresAt: string;
+}
+
+export const DEFAULT_EMERGENCY_TOKEN = "EMG-8821-VLT";
+
+export function getEmergencyToken(email?: string | null): string {
+  if (typeof window === "undefined") return DEFAULT_EMERGENCY_TOKEN;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const key = getPatientStorageKey("emergency_token", user);
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    localStorage.setItem(key, DEFAULT_EMERGENCY_TOKEN);
+    return DEFAULT_EMERGENCY_TOKEN;
+  } catch {
+    return DEFAULT_EMERGENCY_TOKEN;
+  }
+}
+
+export function generateEmergencyToken(email?: string | null): string {
+  if (typeof window === "undefined") return DEFAULT_EMERGENCY_TOKEN;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const key = getPatientStorageKey("emergency_token", user);
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const newToken = `EMG-${randomSuffix}-VLT`;
+  try {
+    localStorage.setItem(key, newToken);
+  } catch (e) {
+    console.error("Failed to generate new emergency token:", e);
+  }
+  return newToken;
+}
+
+export function getPatientDossier(email?: string | null, tokenOverride?: string | null): PatientDossierData {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const isDemo = isDemoPatient(user) || user === "anonymous" || user.includes("jk082") || user.includes("patient");
+  const token = tokenOverride || getEmergencyToken(user);
+
+  const treatmentGroups = getPatientTreatmentGroups(user);
+
+  const episodes: ClinicalEpisode[] = treatmentGroups.map(tg => ({
+    id: tg.id,
+    title: tg.name,
+    category: tg.category,
+    status: tg.status,
+    physician: tg.physician,
+    hospital: tg.hospital,
+    dateRange: tg.startDate,
+    clinicalNotes: tg.clinicalNotes,
+    medications: (tg.medications || []).map(m => ({
+      name: m.name,
+      dosage: m.dosage,
+      frequency: m.frequency,
+      instructions: m.instructions
+    }))
+  }));
+
+  const activeMedications: PatientDossierData["activeMedications"] = [];
+  treatmentGroups.forEach(tg => {
+    if (tg.status === "active" || tg.status === "monitoring") {
+      (tg.medications || []).forEach(m => {
+        activeMedications.push({
+          name: m.name,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          timing: m.timing,
+          instructions: m.instructions || "As directed",
+          prescribedBy: tg.physician,
+          episodeName: tg.name
+        });
+      });
+    }
+  });
+
+  const now = new Date();
+  const generatedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const expiresDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const expiresAt = expiresDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  if (isDemo) {
+    return {
+      patientName: "Simranjit Kaur",
+      email: user === "anonymous" ? "jk0822123@gmail.com" : user,
+      ageGender: "34 Y / Female",
+      bloodGroup: "B+ (Rh Positive)",
+      patientUid: "PT-2026-LUD-8821",
+      emergencyContact: {
+        name: "Jaswinder Singh",
+        relation: "Spouse",
+        phone: "+91 98765-43210"
+      },
+      allergies: [
+        { substance: "Penicillin / Amoxicillin", reaction: "Urticaria, Angioedema & Severe Rash", severity: "High" },
+        { substance: "Sulfonamides (Cotrimoxazole)", reaction: "Cutaneous drug eruption", severity: "Moderate" }
+      ],
+      chronicConditions: [
+        "Pregnancy (Trimester II — Week 28)",
+        "History of Recurrent Gestational UTI",
+        "Borderline Gestational Glycemia (Diet Controlled)"
+      ],
+      episodes,
+      activeMedications,
+      token,
+      generatedAt,
+      expiresAt
+    };
+  }
+
+  // Non-demo patient
+  return {
+    patientName: user.split("@")[0].toUpperCase(),
+    email: user,
+    ageGender: "Patient / Verified",
+    bloodGroup: "O+ (Positive)",
+    patientUid: `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`,
+    emergencyContact: {
+      name: "Primary Emergency Contact",
+      relation: "Family",
+      phone: "+91 98000-00000"
+    },
+    allergies: [
+      { substance: "No Severe Food Allergies Recorded", reaction: "N/A", severity: "Low" }
+    ],
+    chronicConditions: treatmentGroups.map(tg => tg.name),
+    episodes,
+    activeMedications,
+    token,
+    generatedAt,
+    expiresAt
+  };
+}
+
