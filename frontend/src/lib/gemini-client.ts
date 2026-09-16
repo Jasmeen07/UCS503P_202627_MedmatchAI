@@ -1,3 +1,5 @@
+import { getDoctorCalibrationPrompt, calibratePrescriptionOutput } from "./doctorCalibration";
+
 export interface MedicineItem {
   medicine_name?: string;
   name?: string;
@@ -79,6 +81,9 @@ Use the clear printed text from the pharmacy bill or packaging to decisively res
 For items verified against the secondary document, set "verified_source" to "pharmacy_bill" or "medicine_strip", "confidence" to "high", and "needs_review" to false.
 `;
   }
+
+  // Inject Doctor Handwriting Calibration Knowledge (Dr. Reeta Bhambri & general clinical formulary)
+  prompt += getDoctorCalibrationPrompt();
 
   prompt += `
 IMPORTANT EXTRACTION REQUIREMENTS:
@@ -268,7 +273,7 @@ export async function extractWithGeminiApi(
         other_notes: parsed.other_notes || "",
       };
 
-      return result;
+      return calibratePrescriptionOutput(result);
     } catch (e: any) {
       lastErrorMsg = e?.message || "Extraction failed";
       console.warn(`Error invoking ${model}:`, e);
