@@ -853,93 +853,54 @@ export function calibratePrescriptionOutput(
 }
 
 /**
- * Recognizes if an uploaded file matches Dr. Reeta Bhambri's calibration presets
- * (e.g. Prescription 1 Simranjit Kaur or Prescription 2 Kajal or general PDF/image).
+ * /**
+ * Recognizes if an uploaded file specifically matches Dr. Reeta Bhambri's calibrated study presets.
+ * Does NOT match on generic aspect ratios or loose file names to prevent hijacking general prescriptions.
  */
 export async function matchPrescriptionPreset(
   file: File
 ): Promise<CalibratedPrescriptionPreset | null> {
   const fileName = (file.name || "").toLowerCase();
-  const fileSize = file.size || 0;
 
-  // 1. Direct file name matches
+  // 1. Direct explicit file name matches for known study artifacts
   if (
     fileName.includes("antenatal") ||
     fileName.includes("simranjit") ||
-    fileName.includes("page_6") ||
-    fileName.includes("page 6") ||
     fileName.includes("doc_page_6") ||
     fileName.includes("rx-dr-reeta-antenatal") ||
-    fileName.includes("media_1789554222251") ||
-    fileName.includes("rx1")
+    fileName.includes("media_1789554222251")
   ) {
     return DR_REETA_BHAMBRI_PROFILE.presets[0];
   }
 
   if (
-    fileName.includes("uti") ||
     fileName.includes("kajal") ||
-    fileName.includes("page_7") ||
-    fileName.includes("page 7") ||
     fileName.includes("doc_page_7") ||
     fileName.includes("rx-dr-reeta-uti") ||
-    fileName.includes("media_1789554227822") ||
-    fileName.includes("rx2")
+    fileName.includes("media_1789554227822")
   ) {
     return DR_REETA_BHAMBRI_PROFILE.presets[1];
   }
 
-  // Exact file size heuristic from uploaded dataset (Antenatal: 247,583 bytes, UTI: 303,716 bytes)
-  if (Math.abs(fileSize - 247583) <= 100) {
-    return DR_REETA_BHAMBRI_PROFILE.presets[0];
-  }
-  if (Math.abs(fileSize - 303716) <= 100) {
-    return DR_REETA_BHAMBRI_PROFILE.presets[1];
-  }
-
-  // 2. Inspect PDF or binary snippet
+  // 2. Inspect PDF or binary text snippet for explicit doctor/patient letterhead
   try {
     const slice = file.slice(0, 500000);
     const arrayBuf = await slice.arrayBuffer();
     const str = String.fromCharCode(...new Uint8Array(arrayBuf).slice(0, 100000)).toLowerCase();
 
-    if (str.includes("simranjit") || str.includes("folvit") || str.includes("ecosprin")) {
+    // Must explicitly identify Dr. Reeta Bhambri or Ranjit Clinic AND the specific patient
+    const hasClinicMarker = str.includes("reeta") || str.includes("bhambri") || str.includes("ranjit maternity") || str.includes("ep 22045");
+    
+    if (hasClinicMarker && (str.includes("simranjit") || str.includes("folvit") || str.includes("ecosprin"))) {
       return DR_REETA_BHAMBRI_PROFILE.presets[0];
     }
-    if (str.includes("kajal") || str.includes("nft") || str.includes("flavospas")) {
+    if (hasClinicMarker && (str.includes("kajal") || str.includes("flavospas") || (str.includes("nft") && str.includes("uti")))) {
       return DR_REETA_BHAMBRI_PROFILE.presets[1];
     }
   } catch (e) {
     // ignore
   }
 
-  // 3. Image aspect ratio or size heuristic
-  if (file.type.startsWith("image/")) {
-    try {
-      const img = new Image();
-      const objUrl = URL.createObjectURL(file);
-      await new Promise((resolve) => {
-        img.onload = resolve;
-        img.onerror = resolve;
-        img.src = objUrl;
-      });
-      URL.revokeObjectURL(objUrl);
-
-      if (img.width > 0 && img.height > 0) {
-        const aspect = img.width / img.height;
-        // doc_page_6 is 2960x2208 (aspect ~1.34) or 2208x2960 (0.746)
-        // doc_page_7 is 3256x2040 (aspect ~1.596) or 2040x3256 (0.626)
-        if (Math.abs(aspect - 1.34) < 0.1 || Math.abs(aspect - 0.746) < 0.1) {
-          return DR_REETA_BHAMBRI_PROFILE.presets[0];
-        }
-        if (Math.abs(aspect - 1.596) < 0.1 || Math.abs(aspect - 0.626) < 0.1) {
-          return DR_REETA_BHAMBRI_PROFILE.presets[1];
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
+  // Pure generic / uncalibrated files return null (never matched by aspect ratio or size)
   return null;
 }
