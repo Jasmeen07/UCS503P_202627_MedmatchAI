@@ -43,7 +43,11 @@ import {
   setPatientDoctorAccessState,
   regeneratePatientDoctorPasscode,
   PatientAccessControl,
-  AccessAuditEntry
+  AccessAuditEntry,
+  DoctorAccessPermissionRequest,
+  getDoctorAccessRequestsForPatient,
+  respondToAccessRequest,
+  revokeDoctorAccess
 } from "@/lib/patientData";
 
 // Crisp SVG QR Code Component with Medical Cross Emblem
@@ -145,14 +149,16 @@ export default function SharingPage() {
   const [accessControl, setAccessControl] = useState<PatientAccessControl | null>(null);
   const [pinCopied, setPinCopied] = useState(false);
 
+  // Incoming Doctor Access Requests (Patient Consent Flow)
+  const [pendingRequests, setPendingRequests] = useState<DoctorAccessPermissionRequest[]>([]);
+
   const [history, setHistory] = useState([
     { id: 101, email: "dr.reeta@ranjitmaternity.com", action: "Emergency QR Scanned", date: "Sep 16, 2026" },
     { id: 102, email: "dr.mehta@apollo.com", action: "Access Expired", date: "Sep 8, 2026" },
     { id: 103, email: "dr.patel@hospital.com", action: "Viewed Prescription History", date: "Sep 5, 2026" },
   ]);
 
-  useEffect(() => {
-    const email = getActivePatientEmail();
+  const loadSharingData = (email: string) => {
     setActiveEmail(email);
     const shares = getPatientShares(email);
     setActiveShares(shares);
@@ -160,7 +166,34 @@ export default function SharingPage() {
     setEmergencyToken(token);
     const ac = getPatientAccessControl(email);
     setAccessControl(ac);
+    const requests = getDoctorAccessRequestsForPatient(email);
+    setPendingRequests(requests.filter(r => r.status === "pending"));
+  };
+
+  useEffect(() => {
+    const email = getActivePatientEmail();
+    loadSharingData(email);
+
+    const handleUpdate = () => loadSharingData(email);
+    window.addEventListener("medmatch_access_update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("medmatch_access_update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
+
+  const handleAcceptRequest = (req: DoctorAccessPermissionRequest) => {
+    respondToAccessRequest(req.id, "approved", activeEmail);
+    loadSharingData(activeEmail);
+    showToast(`Access granted to ${req.doctorName}! Doctor can now review your health history & prescriptions.`);
+  };
+
+  const handleDeclineRequest = (req: DoctorAccessPermissionRequest) => {
+    respondToAccessRequest(req.id, "declined", activeEmail);
+    loadSharingData(activeEmail);
+    showToast(`Access request from ${req.doctorName} was declined.`);
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -252,11 +285,14 @@ export default function SharingPage() {
 
   const handleRevoke = (id: number | string, emailToRevoke: string) => {
     revokePatientShare(id, activeEmail);
+    revokeDoctorAccess(activeEmail, "dr-reeta");
     setActiveShares(prev => prev.filter(s => String(s.id) !== String(id)));
     setHistory(prev => [
       { id: Date.now(), email: emailToRevoke, action: "Access Revoked by Patient", date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
       ...prev
     ]);
+    const ac = getPatientAccessControl(activeEmail);
+    setAccessControl(ac);
     showToast(`Access revoked for ${emailToRevoke}.`);
   };
 
@@ -514,6 +550,82 @@ export default function SharingPage() {
 
         </div>
       </div>
+
+      {/* PENDING DOCTOR CONSULTATION ACCESS REQUESTS */}
+      {pendingRequests.length > 0 && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-slate-900">
+                Pending Doctor Consultation Access Requests
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                {pendingRequests.length} Action Required
+              </span>
+            </div>
+            <span className="text-xs text-slate-500 font-medium">Explicit Patient Consent Required (UC-04)</span>
+          </div>
+
+          <div className="space-y-3.5">
+            {pendingRequests.map((req) => (
+              <div 
+                key={req.id} 
+                className="bg-gradient-to-r from-amber-50/70 via-white to-amber-50/30 p-5 rounded-2xl border-2 border-amber-300 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Stethoscope className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-bold text-base text-slate-900">
+                        {req.doctorName}
+                      </h4>
+                      <span className="text-xs text-slate-500 font-mono">
+                        (Reg #{req.doctorLicense})
+                      </span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900">
+                        {req.doctorSpecialty}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-600">
+                      <strong>Clinic / Facility:</strong> {req.hospital}
+                    </p>
+
+                    <div className="text-xs text-slate-700 bg-white/80 p-2.5 rounded-xl border border-amber-200 mt-1.5">
+                      <span className="font-semibold text-slate-900">Clinical Justification: </span>
+                      {req.clinicalReason}
+                    </div>
+
+                    <div className="text-[11px] text-slate-500 flex items-center gap-3 pt-1">
+                      <span>Requested Scope: <strong className="text-slate-700">{req.requestedScope}</strong></span>
+                      <span>•</span>
+                      <span>Requested: {req.createdAt}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end pt-2 md:pt-0">
+                  <button
+                    onClick={() => handleDeclineRequest(req)}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors"
+                  >
+                    Decline Request
+                  </button>
+                  <button
+                    onClick={() => handleAcceptRequest(req)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-colors flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Authorize &amp; Grant Access</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ACTIVE ACCESS GRANTS */}
       <div className="space-y-4">

@@ -10,7 +10,11 @@ import {
   Layers,
   Activity,
   UserCheck,
-  FileText
+  FileText,
+  Stethoscope,
+  ShieldAlert,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import { assetPath } from "@/lib/utils";
 import { 
@@ -21,7 +25,12 @@ import {
   getPatientAppointments,
   AppointmentItem,
   DailyDoseItem,
-  StoredPrescription
+  StoredPrescription,
+  DoctorAccessPermissionRequest,
+  getDoctorAccessRequestsForPatient,
+  respondToAccessRequest,
+  getPatientAccessControl,
+  AccessAuditEntry
 } from "@/lib/patientData";
 
 export default function DashboardOverview() {
@@ -31,6 +40,28 @@ export default function DashboardOverview() {
   const [doses, setDoses] = useState<DailyDoseItem[]>([]);
   const [recentPrescriptions, setRecentPrescriptions] = useState<StoredPrescription[]>([]);
   const [nextAppointment, setNextAppointment] = useState<AppointmentItem | null>(null);
+  const [pendingAccessRequest, setPendingAccessRequest] = useState<DoctorAccessPermissionRequest | null>(null);
+  const [recentEmergencyAudit, setRecentEmergencyAudit] = useState<AccessAuditEntry | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => {
+      setToast((curr) => (curr === msg ? null : curr));
+    }, 4000);
+  };
+
+  const loadPatientAccessData = (email: string) => {
+    // 1. Check pending doctor access requests specifically for this patient
+    const requests = getDoctorAccessRequestsForPatient(email);
+    const pending = requests.find(r => r.status === "pending");
+    setPendingAccessRequest(pending || null);
+
+    // 2. Check for recent emergency break-glass in audit log
+    const ac = getPatientAccessControl(email);
+    const emergencyEntry = (ac.auditLog || []).find(a => a.accessType === "Emergency Break-Glass");
+    setRecentEmergencyAudit(emergencyEntry || null);
+  };
 
   useEffect(() => {
     const date = new Date();
@@ -55,7 +86,30 @@ export default function DashboardOverview() {
     const userAppointments = getPatientAppointments(activeEmail);
     const nextApp = userAppointments.find((a) => a.status === "upcoming");
     setNextAppointment(nextApp || null);
+
+    loadPatientAccessData(activeEmail);
+
+    // Real-time synchronization on doctor requests or permission changes
+    const handleUpdate = () => loadPatientAccessData(activeEmail);
+    window.addEventListener("medmatch_access_update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("medmatch_access_update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
+
+  const handleAcceptAccessRequest = (requestId: string) => {
+    respondToAccessRequest(requestId, "approved", patientEmail);
+    loadPatientAccessData(patientEmail);
+    showToast("Access Granted! Dr. Reeta Bhambri can now securely view your clinical records & prescriptions.");
+  };
+
+  const handleDeclineAccessRequest = (requestId: string) => {
+    respondToAccessRequest(requestId, "declined", patientEmail);
+    loadPatientAccessData(patientEmail);
+    showToast("Access Request Declined. The doctor will not be able to view your records.");
+  };
 
   const [greeting, setGreeting] = useState("");
   const [displayedGreeting, setDisplayedGreeting] = useState("");
@@ -200,6 +254,78 @@ export default function DashboardOverview() {
           </div>
         </div>
       </section>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-2.5 animate-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toast}</span>
+        </div>
+      )}
+
+      {/* =========================================================================
+          DOCTOR CLINICAL ACCESS PERMISSION REQUEST BANNER (Patient-Consent Gated)
+          ========================================================================= */}
+      {pendingAccessRequest && (
+        <section className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-teal-900 via-slate-900 to-emerald-950 text-white border border-teal-500/30 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center shrink-0 border border-teal-400/30 shadow-inner">
+              <Stethoscope className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  Doctor Access Authorization Request
+                </span>
+                <span className="text-xs text-teal-200/80 font-medium">
+                  • {pendingAccessRequest.doctorSpecialty}
+                </span>
+              </div>
+              <h3 className="font-bold text-base text-white mt-1">
+                {pendingAccessRequest.doctorName} ({pendingAccessRequest.hospital})
+              </h3>
+              <p className="text-xs text-teal-100/80 mt-0.5 leading-relaxed">
+                Clinical Reason: <strong className="text-white font-semibold">{pendingAccessRequest.clinicalReason}</strong> • Requested Scope: {pendingAccessRequest.requestedScope}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end pt-2 md:pt-0">
+            <button
+              onClick={() => handleDeclineAccessRequest(pendingAccessRequest.id)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors"
+            >
+              Decline
+            </button>
+            <button
+              onClick={() => handleAcceptAccessRequest(pendingAccessRequest.id)}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md transition-colors flex items-center gap-1.5"
+            >
+              <Check className="w-4 h-4 text-slate-950" />
+              <span>Accept &amp; Grant Access</span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Emergency Break-Glass Notification Alert if recent */}
+      {recentEmergencyAudit && (
+        <section className="p-3.5 sm:p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between gap-3 text-xs text-rose-900 dark:text-rose-200">
+          <div className="flex items-center gap-2.5">
+            <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
+            <div>
+              <span className="font-bold text-rose-950 dark:text-rose-100">Emergency Override Logged: </span>
+              <span>{recentEmergencyAudit.accessorName} accessed your emergency health records on {recentEmergencyAudit.timestamp}. Reason: &ldquo;{recentEmergencyAudit.reason}&rdquo;.</span>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/sharing"
+            className="text-xs font-bold text-rose-700 hover:underline shrink-0"
+          >
+            Review Audit Trail →
+          </Link>
+        </section>
+      )}
 
       {/* =========================================================================
           EDITORIAL TWO-COLUMN LAYOUT — NO CARD GRID

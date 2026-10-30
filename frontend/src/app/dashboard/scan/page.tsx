@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Upload,
@@ -11,6 +12,7 @@ import {
   Scan,
   Loader2,
   ArrowRight,
+  ArrowLeft,
   RefreshCw,
   X,
   Activity,
@@ -122,6 +124,10 @@ export default function ScanPage() {
   const [showCalibrationDetails, setShowCalibrationDetails] = useState(false);
   const [activeCalibrationTab, setActiveCalibrationTab] = useState(1);
 
+  // Doctor Portal linked scanning state
+  const [targetPatientEmail, setTargetPatientEmail] = useState<string | null>(null);
+  const [targetPatientName, setTargetPatientName] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const key =
@@ -130,6 +136,17 @@ export default function ScanPage() {
         "";
       if (key && key.trim()) {
         setApiKey(key.trim());
+      }
+
+      // Check for doctor portal query parameters
+      const params = new URLSearchParams(window.location.search);
+      const pEmail = params.get("patientEmail");
+      const pName = params.get("patientName");
+      if (pEmail && pEmail.trim()) {
+        setTargetPatientEmail(pEmail.trim());
+        if (pName && pName.trim()) {
+          setTargetPatientName(pName.trim());
+        }
       }
     }
   }, []);
@@ -543,10 +560,10 @@ export default function ScanPage() {
         created_at: new Date().toISOString(),
       };
 
-      // 1. Patient-scoped persistence
+      // 1. Patient-scoped persistence (scoped to target patient from Doctor Portal or logged-in patient)
       try {
-        const activeEmail = getActivePatientEmail();
-        addPatientPrescription(newPrescription as any, activeEmail);
+        const destEmail = targetPatientEmail || getActivePatientEmail();
+        addPatientPrescription(newPrescription as any, destEmail);
       } catch (storageErr) {
         console.warn("Could not save to patient scoped storage:", storageErr);
       }
@@ -596,8 +613,12 @@ export default function ScanPage() {
 
       setSaveSuccess(true);
       setTimeout(() => {
-        router.push(`/dashboard/prescriptions/view?id=${rxId}`);
-      }, 400);
+        if (targetPatientEmail) {
+          router.push("/doctor");
+        } else {
+          router.push(`/dashboard/prescriptions/view?id=${rxId}`);
+        }
+      }, 500);
     } catch {
       setApiError("Failed to save prescription. Please review your entries and try again.");
     } finally {
@@ -675,6 +696,38 @@ export default function ScanPage() {
         accept="image/jpeg,image/png,image/webp"
         className="hidden"
       />
+      {/* Doctor Portal Linked Banner */}
+      {targetPatientEmail && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-teal-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-teal-700">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-teal-800 text-emerald-400 flex items-center justify-center shrink-0 border border-teal-700 shadow-md">
+              <Stethoscope className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Doctor Portal Linked OCR
+                </span>
+                <span className="text-xs text-teal-200">
+                  Digitizing clinical prescription for patient:
+                </span>
+              </div>
+              <div className="font-bold text-sm sm:text-base text-white mt-0.5 flex items-center gap-2">
+                <span>{targetPatientName || "Target Patient"}</span>
+                <span className="text-teal-300 font-mono text-xs font-normal">({targetPatientEmail})</span>
+              </div>
+            </div>
+          </div>
+          <Link
+            href="/doctor"
+            className="text-xs font-semibold px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors inline-flex items-center gap-1.5 shrink-0 shadow-sm"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to Doctor Portal</span>
+          </Link>
+        </div>
+      )}
+
       {/* Pre-Scan Setup (Clinical Context & Dual Upload Slots) */}
       {!extractedData && (
         <div className="space-y-5">

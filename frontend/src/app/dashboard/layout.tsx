@@ -28,7 +28,11 @@ import {
   X,
   Sparkles,
   Stethoscope,
-  QrCode
+  QrCode,
+  Check,
+  CheckCircle2,
+  AlertCircle,
+  ShieldAlert
 } from "lucide-react";
 import { createClient } from "@/lib/client";
 import { assetPath } from "@/lib/utils";
@@ -39,7 +43,12 @@ import {
   getPatientAppointments, 
   StoredPrescription,
   TreatmentGroup,
-  AppointmentItem
+  AppointmentItem,
+  getPatientNotifications,
+  markPatientNotificationAsRead,
+  markAllPatientNotificationsAsRead,
+  respondToAccessRequest,
+  PatientNotificationItem
 } from "@/lib/patientData";
 
 export default function DashboardLayout({
@@ -60,6 +69,11 @@ export default function DashboardLayout({
   const [userSession, setUserSession] = useState<UserSession | null>(null);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Patient Scoped Notification System
+  const [notifications, setNotifications] = useState<PatientNotificationItem[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationContainerRef = useRef<HTMLDivElement>(null);
 
   // Patient scoped search cache
   const [patientPrescriptions, setPatientPrescriptions] = useState<StoredPrescription[]>([]);
@@ -146,16 +160,60 @@ export default function DashboardLayout({
     return () => clearInterval(interval);
   }, []);
 
-  // Click outside to close search popover
+  // Click outside to close search or notification popovers
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setSearchFocused(false);
       }
+      if (notificationContainerRef.current && !notificationContainerRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Sync patient notifications live across tabs and on permission changes
+  useEffect(() => {
+    if (!userSession?.email) return;
+    const loadNotifs = () => {
+      setNotifications(getPatientNotifications(userSession.email));
+    };
+    loadNotifs();
+
+    window.addEventListener("medmatch_access_update", loadNotifs);
+    window.addEventListener("storage", loadNotifs);
+    return () => {
+      window.removeEventListener("medmatch_access_update", loadNotifs);
+      window.removeEventListener("storage", loadNotifs);
+    };
+  }, [userSession?.email]);
+
+  const unreadNotifCount = notifications.filter(n => !n.read).length;
+
+  const handleAcceptRequestFromNotif = (notif: PatientNotificationItem) => {
+    if (notif.requestId && userSession?.email) {
+      respondToAccessRequest(notif.requestId, "approved", userSession.email);
+      markPatientNotificationAsRead(notif.id, userSession.email);
+      setNotifications(getPatientNotifications(userSession.email));
+    }
+  };
+
+  const handleDeclineRequestFromNotif = (notif: PatientNotificationItem) => {
+    if (notif.requestId && userSession?.email) {
+      respondToAccessRequest(notif.requestId, "declined", userSession.email);
+      markPatientNotificationAsRead(notif.id, userSession.email);
+      setNotifications(getPatientNotifications(userSession.email));
+    }
+  };
+
+  const handleMarkAllNotifsRead = () => {
+    if (userSession?.email) {
+      markAllPatientNotificationsAsRead(userSession.email);
+      setNotifications(getPatientNotifications(userSession.email));
+    }
+  };
 
   // Multi-category search engine computed over patient records
   const searchResults = useMemo(() => {
@@ -783,13 +841,129 @@ export default function DashboardLayout({
               <Search className="w-5 h-5 text-teal-700" />
             </button>
 
-            <button 
-              className="p-2 rounded-lg hover:bg-white/60 text-slate-600 transition-colors relative"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-            </button>
+            {/* Live Notifications Bell & Popover */}
+            <div ref={notificationContainerRef} className="relative">
+              <button 
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className="p-2 rounded-lg hover:bg-white/60 text-slate-600 transition-colors relative"
+                title="Notifications"
+                aria-label="Open notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center ring-2 ring-white">
+                    {unreadNotifCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-0 z-50 animate-in fade-in slide-in-from-top-2 overflow-hidden">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100">Patient Notifications</span>
+                      {unreadNotifCount > 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-800">
+                          {unreadNotifCount} new
+                        </span>
+                      )}
+                    </div>
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={handleMarkAllNotifsRead}
+                        className="text-[11px] font-semibold text-teal-700 hover:text-teal-800 hover:underline"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-400">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                        <p className="font-semibold text-slate-700 dark:text-slate-200">All caught up!</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">No pending doctor requests or alerts.</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div 
+                          key={notif.id}
+                          className={`p-3.5 transition-colors ${
+                            !notif.read ? "bg-teal-50/40 dark:bg-teal-950/20" : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              {notif.type === "emergency_access" ? (
+                                <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                              ) : notif.type === "access_request" ? (
+                                <Stethoscope className="w-4 h-4 text-teal-600 shrink-0" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4 text-indigo-600 shrink-0" />
+                              )}
+                              <span className={`text-xs font-bold ${
+                                notif.type === "emergency_access" ? "text-rose-700 dark:text-rose-400" : "text-slate-900 dark:text-slate-100"
+                              }`}>
+                                {notif.title}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 shrink-0">{notif.timestamp}</span>
+                          </div>
+
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
+                            {notif.message}
+                          </p>
+
+                          {/* Quick Actions for Access Requests */}
+                          {notif.type === "access_request" && notif.requestId && (
+                            <div className="mt-3 flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <button
+                                onClick={() => handleAcceptRequestFromNotif(notif)}
+                                className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1 shadow-xs transition-colors"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Accept Access</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeclineRequestFromNotif(notif)}
+                                className="py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          )}
+
+                          {notif.actionUrl && notif.type !== "access_request" && (
+                            <div className="mt-2 text-right">
+                              <Link
+                                href={notif.actionUrl}
+                                onClick={() => setNotificationsOpen(false)}
+                                className="text-[11px] font-semibold text-teal-700 hover:underline"
+                              >
+                                View Details →
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
+                    <Link
+                      href="/dashboard/sharing"
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline inline-flex items-center gap-1"
+                    >
+                      <span>Manage Doctor Permissions &amp; Audit Log</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Profile Dropdown Indicator */}
             <div className="relative">

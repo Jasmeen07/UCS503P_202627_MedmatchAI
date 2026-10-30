@@ -206,6 +206,75 @@ export interface DailyDoseItem {
   purpose: string;
 }
 
+export interface DoctorPatientRecord {
+  patientEmail: string;
+  patientName: string;
+  patientUid: string;
+  phoneNumber: string;
+  ageGender: string;
+  bloodGroup: string;
+  primaryCondition: string;
+  doctorId: string;
+  accessStatus: "none" | "pending" | "granted" | "declined" | "emergency_override";
+  accessGrantedAt?: string;
+  accessExpiresAt?: string;
+  requestedAt?: string;
+  requestedScope?: string;
+  requestReason?: string;
+  lastVisit?: string;
+  allergiesSummary?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  prescriptionsCount?: number;
+  documentsCount?: number;
+}
+
+export interface DoctorAccessPermissionRequest {
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  doctorSpecialty: string;
+  hospital: string;
+  doctorLicense: string;
+  patientEmail: string;
+  patientName: string;
+  patientUid: string;
+  requestedScope: string;
+  clinicalReason: string;
+  status: "pending" | "approved" | "declined" | "revoked";
+  createdAt: string;
+  updatedAt: string;
+  isEmergency?: boolean;
+}
+
+export interface PatientNotificationItem {
+  id: string;
+  patientEmail: string;
+  type: "access_request" | "emergency_access" | "appointment" | "system";
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  requestId?: string;
+  actionUrl?: string;
+  severity: "info" | "warning" | "critical" | "success";
+  metadata?: Record<string, any>;
+}
+
+export interface PatientDocument {
+  id: string;
+  patientEmail: string;
+  title: string;
+  category: "ultrasound" | "lab_report" | "discharge_summary" | "prescription";
+  date: string;
+  facility: string;
+  doctor: string;
+  summary: string;
+  fileType: string;
+  fileUrl?: string;
+  findings?: string[];
+}
+
 // ============================================================================
 // Designated Demo Account Constants
 // ============================================================================
@@ -1434,7 +1503,7 @@ export function logEmergencyBreakGlassAccess(params: {
   hospital: string;
   emergencyReason: string;
 }): AccessAuditEntry {
-  return addPatientAccessAuditEntry({
+  const audit = addPatientAccessAuditEntry({
     accessorName: params.doctorName,
     accessorRole: "Emergency Physician",
     accessorLicense: params.doctorLicense,
@@ -1443,6 +1512,37 @@ export function logEmergencyBreakGlassAccess(params: {
     reason: params.emergencyReason,
     status: "Emergency Logged"
   }, params.patientEmail);
+
+  // Send High-Priority Emergency Notification to Patient
+  try {
+    addPatientNotification({
+      patientEmail: params.patientEmail,
+      type: "emergency_access",
+      title: "🚨 Emergency Break-Glass Access Alert",
+      message: `${params.doctorName} (${params.doctorLicense}) at ${params.hospital} executed Emergency Break-Glass override at ${audit.timestamp}. Reason: "${params.emergencyReason}".`,
+      severity: "critical",
+      actionUrl: "/dashboard/sharing",
+      metadata: {
+        ...params,
+        auditId: audit.id,
+        timestamp: audit.timestamp
+      }
+    }, params.patientEmail);
+  } catch (err) {
+    console.warn("Could not dispatch emergency notification:", err);
+  }
+
+  // Update Doctor Roster status to emergency_override
+  try {
+    updateDoctorPatientAccessStatus(params.patientEmail, "emergency_override", "dr-reeta", {
+      requestReason: `Emergency Break-Glass: ${params.emergencyReason}`,
+      accessGrantedAt: audit.timestamp
+    });
+  } catch (err) {
+    console.warn("Could not update doctor roster emergency status:", err);
+  }
+
+  return audit;
 }
 
 export interface DoctorAccessVerificationResult {
@@ -1576,6 +1676,631 @@ export function verifyDoctorAccess(
     allowed: false,
     reason: `Invalid 6-digit Doctor PIN for ${access.patientName}. Ask the patient to verify the PIN shown in their MedMatch app (e.g. ${access.doctorPasscode}).`
   };
+}
+
+// ============================================================================
+// Doctor Portal Roster & Patient Access Permission Request Workflow
+// ============================================================================
+
+export const INITIAL_DOCTOR_PATIENTS: DoctorPatientRecord[] = [
+  {
+    patientEmail: "jk0822123@gmail.com",
+    patientName: "Jasmeen Kaur",
+    patientUid: "PT-2026-LUD-8821",
+    phoneNumber: "+91 98881-88219",
+    ageGender: "26 Y / Female",
+    bloodGroup: "B+ (Rh Positive)",
+    primaryCondition: "Antenatal Care (Trimester II — Week 28)",
+    doctorId: "dr-reeta",
+    accessStatus: "pending",
+    requestedAt: "Today, 10:30 AM",
+    requestedScope: "Full Clinical History, Prescriptions & Lab Scans",
+    requestReason: "Antenatal Trimester II routine evaluation and multi-drug interaction screening",
+    lastVisit: "Sep 12, 2026",
+    allergiesSummary: "Penicillin / Amoxicillin (Severe Angioedema)",
+    emergencyContactName: "Jaswinder Singh (Spouse)",
+    emergencyContactPhone: "+91 98765-43210",
+    prescriptionsCount: 3,
+    documentsCount: 2
+  },
+  {
+    patientEmail: "harpreet.s@example.com",
+    patientName: "Harpreet Singh",
+    patientUid: "PT-2026-LUD-3312",
+    phoneNumber: "+91 98881-23456",
+    ageGender: "42 Y / Male",
+    bloodGroup: "B+ (Rh Positive)",
+    primaryCondition: "Post-Op Cholecystectomy Recovery & Wound Care",
+    doctorId: "dr-reeta",
+    accessStatus: "granted",
+    accessGrantedAt: "Sep 16, 2026",
+    accessExpiresAt: "30 days",
+    requestedScope: "Surgical Recovery & Prescription History",
+    requestReason: "Post-operative laparoscopic cholecystectomy wound inspection and antibiotic review",
+    lastVisit: "Yesterday, 04:30 PM",
+    allergiesSummary: "Ciprofloxacin (Moderate Nausea)",
+    emergencyContactName: "Gurpreet Kaur (Spouse)",
+    emergencyContactPhone: "+91 98881-23456",
+    prescriptionsCount: 1,
+    documentsCount: 1
+  },
+  {
+    patientEmail: "amandeep.sharma@example.com",
+    patientName: "Amandeep Sharma",
+    patientUid: "PT-2026-LUD-4091",
+    phoneNumber: "+91 98882-65431",
+    ageGender: "29 Y / Female",
+    bloodGroup: "A+ (Rh Positive)",
+    primaryCondition: "First Trimester Antenatal Routine (Week 11)",
+    doctorId: "dr-reeta",
+    accessStatus: "granted",
+    accessGrantedAt: "Sep 15, 2026",
+    accessExpiresAt: "60 days",
+    requestedScope: "Antenatal Booking & Ultrasound Records",
+    requestReason: "First trimester obstetric booking and pregnancy-safe hyperemesis relief",
+    lastVisit: "Sep 2, 2026",
+    allergiesSummary: "Macrolide Antibiotics (Severe Epigastric Pain)",
+    emergencyContactName: "Vikram Sharma (Spouse)",
+    emergencyContactPhone: "+91 98882-65431",
+    prescriptionsCount: 2,
+    documentsCount: 1
+  }
+];
+
+export const INITIAL_DOCTOR_ACCESS_REQUESTS: DoctorAccessPermissionRequest[] = [
+  {
+    id: "req-acc-8821",
+    doctorId: "dr-reeta",
+    doctorName: "Dr. Reeta Bhambri",
+    doctorSpecialty: "Obstetrics & Antenatal Care",
+    hospital: "Ranjit Maternity Clinic & Nursing Home",
+    doctorLicense: "MCI-34182",
+    patientEmail: "jk0822123@gmail.com",
+    patientName: "Jasmeen Kaur",
+    patientUid: "PT-2026-LUD-8821",
+    requestedScope: "Full Clinical History, Prescriptions & Lab Scans",
+    clinicalReason: "Antenatal Trimester II routine evaluation and multi-drug interaction screening",
+    status: "pending",
+    createdAt: "Today, 10:30 AM",
+    updatedAt: "Today, 10:30 AM"
+  }
+];
+
+export const INITIAL_PATIENT_DOCUMENTS: PatientDocument[] = [
+  {
+    id: "doc-jk-1",
+    patientEmail: "jk0822123@gmail.com",
+    title: "Obstetric Ultrasound — Level-II Anomaly Scan (28 Weeks)",
+    category: "ultrasound",
+    date: "2026-09-12",
+    facility: "Ranjit Maternity Clinic & Diagnostic Imaging",
+    doctor: "Dr. Reeta Bhambri (MCI-34182)",
+    summary: "Single viable intrauterine fetus in cephalic presentation. Normal amniotic fluid index (AFI: 14 cm). Placenta posterior, Grade-II maturity. Estimated fetal weight 1240g (50th percentile). Four-chamber cardiac view and fetal anatomy normal.",
+    fileType: "Diagnostic Sonogram",
+    findings: [
+      "Cephalic presentation with regular cardiac activity (FHR: 142 bpm)",
+      "Amniotic Fluid Index (AFI): 14.0 cm (Adequate)",
+      "Placental location: Posterior, clear of internal os",
+      "Estimated Fetal Weight: 1240g ± 150g (Normal growth curve)"
+    ]
+  },
+  {
+    id: "doc-jk-2",
+    patientEmail: "jk0822123@gmail.com",
+    title: "Second Trimester Maternal Hemogram & OGTT Glycemic Profile",
+    category: "lab_report",
+    date: "2026-09-08",
+    facility: "Dr. Lal PathLabs (Ludhiana Center)",
+    doctor: "Dr. Reeta Bhambri",
+    summary: "Hemoglobin 11.2 g/dL (mild physiological anemia). Fasting blood glucose 88 mg/dL. 2-Hour post 75g oral glucose tolerance test: 128 mg/dL (Normal). Urine examination: Protein Nil, Glucose Nil, Pus cells 2-3 /hpf (Sterile).",
+    fileType: "Hematology & Biochemistry",
+    findings: [
+      "Hemoglobin: 11.2 g/dL (Target > 11.0 g/dL)",
+      "Fasting Plasma Glucose: 88 mg/dL (Normal < 95 mg/dL)",
+      "OGTT 2h Post-load: 128 mg/dL (Gestational diabetes ruled out)",
+      "Urine Routine & Microscopic: Sterile, no bacteriuria"
+    ]
+  },
+  {
+    id: "doc-hp-1",
+    patientEmail: "harpreet.s@example.com",
+    title: "Post-Operative Abdominal Ultrasound & LFT Panel",
+    category: "ultrasound",
+    date: "2026-09-14",
+    facility: "Fortis Hospital (Radiology Wing)",
+    doctor: "Dr. K.S. Duggal (MCI-48192)",
+    summary: "Gallbladder surgically absent (Status post-laparoscopic cholecystectomy). Common bile duct 4.5mm (normal caliber). No intrahepatic biliary dilatation. Operative bed clean with minimal residual seroma.",
+    fileType: "Diagnostic Sonogram & LFT",
+    findings: [
+      "Status post-cholecystectomy; operative bed healing clean",
+      "Common Bile Duct: 4.5 mm (Normal caliber)",
+      "Serum Bilirubin Total: 0.85 mg/dL (Normal)",
+      "SGPT/ALT: 34 U/L (Normal)"
+    ]
+  },
+  {
+    id: "doc-am-1",
+    patientEmail: "amandeep.sharma@example.com",
+    title: "First Trimester Viability & Dating Ultrasound (Week 11)",
+    category: "ultrasound",
+    date: "2026-09-02",
+    facility: "Vision & Maternity Diagnostics",
+    doctor: "Dr. Reeta Bhambri",
+    summary: "Single viable intrauterine gestational sac with active fetal movements. Crown-Rump Length (CRL) 44mm corresponding to 11 weeks 1 day. Fetal heart motion clearly visualized at 156 bpm. No subchorionic hematoma.",
+    fileType: "Sonogram",
+    findings: [
+      "Crown-Rump Length (CRL): 44 mm (Gestational age 11w 1d)",
+      "Fetal Heart Rate: 156 bpm (Normal regular rhythm)",
+      "Single viable intrauterine fetus",
+      "Scheduled for Nuchal Translucency (NT) scan at 12+4 weeks"
+    ]
+  }
+];
+
+function notifyAccessStateChange(): void {
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new Event("medmatch_access_update"));
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
+  }
+}
+
+export function getDoctorAssociatedPatients(doctorId: string = "dr-reeta"): DoctorPatientRecord[] {
+  if (typeof window === "undefined") {
+    return [...INITIAL_DOCTOR_PATIENTS];
+  }
+  const key = `medmatch_doctor_patients_${doctorId}`;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((p: DoctorPatientRecord) => {
+          const rxs = getPatientPrescriptions(p.patientEmail);
+          const docs = getPatientDocuments(p.patientEmail);
+          return {
+            ...p,
+            prescriptionsCount: rxs.length || p.prescriptionsCount || 0,
+            documentsCount: docs.length || p.documentsCount || 0
+          };
+        });
+      }
+    }
+    localStorage.setItem(key, JSON.stringify(INITIAL_DOCTOR_PATIENTS));
+    return INITIAL_DOCTOR_PATIENTS.map((p) => {
+      const rxs = getPatientPrescriptions(p.patientEmail);
+      const docs = getPatientDocuments(p.patientEmail);
+      return {
+        ...p,
+        prescriptionsCount: rxs.length || p.prescriptionsCount || 0,
+        documentsCount: docs.length || p.documentsCount || 0
+      };
+    });
+  } catch (e) {
+    console.warn("Error reading doctor patients:", e);
+    return [...INITIAL_DOCTOR_PATIENTS];
+  }
+}
+
+export function saveDoctorAssociatedPatients(patients: DoctorPatientRecord[], doctorId: string = "dr-reeta"): void {
+  if (typeof window === "undefined") return;
+  const key = `medmatch_doctor_patients_${doctorId}`;
+  try {
+    localStorage.setItem(key, JSON.stringify(patients));
+    notifyAccessStateChange();
+  } catch (e) {
+    console.error("Failed to save doctor patients:", e);
+  }
+}
+
+export function addDoctorAssociatedPatient(patient: DoctorPatientRecord, doctorId: string = "dr-reeta"): void {
+  const current = getDoctorAssociatedPatients(doctorId);
+  const updated = [patient, ...current.filter(p => p.patientEmail.toLowerCase() !== patient.patientEmail.toLowerCase())];
+  saveDoctorAssociatedPatients(updated, doctorId);
+}
+
+export function updateDoctorPatientAccessStatus(
+  patientEmail: string,
+  status: DoctorPatientRecord["accessStatus"],
+  doctorId: string = "dr-reeta",
+  extra?: Partial<DoctorPatientRecord>
+): void {
+  const current = getDoctorAssociatedPatients(doctorId);
+  const updated = current.map(p => {
+    if (p.patientEmail.toLowerCase() === patientEmail.toLowerCase()) {
+      return {
+        ...p,
+        accessStatus: status,
+        ...(status === "granted" ? { accessGrantedAt: p.accessGrantedAt || new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) } : {}),
+        ...extra
+      };
+    }
+    return p;
+  });
+  saveDoctorAssociatedPatients(updated, doctorId);
+}
+
+export function getAllDoctorAccessRequests(): DoctorAccessPermissionRequest[] {
+  if (typeof window === "undefined") return [...INITIAL_DOCTOR_ACCESS_REQUESTS];
+  try {
+    const raw = localStorage.getItem("medmatch_doctor_access_requests");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    localStorage.setItem("medmatch_doctor_access_requests", JSON.stringify(INITIAL_DOCTOR_ACCESS_REQUESTS));
+    return [...INITIAL_DOCTOR_ACCESS_REQUESTS];
+  } catch (e) {
+    console.warn("Error reading doctor access requests:", e);
+    return [...INITIAL_DOCTOR_ACCESS_REQUESTS];
+  }
+}
+
+export function saveDoctorAccessRequests(requests: DoctorAccessPermissionRequest[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("medmatch_doctor_access_requests", JSON.stringify(requests));
+    notifyAccessStateChange();
+  } catch (e) {
+    console.error("Failed to save doctor access requests:", e);
+  }
+}
+
+export function getDoctorAccessRequestsForPatient(patientEmail?: string | null): DoctorAccessPermissionRequest[] {
+  const user = (patientEmail || getActivePatientEmail()).trim().toLowerCase();
+  const all = getAllDoctorAccessRequests();
+  return all.filter(r => r.patientEmail.toLowerCase() === user);
+}
+
+export function getDoctorAccessRequestsForDoctor(doctorId: string = "dr-reeta"): DoctorAccessPermissionRequest[] {
+  const all = getAllDoctorAccessRequests();
+  return all.filter(r => r.doctorId === doctorId);
+}
+
+export function createDoctorAccessRequest(params: {
+  doctorId: string;
+  doctorName: string;
+  doctorSpecialty: string;
+  hospital: string;
+  doctorLicense: string;
+  patientEmail: string;
+  patientName: string;
+  patientUid: string;
+  requestedScope: string;
+  clinicalReason: string;
+  isEmergency?: boolean;
+}): DoctorAccessPermissionRequest {
+  const all = getAllDoctorAccessRequests();
+  const now = new Date();
+  const timestamp = now.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const newReq: DoctorAccessPermissionRequest = {
+    id: `req-acc-${Date.now()}`,
+    ...params,
+    status: params.isEmergency ? "approved" : "pending",
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+
+  const updatedRequests = [newReq, ...all.filter(r => !(r.doctorId === params.doctorId && r.patientEmail.toLowerCase() === params.patientEmail.toLowerCase()))];
+  saveDoctorAccessRequests(updatedRequests);
+
+  // Update association in doctor roster
+  updateDoctorPatientAccessStatus(params.patientEmail, params.isEmergency ? "emergency_override" : "pending", params.doctorId, {
+    requestedAt: timestamp,
+    requestedScope: params.requestedScope,
+    requestReason: params.clinicalReason
+  });
+
+  // Notify patient
+  addPatientNotification({
+    patientEmail: params.patientEmail,
+    type: params.isEmergency ? "emergency_access" : "access_request",
+    title: params.isEmergency ? "🚨 Emergency Break-Glass Record Access" : "Doctor Clinical Record Request",
+    message: `${params.doctorName} (${params.hospital}) has requested access to your clinical records & prescriptions for: "${params.clinicalReason}".`,
+    severity: params.isEmergency ? "critical" : "warning",
+    requestId: newReq.id,
+    actionUrl: "/dashboard/sharing",
+    metadata: {
+      ...params,
+      requestId: newReq.id
+    }
+  }, params.patientEmail);
+
+  return newReq;
+}
+
+export function respondToAccessRequest(
+  requestId: string,
+  decision: "approved" | "declined",
+  patientEmail?: string | null
+): boolean {
+  const all = getAllDoctorAccessRequests();
+  const target = all.find(r => r.id === requestId);
+  if (!target) return false;
+
+  const now = new Date();
+  const timestamp = now.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const updated = all.map(r => {
+    if (r.id === requestId) {
+      return {
+        ...r,
+        status: decision,
+        updatedAt: timestamp
+      };
+    }
+    return r;
+  });
+  saveDoctorAccessRequests(updated);
+
+  // Update Doctor Roster
+  updateDoctorPatientAccessStatus(
+    target.patientEmail,
+    decision === "approved" ? "granted" : "declined",
+    target.doctorId,
+    {
+      accessGrantedAt: decision === "approved" ? timestamp : undefined,
+      accessExpiresAt: decision === "approved" ? "30 days" : undefined
+    }
+  );
+
+  // If approved, create Doctor Share Item and Audit Entry
+  if (decision === "approved") {
+    addPatientShare({
+      email: `${target.doctorId}@ranjitmaternity.com`,
+      scope: target.requestedScope,
+      date: timestamp,
+      expires: "30 days",
+      type: target.requestedScope.toLowerCase().includes("full") ? "full" : "partial"
+    }, target.patientEmail);
+
+    addPatientAccessAuditEntry({
+      accessorName: target.doctorName,
+      accessorRole: "Consulting Doctor",
+      accessorLicense: target.doctorLicense,
+      hospital: target.hospital,
+      accessType: "Passcode Verified",
+      reason: `Patient approved consultation request: ${target.clinicalReason}`,
+      status: "Granted"
+    }, target.patientEmail);
+
+    addPatientNotification({
+      patientEmail: target.patientEmail,
+      type: "system",
+      title: "Doctor Access Approved",
+      message: `You granted access to ${target.doctorName} (${target.hospital}). You can revoke this anytime from the Doctor Access tab.`,
+      severity: "success",
+      actionUrl: "/dashboard/sharing"
+    }, target.patientEmail);
+  } else {
+    addPatientAccessAuditEntry({
+      accessorName: target.doctorName,
+      accessorRole: "Consulting Doctor",
+      accessorLicense: target.doctorLicense,
+      hospital: target.hospital,
+      accessType: "Passcode Verified",
+      reason: `Patient declined consultation request: ${target.clinicalReason}`,
+      status: "Revoked"
+    }, target.patientEmail);
+  }
+
+  notifyAccessStateChange();
+  return true;
+}
+
+export function revokeDoctorAccess(patientEmail: string, doctorId: string = "dr-reeta"): boolean {
+  updateDoctorPatientAccessStatus(patientEmail, "declined", doctorId);
+
+  // Update any existing active requests
+  const all = getAllDoctorAccessRequests();
+  const updated = all.map(r => {
+    if (r.doctorId === doctorId && r.patientEmail.toLowerCase() === patientEmail.toLowerCase()) {
+      return { ...r, status: "revoked" as const, updatedAt: new Date().toLocaleDateString("en-US") };
+    }
+    return r;
+  });
+  saveDoctorAccessRequests(updated);
+
+  addPatientAccessAuditEntry({
+    accessorName: "Patient (Self)",
+    accessorRole: "Patient Self",
+    accessType: "Passcode Verified",
+    status: "Revoked",
+    reason: `Patient revoked consultation access for Doctor ID: ${doctorId}`
+  }, patientEmail);
+
+  notifyAccessStateChange();
+  return true;
+}
+
+// ============================================================================
+// Scoped Patient Notifications System
+// ============================================================================
+
+export function getPatientNotifications(patientEmail?: string | null): PatientNotificationItem[] {
+  const user = (patientEmail || getActivePatientEmail()).trim().toLowerCase();
+  if (typeof window === "undefined") {
+    return isDemoPatient(user) || user === "anonymous" ? [...(INITIAL_PATIENT_NOTIFICATIONS["jk0822123@gmail.com"] || [])] : [];
+  }
+  const key = getPatientStorageKey("notifications", user);
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    if (isDemoPatient(user)) {
+      const initial = INITIAL_PATIENT_NOTIFICATIONS["jk0822123@gmail.com"] || [];
+      localStorage.setItem(key, JSON.stringify(initial));
+      return [...initial];
+    }
+    return [];
+  } catch (e) {
+    console.warn("Error reading patient notifications:", e);
+    return [];
+  }
+}
+
+export function savePatientNotifications(notifications: PatientNotificationItem[], email?: string | null): void {
+  if (typeof window === "undefined") return;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const key = getPatientStorageKey("notifications", user);
+  try {
+    localStorage.setItem(key, JSON.stringify(notifications));
+    notifyAccessStateChange();
+  } catch (e) {
+    console.error("Failed to save patient notifications:", e);
+  }
+}
+
+export function addPatientNotification(
+  notification: Omit<PatientNotificationItem, "id" | "timestamp" | "read">,
+  email?: string | null
+): PatientNotificationItem {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const current = getPatientNotifications(user);
+  const now = new Date();
+  const timestamp = now.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const newNotif: PatientNotificationItem = {
+    ...notification,
+    id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    timestamp,
+    read: false,
+    patientEmail: user
+  };
+
+  const updated = [newNotif, ...current.filter(n => n.id !== newNotif.id)];
+  savePatientNotifications(updated, user);
+  return newNotif;
+}
+
+export function markPatientNotificationAsRead(id: string, email?: string | null): void {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const current = getPatientNotifications(user);
+  const updated = current.map(n => n.id === id ? { ...n, read: true } : n);
+  savePatientNotifications(updated, user);
+}
+
+export function markAllPatientNotificationsAsRead(email?: string | null): void {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const current = getPatientNotifications(user);
+  const updated = current.map(n => ({ ...n, read: true }));
+  savePatientNotifications(updated, user);
+}
+
+// ============================================================================
+// Scoped Diagnostic Documents & Lab Reports API
+// ============================================================================
+
+export function getPatientDocuments(email?: string | null): PatientDocument[] {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  if (typeof window === "undefined") {
+    return INITIAL_PATIENT_DOCUMENTS.filter(d => d.patientEmail.toLowerCase() === user);
+  }
+  const key = getPatientStorageKey("documents", user);
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+
+    const defaultMatches = INITIAL_PATIENT_DOCUMENTS.filter(d => d.patientEmail.toLowerCase() === user);
+    if (defaultMatches.length > 0) {
+      localStorage.setItem(key, JSON.stringify(defaultMatches));
+      return defaultMatches;
+    }
+
+    if (isDemoPatient(user)) {
+      const demoMatches = INITIAL_PATIENT_DOCUMENTS.filter(d => d.patientEmail === "jk0822123@gmail.com");
+      localStorage.setItem(key, JSON.stringify(demoMatches));
+      return demoMatches;
+    }
+
+    return [];
+  } catch (e) {
+    console.warn("Error reading patient documents:", e);
+    return [];
+  }
+}
+
+export function savePatientDocuments(docs: PatientDocument[], email?: string | null): void {
+  if (typeof window === "undefined") return;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const key = getPatientStorageKey("documents", user);
+  try {
+    localStorage.setItem(key, JSON.stringify(docs));
+    notifyAccessStateChange();
+  } catch (e) {
+    console.error("Failed to save patient documents:", e);
+  }
+}
+
+export function addPatientDocument(doc: PatientDocument, email?: string | null): void {
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const current = getPatientDocuments(user);
+  const updated = [doc, ...current.filter(d => d.id !== doc.id)];
+  savePatientDocuments(updated, user);
+}
+
+export function searchRegisteredPatients(query: string): DoctorPatientRecord[] {
+  const clean = (query || "").trim().toLowerCase();
+  const candidates: DoctorPatientRecord[] = [
+    {
+      patientEmail: "jk0822123@gmail.com",
+      patientName: "Jasmeen Kaur",
+      patientUid: "PT-2026-LUD-8821",
+      phoneNumber: "+91 98881-88219",
+      ageGender: "26 Y / Female",
+      bloodGroup: "B+ (Rh Positive)",
+      primaryCondition: "Antenatal Care (Trimester II — Week 28)",
+      doctorId: "dr-reeta",
+      accessStatus: "pending",
+      allergiesSummary: "Penicillin / Amoxicillin",
+      emergencyContactName: "Jaswinder Singh",
+      emergencyContactPhone: "+91 98765-43210"
+    },
+    {
+      patientEmail: "harpreet.s@example.com",
+      patientName: "Harpreet Singh",
+      patientUid: "PT-2026-LUD-3312",
+      phoneNumber: "+91 98881-23456",
+      ageGender: "42 Y / Male",
+      bloodGroup: "B+ (Rh Positive)",
+      primaryCondition: "Post-Op Cholecystectomy Wound Review",
+      doctorId: "dr-reeta",
+      accessStatus: "granted",
+      allergiesSummary: "Ciprofloxacin",
+      emergencyContactName: "Gurpreet Kaur",
+      emergencyContactPhone: "+91 98881-23456"
+    },
+    {
+      patientEmail: "amandeep.sharma@example.com",
+      patientName: "Amandeep Sharma",
+      patientUid: "PT-2026-LUD-4091",
+      phoneNumber: "+91 98882-65431",
+      ageGender: "29 Y / Female",
+      bloodGroup: "A+ (Rh Positive)",
+      primaryCondition: "First Trimester Antenatal Routine (Week 11)",
+      doctorId: "dr-reeta",
+      accessStatus: "granted",
+      allergiesSummary: "Macrolide Antibiotics",
+      emergencyContactName: "Vikram Sharma",
+      emergencyContactPhone: "+91 98882-65431"
+    }
+  ];
+
+  if (!clean) return candidates;
+  return candidates.filter(
+    c =>
+      c.patientName.toLowerCase().includes(clean) ||
+      c.patientUid.toLowerCase().includes(clean) ||
+      c.patientEmail.toLowerCase().includes(clean) ||
+      c.phoneNumber.replace(/\D/g, "").includes(clean.replace(/\D/g, ""))
+  );
 }
 
 // ----------------------------------------------------------------------------
