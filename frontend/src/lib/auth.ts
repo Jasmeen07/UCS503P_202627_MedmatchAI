@@ -53,11 +53,36 @@ const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
     id: "usr-demo-doctor",
     email: "doctor@medmatch.com",
     password: "Doctor123",
-    name: "Dr. Sharma",
+    name: "Dr. Reeta Bhambri",
+    role: "doctor",
+    createdAt: 1700000000000
+  },
+  {
+    id: "usr-dr-reeta",
+    email: "dr.reeta@medmatch.com",
+    password: "Doctor123",
+    name: "Dr. Reeta Bhambri",
+    role: "doctor",
+    createdAt: 1700000000000
+  },
+  {
+    id: "usr-dr-bhambri",
+    email: "reeta.bhambri@medmatch.com",
+    password: "Doctor123",
+    name: "Dr. Reeta Bhambri",
     role: "doctor",
     createdAt: 1700000000000
   }
 ];
+
+/**
+ * Returns default destination URL based on user role.
+ * Doctors go to /doctor, Patients go to /dashboard.
+ */
+export function getRoleDefaultRoute(role?: string | null): string {
+  if (role === "doctor") return "/doctor";
+  return "/dashboard";
+}
 
 /**
  * Retrieves all registered accounts, initializing default demo accounts if not present.

@@ -94,6 +94,10 @@ function AuthFormInner() {
   const [theme, setTheme] = useState("light");
 
   // --- Login State ---
+  const [loginRole, setLoginRole] = useState<"patient" | "doctor">(() => {
+    if (redirectParam && redirectParam.includes("doctor")) return "doctor";
+    return "patient";
+  });
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -174,7 +178,16 @@ function AuthFormInner() {
           // ignore background Supabase errors
         }
 
-        router.push(targetDestination);
+        const userRole = localResult.session.role;
+        // Role-based routing: Doctors must go to /doctor, Patients go to /dashboard (unless explicit non-conflicting redirect)
+        let destination = targetDestination;
+        if (userRole === "doctor" && (!redirectParam || redirectParam.includes("/dashboard"))) {
+          destination = "/doctor";
+        } else if (userRole === "patient" && (!redirectParam || redirectParam.includes("/doctor"))) {
+          destination = "/dashboard";
+        }
+
+        router.push(destination);
         router.refresh();
         return;
       }
@@ -206,7 +219,15 @@ function AuthFormInner() {
               role: newSession.role
             });
 
-            router.push(targetDestination);
+            const userRole = newSession.role;
+            let destination = targetDestination;
+            if (userRole === "doctor" && (!redirectParam || redirectParam.includes("/dashboard"))) {
+              destination = "/doctor";
+            } else if (userRole === "patient" && (!redirectParam || redirectParam.includes("/doctor"))) {
+              destination = "/dashboard";
+            }
+
+            router.push(destination);
             router.refresh();
             return;
           }
@@ -274,9 +295,17 @@ function AuthFormInner() {
         return;
       }
 
-      setRegSuccess("Account registered successfully! Entering dashboard...");
+      const userRole = role; // "doctor" | "patient" | "pharmacy"
+      let destination = targetDestination;
+      if (userRole === "doctor" && (!redirectParam || redirectParam.includes("/dashboard"))) {
+        destination = "/doctor";
+      } else if (userRole === "patient" && (!redirectParam || redirectParam.includes("/doctor"))) {
+        destination = "/dashboard";
+      }
+
+      setRegSuccess(`Account registered as ${userRole === "doctor" ? "Doctor" : "Patient"}! Entering portal...`);
       setTimeout(() => {
-        router.push(targetDestination);
+        router.push(destination);
         router.refresh();
       }, 800);
     } catch (err: any) {
@@ -309,12 +338,53 @@ function AuthFormInner() {
         {/* LOGIN FORM */}
         <div className="form-box login">
           <form onSubmit={handleLogin}>
-            <h1 style={{ marginBottom: "15px" }}>Patient Sign In</h1>
+            {/* Role Switcher Pill */}
+            <div className="flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 mb-3 border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginRole("patient");
+                  setLoginError(null);
+                }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  loginRole === "patient"
+                    ? "bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                <UserIcon className="w-3.5 h-3.5 text-teal-600" />
+                <span>Patient Vault</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginRole("doctor");
+                  setLoginError(null);
+                }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                  loginRole === "doctor"
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                <Stethoscope className="w-3.5 h-3.5" />
+                <span>Doctor Portal</span>
+              </button>
+            </div>
+
+            <h1 style={{ marginBottom: "6px" }}>
+              {loginRole === "doctor" ? "Doctor Clinical Sign In" : "Patient Vault Sign In"}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              {loginRole === "doctor"
+                ? "Physician access to patient roster, consultation slots & clinical records"
+                : "Secure access to your personal medical records, prescriptions & appointments"}
+            </p>
 
             {redirectParam && (
               <div className="mb-3 rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-xs text-teal-700 dark:text-teal-300 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 shrink-0 text-teal-600" />
-                <span>Please sign in to access your protected medical dashboard.</span>
+                <span>Please sign in to access your protected destination.</span>
               </div>
             )}
 
@@ -328,7 +398,7 @@ function AuthFormInner() {
             <div className="input-box">
               <input
                 type="email"
-                placeholder="Email *"
+                placeholder={loginRole === "doctor" ? "Doctor Email (e.g. doctor@medmatch.com) *" : "Patient Email *"}
                 required
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
@@ -357,12 +427,45 @@ function AuthFormInner() {
               <Link href="/forgot-password" style={{ marginLeft: "auto" }}>Forgot Password?</Link>
             </div>
 
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-3 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 leading-relaxed text-left">
-              <span>Demo Login: <strong>patient@medmatch.com</strong> / <strong>Password123</strong></span>
+            {/* Quick Demo Credentials Autofill Chip */}
+            <div className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-[11px] space-y-1.5 text-left">
+              <div className="flex items-center justify-between text-slate-500 font-semibold">
+                <span>Quick Demo Account:</span>
+                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono">1-Click Auto Fill</span>
+              </div>
+              {loginRole === "doctor" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginEmail("doctor@medmatch.com");
+                    setLoginPassword("Doctor123");
+                  }}
+                  className="w-full text-left p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 transition-colors flex items-center justify-between font-medium"
+                >
+                  <span>Dr. Reeta Bhambri (<strong>doctor@medmatch.com</strong>)</span>
+                  <span className="font-mono text-[10px] bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-teal-200">Doctor123</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginEmail("patient@medmatch.com");
+                    setLoginPassword("Password123");
+                  }}
+                  className="w-full text-left p-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 transition-colors flex items-center justify-between font-medium"
+                >
+                  <span>Jasmeen Kaur (<strong>patient@medmatch.com</strong>)</span>
+                  <span className="font-mono text-[10px] bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300">Password123</span>
+                </button>
+              )}
             </div>
 
             <button type="submit" className="btn" disabled={loginLoading}>
-              {loginLoading ? "Authenticating..." : "Sign In to Dashboard"}
+              {loginLoading 
+                ? "Authenticating..." 
+                : loginRole === "doctor" 
+                ? "Sign In to Doctor Portal" 
+                : "Sign In to Patient Vault"}
             </button>
           </form>
         </div>

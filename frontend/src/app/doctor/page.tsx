@@ -42,8 +42,15 @@ import {
   Users,
   ScanLine,
   Image as ImageIcon,
-  ChevronDown
+  ChevronDown,
+  LogOut,
+  HeartPulse
 } from "lucide-react";
+import { 
+  verifyActiveSession,
+  clearUserSession,
+  UserSession
+} from "@/lib/auth";
 import { 
   getPatientAppointments, 
   AppointmentItem, 
@@ -70,6 +77,9 @@ import {
 
 export default function DoctorPortalPage() {
   const router = useRouter();
+  const [userSession, setUserSession] = useState<UserSession | null>(null);
+  const [isVerifyingDoctor, setIsVerifyingDoctor] = useState(true);
+
   const [requests, setRequests] = useState<DoctorRequest[]>([]);
   const [patients, setPatients] = useState<DoctorPatientRecord[]>([]);
   const [activeTab, setActiveTab] = useState<"patients" | "requests" | "schedule" | "calibration">("patients");
@@ -104,6 +114,38 @@ export default function DoctorPortalPage() {
   const loadDoctorData = () => {
     setRequests(getDoctorRequests());
     setPatients(getDoctorAssociatedPatients("dr-reeta"));
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const verifyDocAuth = async () => {
+      try {
+        const session = await verifyActiveSession();
+        if (!isMounted) return;
+        if (!session) {
+          router.replace(`/login?redirect=${encodeURIComponent("/doctor")}`);
+          return;
+        }
+        setUserSession(session);
+        if (session.name) {
+          setEmergencyDoctorName(session.name);
+        }
+        setIsVerifyingDoctor(false);
+      } catch (err) {
+        console.warn("Doctor auth check error:", err);
+        router.replace(`/login?redirect=${encodeURIComponent("/doctor")}`);
+      }
+    };
+    verifyDocAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  const handleDoctorLogout = async () => {
+    await clearUserSession();
+    router.replace("/login");
   };
 
   useEffect(() => {
@@ -342,6 +384,29 @@ export default function DoctorPortalPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  if (isVerifyingDoctor) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white select-none">
+        <div className="flex flex-col items-center gap-4 max-w-sm px-6 text-center animate-in fade-in duration-300">
+          <div className="w-16 h-16 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 shadow-xl animate-pulse">
+            <Stethoscope className="w-8 h-8 text-teal-400" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold tracking-tight text-white">
+              MedMatch AI Clinic Workstation
+            </h2>
+            <p className="text-xs text-teal-200/70">
+              Verifying physician credentials and session security...
+            </p>
+          </div>
+          <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden mt-3">
+            <div className="h-full bg-teal-500 rounded-full w-2/3 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
       {/* Toast Notification */}
@@ -356,51 +421,84 @@ export default function DoctorPortalPage() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link 
-              href="/dashboard"
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              title="Return to Patient Vault"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-md">
-                <Stethoscope className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-md">
+              <Stethoscope className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-slate-900 leading-tight">
+                  {userSession?.name || "Dr. Reeta Bhambri"}
+                </h1>
+                <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
+                  Doctor Clinical Portal
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold">
+                  MCI-34182
+                </span>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-base font-bold text-slate-900 leading-tight">Dr. Reeta Bhambri</h1>
-                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                    Clinic Portal (UC-04)
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  Ranjit Maternity Clinic &amp; Nursing Home • Reg #34182
-                </p>
-              </div>
+              <p className="text-xs text-slate-500">
+                Ranjit Maternity Clinic &amp; Nursing Home • <span className="text-teal-700 font-medium">{userSession?.email || "doctor@medmatch.com"}</span>
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
             <Link
-              href="/dashboard"
-              className="text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl transition-colors shadow-sm"
+              href="/dashboard/scan"
+              className="text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"
+              title="Launch Prescription OCR Scanner"
             >
-              Patient Vault View
+              <ScanLine className="w-3.5 h-3.5 text-teal-600" />
+              <span>OCR Scanner</span>
             </Link>
             <Link
               href="/dossier?token=EMG-8821-VLT"
               className="text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 px-3.5 py-2 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"
             >
               <FileText className="w-3.5 h-3.5" />
-              Active Patient Dossier
+              <span>Patient Dossier</span>
             </Link>
+            <button
+              onClick={handleDoctorLogout}
+              className="text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3.5 py-2 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"
+              title="Sign out of Doctor Portal"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-500" />
+              <span>Sign Out</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* Main Body */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        
+        {/* Patient Warning Banner if a patient navigates to doctor portal */}
+        {userSession?.role === "patient" && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <strong>Signed in as Patient:</strong> You are currently signed in as <strong>{userSession.name}</strong> ({userSession.email}). The Doctor Portal is reserved for verified physicians.
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/dashboard"
+                className="px-3.5 py-2 rounded-xl bg-teal-600 text-white font-bold text-xs shadow-sm hover:bg-teal-700 transition-colors"
+              >
+                Go to Patient Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={handleDoctorLogout}
+                className="px-3.5 py-2 rounded-xl bg-white text-slate-700 font-semibold text-xs border border-slate-300 hover:bg-slate-100 transition-colors"
+              >
+                Sign in as Doctor
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* Patient-Authorized Verification & Emergency Break-Glass Access Portal (UC-04) */}
         <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-emerald-950 text-white rounded-2xl p-6 sm:p-7 shadow-xl border border-teal-800/40 relative overflow-hidden">

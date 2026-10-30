@@ -97,6 +97,12 @@ export default function DashboardLayout({
           return;
         }
 
+        // Role Isolation Guard: Doctors belong in the Doctor Portal (/doctor), not the patient vault
+        if (session.role === "doctor") {
+          router.replace("/doctor");
+          return;
+        }
+
         setUserSession(session);
         setIsVerifying(false);
 
