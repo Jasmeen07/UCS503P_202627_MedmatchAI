@@ -165,49 +165,18 @@ export default function PatientDossierPage() {
         </div>
       </header>
 
-      {/* Patient Dossier Switcher (Hidden in Print) */}
+      {/* Patient Dossier Identity Strip (Hidden in Print) */}
       <div className="bg-white border-b border-slate-200 py-2.5 px-4 sm:px-8 print:hidden">
         <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-slate-500 font-medium">Selected Dossier:</span>
+            <span className="text-slate-500 font-medium">Patient Record:</span>
             <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
               {dossier.patientName}
             </span>
-            <span className="font-mono text-slate-400 text-[11px]">({dossier.token})</span>
+            <span className="font-mono text-slate-500 text-[11px]">({dossier.patientUid || dossier.token})</span>
           </div>
-
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-slate-400 text-[11px] hidden md:inline">Inspect Patient:</span>
-            <Link
-              href="/dossier?token=EMG-8821-VLT"
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                dossier.token.includes("8821") 
-                  ? "bg-emerald-600 text-white shadow-xs" 
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              Simranjit Kaur (Antenatal)
-            </Link>
-            <Link
-              href="/dossier?token=EMG-3312-VLT"
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                dossier.token.includes("3312") 
-                  ? "bg-emerald-600 text-white shadow-xs" 
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              Harpreet Singh (Post-Op)
-            </Link>
-            <Link
-              href="/dossier?token=EMG-4091-VLT"
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                dossier.token.includes("4091") 
-                  ? "bg-emerald-600 text-white shadow-xs" 
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              Amandeep Sharma (Trimester I)
-            </Link>
+          <div className="text-xs text-slate-500 font-medium">
+            Emergency Snapshot Token: <strong className="font-mono text-slate-700">{dossier.token}</strong>
           </div>
         </div>
       </div>

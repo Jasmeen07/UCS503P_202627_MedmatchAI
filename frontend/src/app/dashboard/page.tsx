@@ -14,7 +14,8 @@ import {
   Stethoscope,
   ShieldAlert,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from "lucide-react";
 import { assetPath } from "@/lib/utils";
 import { 
@@ -23,6 +24,7 @@ import {
   togglePatientDailyDose, 
   getActivePatientEmail,
   getPatientAppointments,
+  downloadMedicalSummaryReport,
   AppointmentItem,
   DailyDoseItem,
   StoredPrescription,
@@ -344,12 +346,22 @@ export default function DashboardOverview() {
                 Your latest updates across your care.
               </p>
             </div>
-            <Link 
-              href="/dashboard/prescriptions" 
-              className="text-xs font-medium text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 flex items-center gap-1 transition-colors"
-            >
-              View all <span>→</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => downloadMedicalSummaryReport(patientEmail)}
+                className="text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Download prescription & clinical summary report (PDF/Print)"
+              >
+                <Printer className="w-3.5 h-3.5 text-teal-600" />
+                <span>Export Summary</span>
+              </button>
+              <Link 
+                href="/dashboard/prescriptions" 
+                className="text-xs font-medium text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 flex items-center gap-1 transition-colors"
+              >
+                View all <span>→</span>
+              </Link>
+            </div>
           </div>
 
           {/* Clean Editorial List or Empty State */}

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { 
   getPatientPrescriptions, 
   getActivePatientEmail,
+  downloadMedicalSummaryReport,
   StoredPrescription 
 } from "@/lib/patientData";
 
@@ -16,14 +17,20 @@ export default function PrescriptionsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [filter, setFilter] = useState("all");
   const [prescriptions, setPrescriptions] = useState<StoredPrescription[]>([]);
+  const [patientEmail, setPatientEmail] = useState("");
 
   useEffect(() => {
     const activeEmail = getActivePatientEmail();
+    setPatientEmail(activeEmail);
     const userRx = getPatientPrescriptions(activeEmail);
     setPrescriptions(userRx);
   }, []);
 
   const filteredMocks = prescriptions.filter(p => filter === "all" || p.status === filter);
+
+  const handleDownloadSummary = () => {
+    downloadMedicalSummaryReport(patientEmail || getActivePatientEmail());
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -31,14 +38,22 @@ export default function PrescriptionsPage() {
         title="My Prescriptions" 
         subtitle="Manage, track, and export your clinical health records"
         action={
-          <div className="flex items-center gap-2.5">
-            <Link 
-              href="/dossier" 
-              className="dash-btn-secondary inline-flex items-center gap-2 text-xs py-2 px-3.5"
-              title="Export complete health history and clinical dossier as PDF"
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={handleDownloadSummary}
+              className="dash-btn-secondary inline-flex items-center gap-2 text-xs py-2 px-3.5 cursor-pointer font-medium"
+              title="Download/print a comprehensive medical summary report of all prescriptions & OCR data"
             >
               <Printer className="w-4 h-4 text-[var(--dash-text-secondary)]" />
-              <span>Export Health History (PDF)</span>
+              <span>Download Summary Report (PDF)</span>
+            </button>
+            <Link 
+              href="/dossier" 
+              className="dash-btn-secondary inline-flex items-center gap-2 text-xs py-2 px-3.5 hidden sm:inline-flex"
+              title="Export complete emergency clinical dossier"
+            >
+              <FileText className="w-4 h-4 text-[var(--dash-text-secondary)]" />
+              <span>Emergency Dossier</span>
             </Link>
             <Link href="/dashboard/scan" className="dash-btn-primary inline-flex items-center gap-2 text-xs py-2 px-3.5">
               <Plus className="w-4 h-4" />

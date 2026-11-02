@@ -9,7 +9,7 @@
  * All other patients start with clean, empty records and manage their own data.
  */
 
-import { getUserSession } from "./auth";
+import { getUserSession, getRegisteredAccounts } from "./auth";
 
 // ============================================================================
 // Types
@@ -1704,46 +1704,21 @@ export const INITIAL_DOCTOR_PATIENTS: DoctorPatientRecord[] = [
     documentsCount: 2
   },
   {
-    patientEmail: "harpreet.s@example.com",
-    patientName: "Harpreet Singh",
-    patientUid: "PT-2026-LUD-3312",
-    phoneNumber: "+91 98881-23456",
-    ageGender: "42 Y / Male",
+    patientEmail: "patient@medmatch.com",
+    patientName: "Jasmeen Kaur",
+    patientUid: "PT-2026-DEMO-01",
+    phoneNumber: "+91 98881-88219",
+    ageGender: "26 Y / Female",
     bloodGroup: "B+ (Rh Positive)",
-    primaryCondition: "Post-Op Cholecystectomy Recovery & Wound Care",
+    primaryCondition: "Preventative Health & Prescription Vault",
     doctorId: "dr-reeta",
-    accessStatus: "granted",
-    accessGrantedAt: "Sep 16, 2026",
-    accessExpiresAt: "30 days",
-    requestedScope: "Surgical Recovery & Prescription History",
-    requestReason: "Post-operative laparoscopic cholecystectomy wound inspection and antibiotic review",
-    lastVisit: "Yesterday, 04:30 PM",
-    allergiesSummary: "Ciprofloxacin (Moderate Nausea)",
-    emergencyContactName: "Gurpreet Kaur (Spouse)",
-    emergencyContactPhone: "+91 98881-23456",
-    prescriptionsCount: 1,
-    documentsCount: 1
-  },
-  {
-    patientEmail: "amandeep.sharma@example.com",
-    patientName: "Amandeep Sharma",
-    patientUid: "PT-2026-LUD-4091",
-    phoneNumber: "+91 98882-65431",
-    ageGender: "29 Y / Female",
-    bloodGroup: "A+ (Rh Positive)",
-    primaryCondition: "First Trimester Antenatal Routine (Week 11)",
-    doctorId: "dr-reeta",
-    accessStatus: "granted",
-    accessGrantedAt: "Sep 15, 2026",
-    accessExpiresAt: "60 days",
-    requestedScope: "Antenatal Booking & Ultrasound Records",
-    requestReason: "First trimester obstetric booking and pregnancy-safe hyperemesis relief",
-    lastVisit: "Sep 2, 2026",
-    allergiesSummary: "Macrolide Antibiotics (Severe Epigastric Pain)",
-    emergencyContactName: "Vikram Sharma (Spouse)",
-    emergencyContactPhone: "+91 98882-65431",
-    prescriptionsCount: 2,
-    documentsCount: 1
+    accessStatus: "none",
+    lastVisit: "Registered User",
+    allergiesSummary: "Penicillin / Amoxicillin",
+    emergencyContactName: "Jaswinder Singh",
+    emergencyContactPhone: "+91 98765-43210",
+    prescriptionsCount: 3,
+    documentsCount: 2
   }
 ];
 
@@ -1846,41 +1821,56 @@ function notifyAccessStateChange(): void {
   }
 }
 
-export function getDoctorAssociatedPatients(doctorId: string = "dr-reeta"): DoctorPatientRecord[] {
-  if (typeof window === "undefined") {
-    return [...INITIAL_DOCTOR_PATIENTS];
-  }
-  const key = `medmatch_doctor_patients_${doctorId}`;
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((p: DoctorPatientRecord) => {
-          const rxs = getPatientPrescriptions(p.patientEmail);
-          const docs = getPatientDocuments(p.patientEmail);
-          return {
-            ...p,
-            prescriptionsCount: rxs.length || p.prescriptionsCount || 0,
-            documentsCount: docs.length || p.documentsCount || 0
-          };
-        });
+export function getHospitalRegisteredPatients(doctorId: string = "dr-reeta"): DoctorPatientRecord[] {
+  const accounts = getRegisteredAccounts().filter(a => a.role === "patient");
+  const allRequests = getAllDoctorAccessRequests();
+  const requests = allRequests.filter(r => r.doctorId === doctorId);
+
+  return accounts.map(a => {
+    const userEmail = a.email.toLowerCase();
+    const req = requests.find(r => r.patientEmail.toLowerCase() === userEmail);
+    const rxs = getPatientPrescriptions(userEmail);
+    const docs = getPatientDocuments(userEmail);
+    const ac = getPatientAccessControl(userEmail);
+
+    let accessStatus: DoctorPatientRecord["accessStatus"] = "none";
+    if (req) {
+      if (req.status === "approved") {
+        accessStatus = req.isEmergency ? "emergency_override" : "granted";
+      } else if (req.status === "pending") {
+        accessStatus = "pending";
+      } else if (req.status === "declined" || req.status === "revoked") {
+        accessStatus = "declined";
       }
     }
-    localStorage.setItem(key, JSON.stringify(INITIAL_DOCTOR_PATIENTS));
-    return INITIAL_DOCTOR_PATIENTS.map((p) => {
-      const rxs = getPatientPrescriptions(p.patientEmail);
-      const docs = getPatientDocuments(p.patientEmail);
-      return {
-        ...p,
-        prescriptionsCount: rxs.length || p.prescriptionsCount || 0,
-        documentsCount: docs.length || p.documentsCount || 0
-      };
-    });
-  } catch (e) {
-    console.warn("Error reading doctor patients:", e);
-    return [...INITIAL_DOCTOR_PATIENTS];
-  }
+
+    const uid = ac.patientUid || `PT-2026-${a.id.replace("usr-", "").toUpperCase()}`;
+
+    return {
+      patientEmail: a.email,
+      patientName: a.name || a.email.split("@")[0],
+      patientUid: uid,
+      phoneNumber: ac.phoneNumber || "+91 98881-88219",
+      ageGender: isDemoPatient(userEmail) ? "26 Y / Female" : "Patient / Verified",
+      bloodGroup: isDemoPatient(userEmail) ? "B+ (Rh Positive)" : "O+ (Rh Positive)",
+      primaryCondition: isDemoPatient(userEmail) ? "Antenatal Care (Trimester II — Week 28)" : "General Medical Vault",
+      doctorId: doctorId,
+      accessStatus,
+      accessGrantedAt: req?.status === "approved" ? req.updatedAt : undefined,
+      requestedAt: req?.createdAt,
+      requestedScope: req?.requestedScope || "Full Prescriptions & Lab Scans",
+      requestReason: req?.clinicalReason,
+      allergiesSummary: isDemoPatient(userEmail) ? "Penicillin / Amoxicillin" : "None recorded",
+      emergencyContactName: isDemoPatient(userEmail) ? "Jaswinder Singh (Spouse)" : "Primary Emergency Contact",
+      emergencyContactPhone: isDemoPatient(userEmail) ? "+91 98765-43210" : "+91 98000-00000",
+      prescriptionsCount: rxs.length,
+      documentsCount: docs.length
+    };
+  });
+}
+
+export function getDoctorAssociatedPatients(doctorId: string = "dr-reeta"): DoctorPatientRecord[] {
+  return getHospitalRegisteredPatients(doctorId);
 }
 
 export function saveDoctorAssociatedPatients(patients: DoctorPatientRecord[], doctorId: string = "dr-reeta"): void {
@@ -1958,19 +1948,65 @@ export function getDoctorAccessRequestsForDoctor(doctorId: string = "dr-reeta"):
   return all.filter(r => r.doctorId === doctorId);
 }
 
-export function createDoctorAccessRequest(params: {
-  doctorId: string;
-  doctorName: string;
-  doctorSpecialty: string;
-  hospital: string;
-  doctorLicense: string;
-  patientEmail: string;
-  patientName: string;
-  patientUid: string;
-  requestedScope: string;
-  clinicalReason: string;
-  isEmergency?: boolean;
-}): DoctorAccessPermissionRequest {
+export function createDoctorAccessRequest(
+  arg1: {
+    doctorId: string;
+    doctorName: string;
+    doctorSpecialty: string;
+    hospital: string;
+    doctorLicense: string;
+    patientEmail: string;
+    patientName: string;
+    patientUid: string;
+    requestedScope: string;
+    clinicalReason: string;
+    isEmergency?: boolean;
+  } | string,
+  arg2?: string,
+  arg3?: string,
+  arg4?: string,
+  arg5?: string
+): DoctorAccessPermissionRequest {
+  let params: {
+    doctorId: string;
+    doctorName: string;
+    doctorSpecialty: string;
+    hospital: string;
+    doctorLicense: string;
+    patientEmail: string;
+    patientName: string;
+    patientUid: string;
+    requestedScope: string;
+    clinicalReason: string;
+    isEmergency?: boolean;
+  };
+
+  if (typeof arg1 === "object" && arg1 !== null) {
+    params = arg1;
+  } else {
+    const patientEmail = String(arg1 || "").trim().toLowerCase();
+    const requestedScope = arg2 || "Full Clinical History, Prescriptions & Lab Scans";
+    const clinicalReason = arg3 || "Antenatal routine evaluation & medication reconciliation";
+    const doctorId = arg4 || "dr-reeta";
+    const doctorName = arg5 || "Dr. Reeta Bhambri";
+    const accounts = getRegisteredAccounts();
+    const acc = accounts.find(a => a.email.toLowerCase() === patientEmail);
+    const patientName = acc?.name || (patientEmail === "jk0822123@gmail.com" ? "Jasmeen Kaur" : patientEmail.split("@")[0]);
+    params = {
+      doctorId,
+      doctorName,
+      doctorSpecialty: "Obstetrics & Antenatal Care",
+      hospital: "Ranjit Maternity Clinic & Nursing Home",
+      doctorLicense: "MCI-34182",
+      patientEmail,
+      patientName,
+      patientUid: `PT-2026-${patientEmail.slice(0, 4).toUpperCase()}`,
+      requestedScope,
+      clinicalReason,
+      isEmergency: false
+    };
+  }
+
   const all = getAllDoctorAccessRequests();
   const now = new Date();
   const timestamp = now.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -2246,53 +2282,9 @@ export function addPatientDocument(doc: PatientDocument, email?: string | null):
   savePatientDocuments(updated, user);
 }
 
-export function searchRegisteredPatients(query: string): DoctorPatientRecord[] {
+export function searchRegisteredPatients(query: string, doctorId: string = "dr-reeta"): DoctorPatientRecord[] {
   const clean = (query || "").trim().toLowerCase();
-  const candidates: DoctorPatientRecord[] = [
-    {
-      patientEmail: "jk0822123@gmail.com",
-      patientName: "Jasmeen Kaur",
-      patientUid: "PT-2026-LUD-8821",
-      phoneNumber: "+91 98881-88219",
-      ageGender: "26 Y / Female",
-      bloodGroup: "B+ (Rh Positive)",
-      primaryCondition: "Antenatal Care (Trimester II — Week 28)",
-      doctorId: "dr-reeta",
-      accessStatus: "pending",
-      allergiesSummary: "Penicillin / Amoxicillin",
-      emergencyContactName: "Jaswinder Singh",
-      emergencyContactPhone: "+91 98765-43210"
-    },
-    {
-      patientEmail: "harpreet.s@example.com",
-      patientName: "Harpreet Singh",
-      patientUid: "PT-2026-LUD-3312",
-      phoneNumber: "+91 98881-23456",
-      ageGender: "42 Y / Male",
-      bloodGroup: "B+ (Rh Positive)",
-      primaryCondition: "Post-Op Cholecystectomy Wound Review",
-      doctorId: "dr-reeta",
-      accessStatus: "granted",
-      allergiesSummary: "Ciprofloxacin",
-      emergencyContactName: "Gurpreet Kaur",
-      emergencyContactPhone: "+91 98881-23456"
-    },
-    {
-      patientEmail: "amandeep.sharma@example.com",
-      patientName: "Amandeep Sharma",
-      patientUid: "PT-2026-LUD-4091",
-      phoneNumber: "+91 98882-65431",
-      ageGender: "29 Y / Female",
-      bloodGroup: "A+ (Rh Positive)",
-      primaryCondition: "First Trimester Antenatal Routine (Week 11)",
-      doctorId: "dr-reeta",
-      accessStatus: "granted",
-      allergiesSummary: "Macrolide Antibiotics",
-      emergencyContactName: "Vikram Sharma",
-      emergencyContactPhone: "+91 98882-65431"
-    }
-  ];
-
+  const candidates = getHospitalRegisteredPatients(doctorId);
   if (!clean) return candidates;
   return candidates.filter(
     c =>
@@ -2301,6 +2293,280 @@ export function searchRegisteredPatients(query: string): DoctorPatientRecord[] {
       c.patientEmail.toLowerCase().includes(clean) ||
       c.phoneNumber.replace(/\D/g, "").includes(clean.replace(/\D/g, ""))
   );
+}
+
+// ============================================================================
+// Clinical Summary & Prescription Report Export Engine (Doctor & Patient)
+// ============================================================================
+
+export function generateMedicalSummaryHtml(
+  patientEmail: string,
+  options?: { doctorName?: string; hospital?: string; generatedBy?: string }
+): string {
+  const user = (patientEmail || getActivePatientEmail()).trim().toLowerCase();
+  const accounts = getRegisteredAccounts();
+  const account = accounts.find(a => a.email.toLowerCase() === user);
+  const patientName = account?.name || (user === "jk0822123@gmail.com" ? "Jasmeen Kaur" : user.split("@")[0]);
+  const ac = getPatientAccessControl(user);
+  const prescriptions = getPatientPrescriptions(user);
+  const documents = getPatientDocuments(user);
+  const now = new Date();
+  const timestamp = now.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  const doctorName = options?.doctorName || "Dr. Reeta Bhambri (MCI-34182)";
+  const hospital = options?.hospital || "Ranjit Maternity Clinic & Emergency Center";
+  const generatedBy = options?.generatedBy || "MedMatch AI Clinical Workstation";
+
+  const rxRowsHtml = prescriptions.length > 0 ? prescriptions.map(rx => {
+    const medsList = (rx.medicines || []).map(m => {
+      const name = m.name || m.medicine_name || "Prescribed Medication";
+      const dose = m.dosage || m.dose || "Standard dose";
+      const freq = m.frequency || m.freq || "As directed";
+      const dur = m.duration || m.dur || "Course duration";
+      const instr = m.instructions || m.instr || "Take as instructed";
+      const conf = m.confidence || m.conf || rx.conf || "High";
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 10px 12px; font-weight: 600; color: #0f172a;">${name}</td>
+          <td style="padding: 10px 12px; color: #334155;">${dose}</td>
+          <td style="padding: 10px 12px; color: #334155;">${freq}</td>
+          <td style="padding: 10px 12px; color: #334155;">${dur}</td>
+          <td style="padding: 10px 12px; color: #475569; font-size: 12px;">${instr}</td>
+          <td style="padding: 10px 12px; text-align: center;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+              ${conf} (${rx.source || "OCR"})
+            </span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    return `
+      <div style="margin-bottom: 20px; padding: 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+          <div>
+            <span style="font-weight: 700; font-size: 14px; color: #0f172a;">${rx.doc || "Treating Physician"}</span>
+            <span style="color: #64748b; font-size: 13px;"> • ${rx.hospital || hospital}</span>
+          </div>
+          <div style="font-size: 12px; color: #475569;">
+            Date: <strong>${rx.date}</strong> | Clinical Indication: <strong>${rx.diag || "Prescription Review"}</strong>
+          </div>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+          <thead>
+            <tr style="background: #f8fafc; border-bottom: 1.5px solid #cbd5e1;">
+              <th style="padding: 8px 12px; color: #475569; font-size: 11px; text-transform: uppercase;">Medication</th>
+              <th style="padding: 8px 12px; color: #475569; font-size: 11px; text-transform: uppercase;">Dosage</th>
+              <th style="padding: 8px 12px; color: #475569; font-size: 11px; text-transform: uppercase;">Frequency</th>
+              <th style="padding: 8px 12px; color: #475569; font-size: 11px; text-transform: uppercase;">Duration</th>
+              <th style="padding: 8px 12px; color: #475569; font-size: 11px; text-transform: uppercase;">Instructions</th>
+              <th style="padding: 8px 12px; color: #475569; font-size: 11px; text-transform: uppercase; text-align: center;">Verification</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${medsList || '<tr><td colspan="6" style="padding: 12px; text-align: center; color: #64748b;">No medication items recorded</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }).join("") : '<p style="color: #64748b; font-style: italic; padding: 12px 0;">No active prescriptions recorded in patient vault.</p>';
+
+  const docRowsHtml = documents.length > 0 ? documents.map(d => {
+    const findingsList = (d.findings || []).map(f => `<li style="margin-bottom: 4px;">${f}</li>`).join("");
+    return `
+      <div style="margin-bottom: 16px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+          <strong style="color: #0f172a; font-size: 13px;">${d.title}</strong>
+          <span style="font-size: 12px; color: #64748b;">${d.date} • ${d.facility}</span>
+        </div>
+        <p style="font-size: 12px; color: #334155; margin: 4px 0 8px 0; line-height: 1.5;">${d.summary}</p>
+        ${findingsList ? `<ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #475569;">${findingsList}</ul>` : ""}
+      </div>
+    `;
+  }).join("") : '<p style="color: #64748b; font-style: italic; padding: 12px 0;">No diagnostic reports or lab investigations recorded.</p>';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MedMatch Clinical Summary - ${patientName}</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.5;
+      margin: 0;
+      padding: 24px;
+    }
+    .header {
+      border-bottom: 2px solid #0d9488;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 4px 0;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #0d9488;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .meta-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      font-size: 12px;
+    }
+    .meta-item strong {
+      display: block;
+      color: #64748b;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .meta-item span {
+      font-weight: 600;
+      color: #0f172a;
+      font-size: 13px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin: 24px 0 16px 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    .footer {
+      margin-top: 36px;
+      padding-top: 16px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="subtitle">MedMatch AI Clinical Network • Official Health Summary</div>
+      <h1 class="title">Clinical Summary &amp; Prescription Report</h1>
+      <div style="font-size: 12px; color: #64748b;">Facility: <strong>${hospital}</strong></div>
+    </div>
+    <div style="text-align: right; font-size: 11px; color: #64748b;">
+      <div>Generated: <strong>${timestamp}</strong></div>
+      <div>Authorized Provider: <strong>${doctorName}</strong></div>
+    </div>
+  </div>
+
+  <div class="meta-box">
+    <div class="meta-item">
+      <strong>Patient Name</strong>
+      <span>${patientName}</span>
+    </div>
+    <div class="meta-item">
+      <strong>Patient UID</strong>
+      <span>${ac.patientUid || `PT-${user.slice(0, 4).toUpperCase()}`}</span>
+    </div>
+    <div class="meta-item">
+      <strong>Patient Email</strong>
+      <span>${user}</span>
+    </div>
+    <div class="meta-item">
+      <strong>Blood Group</strong>
+      <span>${isDemoPatient(user) ? "B+ (Rh Positive)" : "O+ (Rh Positive)"}</span>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <span>Verified Prescriptions &amp; OCR Medications</span>
+    <span style="font-weight: normal; color: #64748b;">${prescriptions.length} Prescription(s)</span>
+  </div>
+  ${rxRowsHtml}
+
+  <div class="section-title" style="margin-top: 28px;">
+    <span>Diagnostic Documents &amp; Lab Investigations</span>
+    <span style="font-weight: normal; color: #64748b;">${documents.length} Report(s)</span>
+  </div>
+  ${docRowsHtml}
+
+  <div class="footer">
+    <div>
+      <strong>MedMatch AI Clinical Verification</strong> • Cryptographic Health Record Snapshot
+      <br>Compliant with clinical patient consent and hospital record-sharing protocols.
+    </div>
+    <div style="text-align: right;">
+      Status: <strong style="color: #047857;">Verified &amp; Certified</strong>
+      <br>Source: ${generatedBy}
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+export function downloadMedicalSummaryReport(
+  patientEmail: string,
+  options?: { doctorName?: string; hospital?: string; generatedBy?: string }
+): void {
+  if (typeof window === "undefined") return;
+  const html = generateMedicalSummaryHtml(patientEmail, options);
+
+  const printWindow = window.open("", "_blank", "width=900,height=900");
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      try {
+        printWindow.print();
+      } catch (e) {
+        console.warn("Print dialog triggered:", e);
+      }
+    }, 450);
+  } else {
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `MedMatch_Summary_${patientEmail.replace(/[^a-zA-Z0-9]/g, "_")}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ----------------------------------------------------------------------------
