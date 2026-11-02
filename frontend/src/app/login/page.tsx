@@ -78,15 +78,39 @@ const ROLES = [
 
 type Role = (typeof ROLES)[number]["id"];
 
+function getTargetRouteForRole(userRole: string, targetPath: string | null): string {
+  if (userRole === "doctor") {
+    // Doctors only route to doctor dashboard or doctor subroutes. Never patient dashboard.
+    if (targetPath && targetPath.startsWith("/doctor")) {
+      return targetPath;
+    }
+    return "/doctor";
+  }
+
+  // Patients (and all other users) ALWAYS route to patient dashboard (/dashboard).
+  // Strictly prevent patients from landing on the doctor portal.
+  if (targetPath && targetPath.startsWith("/dashboard")) {
+    return targetPath;
+  }
+  return "/dashboard";
+}
+
 function AuthFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
   const redirectParam = searchParams.get("redirect");
-  let targetDestination = redirectParam ? decodeURIComponent(redirectParam) : "/dashboard";
-  if (targetDestination.startsWith("/UCS503P_202627_MedmatchAI")) {
-    targetDestination = targetDestination.slice("/UCS503P_202627_MedmatchAI".length) || "/dashboard";
+  let targetDestination: string | null = null;
+  if (redirectParam) {
+    try {
+      targetDestination = decodeURIComponent(redirectParam);
+      if (targetDestination.startsWith("/UCS503P_202627_MedmatchAI")) {
+        targetDestination = targetDestination.slice("/UCS503P_202627_MedmatchAI".length) || null;
+      }
+    } catch {
+      targetDestination = null;
+    }
   }
 
   // --- UI State ---
@@ -145,7 +169,7 @@ function AuthFormInner() {
     if (error) {
       setLoginError(error.message);
     } else {
-      setLoginSuccess("Magic link sent! Check your email to sign in.");
+      setLoginSuccess("Magic link sent! Check your email to log in.");
     }
   };
 
@@ -175,13 +199,7 @@ function AuthFormInner() {
         }
 
         const userRole = localResult.session.role;
-        // Role-based routing: Doctors must go to /doctor, Patients go to /dashboard (unless explicit non-conflicting redirect)
-        let destination = targetDestination;
-        if (userRole === "doctor" && (!redirectParam || redirectParam.includes("/dashboard"))) {
-          destination = "/doctor";
-        } else if (userRole === "patient" && (!redirectParam || redirectParam.includes("/doctor"))) {
-          destination = "/dashboard";
-        }
+        const destination = getTargetRouteForRole(userRole, targetDestination);
 
         router.push(destination);
         router.refresh();
@@ -216,12 +234,7 @@ function AuthFormInner() {
             });
 
             const userRole = newSession.role;
-            let destination = targetDestination;
-            if (userRole === "doctor" && (!redirectParam || redirectParam.includes("/dashboard"))) {
-              destination = "/doctor";
-            } else if (userRole === "patient" && (!redirectParam || redirectParam.includes("/doctor"))) {
-              destination = "/dashboard";
-            }
+            const destination = getTargetRouteForRole(userRole, targetDestination);
 
             router.push(destination);
             router.refresh();
@@ -233,11 +246,9 @@ function AuthFormInner() {
       }
 
       // 3. If neither succeeded, present clear and accurate error:
-      // "Incorrect password. Please verify your password and try again." or
-      // "No account found with this email address. Please register an account first."
       setLoginError(localResult.error || "Incorrect email or password. Please verify your credentials.");
     } catch (err: any) {
-      setLoginError(err?.message || "Sign-in failed. Please verify credentials.");
+      setLoginError(err?.message || "Login failed. Please verify credentials.");
     } finally {
       setLoginLoading(false);
     }
@@ -292,12 +303,7 @@ function AuthFormInner() {
       }
 
       const userRole = role; // "doctor" | "patient" | "pharmacy"
-      let destination = targetDestination;
-      if (userRole === "doctor" && (!redirectParam || redirectParam.includes("/dashboard"))) {
-        destination = "/doctor";
-      } else if (userRole === "patient" && (!redirectParam || redirectParam.includes("/doctor"))) {
-        destination = "/dashboard";
-      }
+      const destination = getTargetRouteForRole(userRole, targetDestination);
 
       setRegSuccess(`Account registered as ${userRole === "doctor" ? "Doctor" : "Patient"}! Entering portal...`);
       setTimeout(() => {
@@ -334,12 +340,12 @@ function AuthFormInner() {
         {/* LOGIN FORM */}
         <div className="form-box login">
           <form onSubmit={handleLogin}>
-            <h1 style={{ marginBottom: "15px" }}>Sign In</h1>
+            <h1 style={{ marginBottom: "15px" }}>Login</h1>
 
             {redirectParam && (
               <div className="mb-3 rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-2 text-xs text-teal-700 dark:text-teal-300 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 shrink-0 text-teal-600" />
-                <span>Please sign in to access your protected destination.</span>
+                <span>Please log in to access your account.</span>
               </div>
             )}
 
@@ -383,7 +389,7 @@ function AuthFormInner() {
             </div>
 
             <button type="submit" className="btn" disabled={loginLoading}>
-              {loginLoading ? "Authenticating..." : "Sign In"}
+              {loginLoading ? "Logging in..." : "Login"}
             </button>
           </form>
         </div>

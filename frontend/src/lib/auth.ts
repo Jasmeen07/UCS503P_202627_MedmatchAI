@@ -97,12 +97,15 @@ export function getRegisteredAccounts(): RegisteredAccount[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Ensure default demo accounts are always present without wiping existing users
-      const existingEmails = new Set(parsed.map((a: any) => (a.email || "").toLowerCase().trim()));
+      // Ensure default demo accounts are always present and correctly typed without wiping existing users
       let updated = false;
       for (const def of DEFAULT_ACCOUNTS) {
-        if (!existingEmails.has(def.email.toLowerCase().trim())) {
+        const existing = parsed.find((a: any) => (a.email || "").toLowerCase().trim() === def.email.toLowerCase().trim());
+        if (!existing) {
           parsed.push(def);
+          updated = true;
+        } else if (existing.role !== def.role) {
+          existing.role = def.role;
           updated = true;
         }
       }

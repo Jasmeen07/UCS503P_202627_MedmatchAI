@@ -16,7 +16,6 @@ import {
   Sparkles,
   Scan,
   AlertTriangle,
-  Stethoscope,
   Share2,
   CheckCheck,
   Layers,
@@ -65,18 +64,11 @@ export function LandingInteractive() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Link
-            href="/login?redirect=%2Fdashboard"
+            href="/login"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white font-medium text-sm transition-all card-interactive w-full sm:w-auto shadow-sm"
           >
-            Access Patient Vault
+            Access Vault
             <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
-            href="/login?redirect=%2Fdoctor"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-teal-600 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900 font-medium text-sm transition-colors w-full sm:w-auto shadow-sm"
-          >
-            <Stethoscope className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            Doctor Clinical Portal
           </Link>
           <a
             href="#interactive-demo"

@@ -12,7 +12,6 @@ import {
   Database,
   Lock,
   Search,
-  Stethoscope,
 } from "lucide-react";
 import { assetPath } from "@/lib/utils";
 
@@ -106,17 +105,10 @@ export default function Home() {
           <div className="flex items-center gap-2.5">
             <ThemeToggle />
             <Link
-              href="/login?redirect=%2Fdoctor"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/60 text-teal-900 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors"
-            >
-              <Stethoscope className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              <span>Doctor Portal</span>
-            </Link>
-            <Link
-              href="/login?redirect=%2Fdashboard"
+              href="/login"
               className="text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
             >
-              Sign In
+              Login
             </Link>
             <Link
               href="/login"
@@ -170,17 +162,10 @@ export default function Home() {
               Terms of Service
             </Link>
             <Link
-              href="/login?redirect=%2Fdashboard"
+              href="/login"
               className="hover:text-slate-900 dark:hover:text-slate-100 transition-colors text-xs"
             >
-              Patient Portal
-            </Link>
-            <Link
-              href="/login?redirect=%2Fdoctor"
-              className="text-teal-700 dark:text-teal-400 font-medium hover:underline transition-colors text-xs flex items-center gap-1"
-            >
-              <Stethoscope className="w-3 h-3" />
-              Doctor Portal
+              Login
             </Link>
           </div>
         </div>
