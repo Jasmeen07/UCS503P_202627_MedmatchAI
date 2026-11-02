@@ -11,13 +11,15 @@ import {
   CheckCircle2, 
   Receipt,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Download
 } from "lucide-react";
 import { formatPrescriptionId } from "@/lib/auth";
 import { 
   getPatientPrescriptions, 
   getPatientPrescriptionById, 
-  getActivePatientEmail 
+  getActivePatientEmail,
+  downloadOcrPrescriptionSummary
 } from "@/lib/patientData";
 
 interface MedicineDetail {
@@ -134,10 +136,26 @@ function PrescriptionDetailContent() {
           </p>
         </div>
         
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => downloadOcrPrescriptionSummary({
+              doctorName: rx.doc,
+              hospital: rx.hospital,
+              diagnosis: rx.diag,
+              date: rx.date,
+              overview: rx.overview || "",
+              medicines: medicineList
+            })}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-teal-600/40 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900 text-xs font-medium rounded transition-colors"
+            title="Download or print structured clinical summary of this prescription"
+          >
+            <Download className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            Download Summary Report
+          </button>
           <Link 
             href="/dashboard/insights" 
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded transition-colors"
           >
             <Activity className="w-3.5 h-3.5" />
             Check Interactions

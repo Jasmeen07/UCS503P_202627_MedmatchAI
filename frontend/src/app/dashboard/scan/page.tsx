@@ -28,12 +28,13 @@ import {
   SlidersHorizontal,
   Layers,
   ShieldCheck,
+  Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { createClient } from "@/lib/client";
 import { extractWithGeminiApi } from "@/lib/gemini-client";
 import { generatePrescriptionId } from "@/lib/auth";
-import { addPatientPrescription, getActivePatientEmail } from "@/lib/patientData";
+import { addPatientPrescription, getActivePatientEmail, downloadOcrPrescriptionSummary } from "@/lib/patientData";
 import {
   DR_REETA_BHAMBRI_PROFILE,
   matchPrescriptionPreset,
@@ -1282,14 +1283,33 @@ export default function ScanPage() {
                 Review extracted medicines, clinical indications, and verify any ambiguous items.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={clearSelectedFile}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Scan Another Slip
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => downloadOcrPrescriptionSummary({
+                  patientEmail: targetPatientEmail || getActivePatientEmail(),
+                  doctorName: extractedDoctor || "Attending Physician",
+                  hospital: extractedHospital || "Clinical Facility",
+                  diagnosis: extractedDiagnosis || "Consultation Diagnosis",
+                  date: prescriptionDate,
+                  overview: clinicalSummary?.overview || "",
+                  medicines: medicines
+                })}
+                className="inline-flex items-center gap-1.5 text-xs text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-300 dark:border-teal-800 px-3 py-1.5 rounded hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors font-medium"
+                title="Download or print a structured summary report of this particular prescription"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download Summary Report
+              </button>
+              <button
+                type="button"
+                onClick={clearSelectedFile}
+                className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Scan Another Slip
+              </button>
+            </div>
           </div>
 
           {/* Clinical Summary & Medication Purpose Card */}
@@ -1645,7 +1665,7 @@ export default function ScanPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={clearSelectedFile}
@@ -1653,6 +1673,45 @@ export default function ScanPage() {
                   className="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
                   Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadOcrPrescriptionSummary({
+                    patientEmail: targetPatientEmail || getActivePatientEmail(),
+                    doctorName: extractedDoctor || "Attending Physician",
+                    hospital: extractedHospital || "Clinical Facility",
+                    diagnosis: extractedDiagnosis || "Consultation Diagnosis",
+                    date: prescriptionDate,
+                    overview: clinicalSummary?.overview || "",
+                    medicines: medicines
+                  })}
+                  disabled={isSaving || medicines.length === 0}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium rounded transition-colors disabled:opacity-50"
+                  title="Download or print a comprehensive summary report directly from this OCR scan"
+                >
+                  <Download className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                  Download Summary Report
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    downloadOcrPrescriptionSummary({
+                      patientEmail: targetPatientEmail || getActivePatientEmail(),
+                      doctorName: extractedDoctor || "Attending Physician",
+                      hospital: extractedHospital || "Clinical Facility",
+                      diagnosis: extractedDiagnosis || "Consultation Diagnosis",
+                      date: prescriptionDate,
+                      overview: clinicalSummary?.overview || "",
+                      medicines: medicines
+                    });
+                    await handleSavePrescription();
+                  }}
+                  disabled={isSaving || medicines.length === 0}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 border border-teal-700 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded transition-colors disabled:opacity-50 shadow-sm"
+                  title="Save prescription to medical records AND download printable clinical summary"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Save &amp; Download Summary</span>
                 </button>
                 <button
                   type="button"
@@ -1672,7 +1731,7 @@ export default function ScanPage() {
                     </>
                   ) : (
                     <>
-                      Save to Prescriptions
+                      Save Prescription
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
