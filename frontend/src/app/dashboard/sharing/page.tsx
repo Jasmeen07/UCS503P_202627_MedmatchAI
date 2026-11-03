@@ -151,6 +151,7 @@ export default function SharingPage() {
 
   // Incoming Doctor Access Requests (Patient Consent Flow)
   const [pendingRequests, setPendingRequests] = useState<DoctorAccessPermissionRequest[]>([]);
+  const [activeDoctorRequests, setActiveDoctorRequests] = useState<DoctorAccessPermissionRequest[]>([]);
 
   const [history, setHistory] = useState([
     { id: 101, email: "dr.reeta@ranjitmaternity.com", action: "Emergency QR Scanned", date: "Sep 16, 2026" },
@@ -168,6 +169,7 @@ export default function SharingPage() {
     setAccessControl(ac);
     const requests = getDoctorAccessRequestsForPatient(email);
     setPendingRequests(requests.filter(r => r.status === "pending"));
+    setActiveDoctorRequests(requests.filter(r => r.status === "approved"));
   };
 
   useEffect(() => {
@@ -294,6 +296,16 @@ export default function SharingPage() {
     const ac = getPatientAccessControl(activeEmail);
     setAccessControl(ac);
     showToast(`Access revoked for ${emailToRevoke}.`);
+  };
+
+  const handleRevokeDoctorGrant = (req: DoctorAccessPermissionRequest) => {
+    revokeDoctorAccess(activeEmail, req.doctorId);
+    loadSharingData(activeEmail);
+    setHistory(prev => [
+      { id: Date.now(), email: req.doctorName, action: `Access Revoked by Patient (${req.doctorName})`, date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
+      ...prev
+    ]);
+    showToast(`Access revoked for ${req.doctorName}. The doctor must submit a new request if they need to access your records again.`);
   };
 
   return (
@@ -630,17 +642,19 @@ export default function SharingPage() {
       {/* ACTIVE ACCESS GRANTS */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-[var(--dash-text)]">Active Provider Grants ({activeShares.length})</h3>
+          <h3 className="text-lg font-bold text-[var(--dash-text)]">
+            Active Provider Grants ({activeShares.length + activeDoctorRequests.length})
+          </h3>
         </div>
 
-        {activeShares.length === 0 ? (
+        {activeShares.length === 0 && activeDoctorRequests.length === 0 ? (
           <div className="dash-card p-12 text-center border border-[var(--dash-border)] rounded-2xl bg-[var(--dash-surface)]">
             <div className="w-14 h-14 rounded-2xl bg-[var(--dash-sage-bg)] text-[var(--dash-sage)] flex items-center justify-center mx-auto mb-4">
               <UserCheck className="w-7 h-7" />
             </div>
-            <h4 className="text-lg font-bold text-[var(--dash-text)] mb-1">No Specific Email Grants</h4>
+            <h4 className="text-lg font-bold text-[var(--dash-text)] mb-1">No Active Doctor Grants</h4>
             <p className="text-sm text-[var(--dash-text-secondary)] max-w-md mx-auto mb-6">
-              You haven&apos;t invited any specific physician emails. Your Emergency QR Pass above is active for in-clinic consultations.
+              You haven&apos;t authorized any doctors or external physician emails. Your Emergency QR Pass above remains active for in-clinic emergency consultations.
             </p>
             <button 
               onClick={() => setIsModalOpen(true)}
@@ -652,6 +666,53 @@ export default function SharingPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Active Doctor Portal Requests */}
+            {activeDoctorRequests.map((req) => (
+              <div key={req.id} className="dash-card card-interactive p-5 flex flex-col h-full border-t-4 border-teal-600 rounded-2xl bg-white shadow-xs">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-700">
+                      <Stethoscope className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="font-bold text-slate-900">{req.doctorName}</h4>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                          {req.doctorLicense}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">{req.hospital} • {req.doctorSpecialty}</p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Active Access
+                  </span>
+                </div>
+                
+                <div className="bg-slate-50 rounded-lg p-3 mb-5 border border-slate-200/80">
+                  <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-0.5">Authorized Clinical Scope</div>
+                  <div className="text-xs font-medium text-slate-800">{req.requestedScope}</div>
+                  <div className="text-[10px] text-slate-400 mt-1">Authorized on {req.updatedAt || req.createdAt}</div>
+                </div>
+
+                <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <Clock className="w-3.5 h-3.5 text-teal-600" />
+                    Clinical Records Accessible
+                  </div>
+                  <button 
+                    onClick={() => handleRevokeDoctorGrant(req)}
+                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 border border-rose-200 cursor-pointer"
+                    title="Revoke access. The doctor will need to request permission again."
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Revoke Access
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Manual Email Shares */}
             {activeShares.map((share) => (
               <div key={share.id} className="dash-card card-interactive p-5 flex flex-col h-full border-t-4 border-[var(--dash-sage)] rounded-2xl">
                 <div className="flex justify-between items-start mb-4">
@@ -678,7 +739,7 @@ export default function SharingPage() {
                   </div>
                   <button 
                     onClick={() => handleRevoke(share.id, share.email)}
-                    className="text-sm font-medium text-rose-600 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                    className="text-sm font-medium text-rose-600 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <XCircle className="w-4 h-4" /> Revoke
                   </button>

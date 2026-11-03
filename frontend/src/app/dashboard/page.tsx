@@ -15,7 +15,8 @@ import {
   ShieldAlert,
   CheckCircle2,
   AlertCircle,
-  Printer
+  Printer,
+  XCircle
 } from "lucide-react";
 import { assetPath } from "@/lib/utils";
 import { 
@@ -30,7 +31,9 @@ import {
   StoredPrescription,
   DoctorAccessPermissionRequest,
   getDoctorAccessRequestsForPatient,
+  getActiveDoctorAccessRequestsForPatient,
   respondToAccessRequest,
+  revokeDoctorAccess,
   getPatientAccessControl,
   AccessAuditEntry
 } from "@/lib/patientData";
@@ -43,6 +46,7 @@ export default function DashboardOverview() {
   const [recentPrescriptions, setRecentPrescriptions] = useState<StoredPrescription[]>([]);
   const [nextAppointment, setNextAppointment] = useState<AppointmentItem | null>(null);
   const [pendingAccessRequest, setPendingAccessRequest] = useState<DoctorAccessPermissionRequest | null>(null);
+  const [activeDoctorGrants, setActiveDoctorGrants] = useState<DoctorAccessPermissionRequest[]>([]);
   const [recentEmergencyAudit, setRecentEmergencyAudit] = useState<AccessAuditEntry | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -59,7 +63,11 @@ export default function DashboardOverview() {
     const pending = requests.find(r => r.status === "pending");
     setPendingAccessRequest(pending || null);
 
-    // 2. Check for recent emergency break-glass in audit log
+    // 2. Check active approved doctor grants for this patient
+    const approved = requests.filter(r => r.status === "approved");
+    setActiveDoctorGrants(approved);
+
+    // 3. Check for recent emergency break-glass in audit log
     const ac = getPatientAccessControl(email);
     const emergencyEntry = (ac.auditLog || []).find(a => a.accessType === "Emergency Break-Glass");
     setRecentEmergencyAudit(emergencyEntry || null);
@@ -111,6 +119,12 @@ export default function DashboardOverview() {
     respondToAccessRequest(requestId, "declined", patientEmail);
     loadPatientAccessData(patientEmail);
     showToast("Access Request Declined. The doctor will not be able to view your records.");
+  };
+
+  const handleRevokeDoctorAccess = (doctorId: string, doctorName?: string) => {
+    revokeDoctorAccess(patientEmail, doctorId);
+    loadPatientAccessData(patientEmail);
+    showToast(`Access revoked for ${doctorName || "Doctor"}. The physician will have to request access again to view your records.`);
   };
 
   const [greeting, setGreeting] = useState("");
@@ -309,6 +323,56 @@ export default function DashboardOverview() {
           </div>
         </section>
       )}
+
+      {/* =========================================================================
+          ACTIVE DOCTOR ACCESS & PERMISSION REVOCATION (UC-04 Patient Consent)
+          ========================================================================= */}
+      {activeDoctorGrants.map((grant) => (
+        <section 
+          key={grant.id} 
+          className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 text-white border border-teal-500/30 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in"
+        >
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-300 flex items-center justify-center shrink-0 border border-teal-400/30">
+              <Stethoscope className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Active Doctor Access
+                </span>
+                <span className="text-xs text-teal-200/80 font-medium">
+                  • {grant.doctorSpecialty}
+                </span>
+              </div>
+              <h3 className="font-bold text-base text-white mt-1">
+                {grant.doctorName} ({grant.hospital})
+              </h3>
+              <p className="text-xs text-teal-100/70 mt-0.5">
+                Authorized: <span className="text-white font-medium">{grant.requestedScope}</span> • Granted on {grant.updatedAt || grant.createdAt}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end pt-2 md:pt-0">
+            <Link
+              href="/dashboard/sharing"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors"
+            >
+              Access Settings
+            </Link>
+            <button
+              onClick={() => handleRevokeDoctorAccess(grant.doctorId, grant.doctorName)}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-rose-200 hover:text-white bg-rose-900/60 hover:bg-rose-800/80 border border-rose-700/60 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="Immediately revoke clinical record access for this doctor"
+            >
+              <XCircle className="w-4 h-4 text-rose-400" />
+              <span>Revoke Access</span>
+            </button>
+          </div>
+        </section>
+      ))}
 
       {/* Emergency Break-Glass Notification Alert if recent */}
       {recentEmergencyAudit && (

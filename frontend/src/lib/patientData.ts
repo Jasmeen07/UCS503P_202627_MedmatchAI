@@ -215,7 +215,7 @@ export interface DoctorPatientRecord {
   bloodGroup: string;
   primaryCondition: string;
   doctorId: string;
-  accessStatus: "none" | "pending" | "granted" | "declined" | "emergency_override";
+  accessStatus: "none" | "pending" | "granted" | "declined" | "revoked" | "emergency_override";
   accessGrantedAt?: string;
   accessExpiresAt?: string;
   requestedAt?: string;
@@ -1839,7 +1839,9 @@ export function getHospitalRegisteredPatients(doctorId: string = "dr-reeta"): Do
         accessStatus = req.isEmergency ? "emergency_override" : "granted";
       } else if (req.status === "pending") {
         accessStatus = "pending";
-      } else if (req.status === "declined" || req.status === "revoked") {
+      } else if (req.status === "revoked") {
+        accessStatus = "revoked";
+      } else if (req.status === "declined") {
         accessStatus = "declined";
       }
     }
@@ -1941,6 +1943,10 @@ export function getDoctorAccessRequestsForPatient(patientEmail?: string | null):
   const user = (patientEmail || getActivePatientEmail()).trim().toLowerCase();
   const all = getAllDoctorAccessRequests();
   return all.filter(r => r.patientEmail.toLowerCase() === user);
+}
+
+export function getActiveDoctorAccessRequestsForPatient(patientEmail?: string | null): DoctorAccessPermissionRequest[] {
+  return getDoctorAccessRequestsForPatient(patientEmail).filter(r => r.status === "approved");
 }
 
 export function getDoctorAccessRequestsForDoctor(doctorId: string = "dr-reeta"): DoctorAccessPermissionRequest[] {
@@ -2127,24 +2133,48 @@ export function respondToAccessRequest(
 }
 
 export function revokeDoctorAccess(patientEmail: string, doctorId: string = "dr-reeta"): boolean {
-  updateDoctorPatientAccessStatus(patientEmail, "declined", doctorId);
+  updateDoctorPatientAccessStatus(patientEmail, "revoked", doctorId);
 
   // Update any existing active requests
   const all = getAllDoctorAccessRequests();
+  let doctorDisplayName = "Treating Physician";
   const updated = all.map(r => {
-    if (r.doctorId === doctorId && r.patientEmail.toLowerCase() === patientEmail.toLowerCase()) {
-      return { ...r, status: "revoked" as const, updatedAt: new Date().toLocaleDateString("en-US") };
+    if ((r.doctorId === doctorId || doctorId === "all") && r.patientEmail.toLowerCase() === patientEmail.toLowerCase()) {
+      doctorDisplayName = r.doctorName || doctorDisplayName;
+      return { 
+        ...r, 
+        status: "revoked" as const, 
+        updatedAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) 
+      };
     }
     return r;
   });
   saveDoctorAccessRequests(updated);
+
+  // Clean up any corresponding patient share items
+  try {
+    const currentShares = getPatientShares(patientEmail);
+    const updatedShares = currentShares.filter(s => !s.email.toLowerCase().includes(doctorId.toLowerCase()));
+    savePatientShares(updatedShares, patientEmail);
+  } catch (err) {
+    console.warn("Could not remove share item:", err);
+  }
 
   addPatientAccessAuditEntry({
     accessorName: "Patient (Self)",
     accessorRole: "Patient Self",
     accessType: "Passcode Verified",
     status: "Revoked",
-    reason: `Patient revoked consultation access for Doctor ID: ${doctorId}`
+    reason: `Patient revoked consultation access for ${doctorDisplayName} (${doctorId}). Re-authorization required.`
+  }, patientEmail);
+
+  addPatientNotification({
+    patientEmail,
+    type: "system",
+    title: "Doctor Access Revoked",
+    message: `You revoked medical record access for ${doctorDisplayName}. The doctor must submit a new access request to view your clinical records again.`,
+    severity: "warning",
+    actionUrl: "/dashboard/sharing"
   }, patientEmail);
 
   notifyAccessStateChange();
@@ -2154,6 +2184,23 @@ export function revokeDoctorAccess(patientEmail: string, doctorId: string = "dr-
 // ============================================================================
 // Scoped Patient Notifications System
 // ============================================================================
+
+export const INITIAL_PATIENT_NOTIFICATIONS: Record<string, PatientNotificationItem[]> = {
+  "jk0822123@gmail.com": [
+    {
+      id: "notif-req-1",
+      patientEmail: "jk0822123@gmail.com",
+      type: "access_request",
+      title: "Clinical Record Access Request",
+      message: "Dr. Reeta Bhambri (Obstetrics & Gynecology) requested access to your medical records.",
+      timestamp: "Today, 10:30 AM",
+      read: false,
+      requestId: "req-bhambri-jk082",
+      actionUrl: "/dashboard/sharing",
+      severity: "info"
+    }
+  ]
+};
 
 export function getPatientNotifications(patientEmail?: string | null): PatientNotificationItem[] {
   const user = (patientEmail || getActivePatientEmail()).trim().toLowerCase();
