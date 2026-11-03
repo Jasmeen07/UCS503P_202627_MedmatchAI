@@ -144,10 +144,8 @@ export default function SharingPage() {
   const [tokenCopied, setTokenCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-
-  // In-Clinic Doctor PIN Access Control
+  // Patient Access Control & Audit Log
   const [accessControl, setAccessControl] = useState<PatientAccessControl | null>(null);
-  const [pinCopied, setPinCopied] = useState(false);
 
   // Incoming Doctor Access Requests (Patient Consent Flow)
   const [pendingRequests, setPendingRequests] = useState<DoctorAccessPermissionRequest[]>([]);
@@ -202,36 +200,6 @@ export default function SharingPage() {
     setTimeout(() => {
       setToast((curr) => (curr === msg ? null : curr));
     }, 3500);
-  };
-
-  const handleToggleDoctorAccess = () => {
-    if (!accessControl) return;
-    const newState = !accessControl.accessGranted;
-    setPatientDoctorAccessState(newState, activeEmail);
-    const updated = getPatientAccessControl(activeEmail);
-    setAccessControl(updated);
-    showToast(
-      newState 
-        ? "Doctor In-Clinic Access ENABLED. Doctors can now unlock your records with your PIN." 
-        : "Doctor In-Clinic Access PAUSED. All external doctor PIN lookups are blocked."
-    );
-  };
-
-  const handleRegeneratePin = () => {
-    const newPin = regeneratePatientDoctorPasscode(activeEmail);
-    const updated = getPatientAccessControl(activeEmail);
-    setAccessControl(updated);
-    showToast(`New 6-digit Doctor Passcode generated: ${newPin}. Previous PIN invalidated.`);
-  };
-
-  const handleCopyPin = () => {
-    if (!accessControl) return;
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(accessControl.doctorPasscode);
-      setPinCopied(true);
-      setTimeout(() => setPinCopied(false), 2500);
-      showToast(`Doctor Passcode (${accessControl.doctorPasscode}) copied to clipboard!`);
-    }
   };
 
   const handleRegenerateToken = () => {
@@ -320,7 +288,7 @@ export default function SharingPage() {
 
       <PageHeader 
         title="Doctor Access & Emergency Sharing" 
-        subtitle="Manage temporary clinical access passes, in-clinic 6-digit PINs, and emergency QR dossiers"
+        subtitle="Manage doctor consultation requests, active provider grants, and emergency QR dossiers"
         action={
           <div className="flex items-center gap-2.5">
             <Link
@@ -340,134 +308,6 @@ export default function SharingPage() {
           </div>
         }
       />
-
-      {/* PATIENT IN-CLINIC DOCTOR CONSULTATION PASS (PIN) */}
-      <div className="bg-white rounded-2xl border-2 border-teal-600/30 p-6 sm:p-8 shadow-sm overflow-hidden relative">
-        <div className="flex flex-col lg:flex-row items-start justify-between gap-6">
-          <div className="flex-1 space-y-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200">
-                  <KeyRound className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Simple In-Clinic Consultation Pass</span>
-                </span>
-                {accessControl?.accessGranted ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
-                    <CheckCircle className="w-3 h-3 text-emerald-600" />
-                    Doctor Access Active
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
-                    <Lock className="w-3 h-3 text-rose-600" />
-                    Doctor Access Paused (Locked)
-                  </span>
-                )}
-              </div>
-              <h2 className="text-xl font-bold text-slate-900">
-                In-Clinic Doctor Consultation Pass
-              </h2>
-              <p className="text-sm text-slate-600 mt-1 leading-relaxed max-w-2xl">
-                When you visit a doctor or clinic, tell them your <strong>Mobile Number</strong> or <strong>Patient ID</strong>, then provide your <strong>6-digit Passcode</strong>. Only your medical records will be opened. You maintain total privacy control: pause access anytime with one tap.
-              </p>
-            </div>
-
-            {/* Credentials Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                  Your Identifier (Mobile or ID)
-                </span>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-base font-bold text-slate-900">{accessControl?.phoneNumber || "+91 98765-43210"}</div>
-                    <div className="text-xs font-mono text-slate-500">ID: {accessControl?.patientUid || "PT-2026-LUD-8821"}</div>
-                  </div>
-                  <Smartphone className="w-6 h-6 text-teal-600/70" />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-teal-50/50 border border-teal-200/80">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-bold text-teal-900 uppercase tracking-wider">
-                    6-Digit Doctor Passcode
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={handleCopyPin}
-                      className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1"
-                      title="Copy Passcode"
-                    >
-                      {pinCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      <span>{pinCopied ? "Copied" : "Copy"}</span>
-                    </button>
-                    <span className="text-slate-300">|</span>
-                    <button
-                      onClick={handleRegeneratePin}
-                      className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1"
-                      title="Generate Fresh PIN"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      <span>New PIN</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* 6 Digit Display */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  {(accessControl?.doctorPasscode || "882194").split("").map((digit, idx) => (
-                    <div
-                      key={idx}
-                      className="w-8 h-10 sm:w-9 sm:h-11 rounded-lg bg-white border-2 border-teal-500/60 shadow-xs flex items-center justify-center font-mono font-black text-xl text-teal-950"
-                    >
-                      {digit}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Patient Consent Privacy Toggle Switch */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200 gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accessControl?.accessGranted ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
-                  {accessControl?.accessGranted ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-slate-900">
-                    Patient Authorization: {accessControl?.accessGranted ? "Access Allowed" : "Access Paused"}
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    {accessControl?.accessGranted 
-                      ? "Doctors can look up your dossier with your 6-digit PIN." 
-                      : "All external doctor lookups are currently blocked for your security."}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={handleToggleDoctorAccess}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shrink-0 ${
-                  accessControl?.accessGranted
-                    ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-                }`}
-              >
-                {accessControl?.accessGranted ? (
-                  <>
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Pause Doctor Access</span>
-                  </>
-                ) : (
-                  <>
-                    <Unlock className="w-3.5 h-3.5" />
-                    <span>Enable Doctor Access</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* UC-04 PROMINENT EMERGENCY QR CODE GENERATOR CARD */}
       <div className="bg-white rounded-2xl border-2 border-emerald-500/40 p-6 sm:p-8 shadow-sm overflow-hidden relative">
