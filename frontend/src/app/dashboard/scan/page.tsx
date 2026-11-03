@@ -112,6 +112,7 @@ export default function ScanPage() {
   const [clinicalSummary, setClinicalSummary] = useState<ClinicalSummary | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
   const router = useRouter();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -625,6 +626,31 @@ export default function ScanPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDownloadSummary = () => {
+    try {
+      const diagStr = diagnosis || (Array.isArray(extractedData?.diagnosis) ? extractedData.diagnosis.join(", ") : extractedData?.diagnosis) || "Consultation Diagnosis";
+      downloadOcrPrescriptionSummary({
+        patientEmail: targetPatientEmail || getActivePatientEmail(),
+        doctorName: doctorName || extractedData?.doctor_name || "Attending Physician",
+        hospital: hospitalName || extractedData?.clinic_name || "Clinical Facility",
+        diagnosis: diagStr,
+        date: prescriptionDate || extractedData?.date || new Date().toISOString().split("T")[0],
+        overview: clinicalSummary?.overview || "",
+        medicines: medicines,
+      });
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3500);
+    } catch (err) {
+      console.error("Error triggering prescription summary download:", err);
+    }
+  };
+
+  const handleSaveAndDownload = async () => {
+    handleDownloadSummary();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await handleSavePrescription();
   };
 
   const updateMedicine = (
@@ -1286,20 +1312,21 @@ export default function ScanPage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => downloadOcrPrescriptionSummary({
-                  patientEmail: targetPatientEmail || getActivePatientEmail(),
-                  doctorName: extractedDoctor || "Attending Physician",
-                  hospital: extractedHospital || "Clinical Facility",
-                  diagnosis: extractedDiagnosis || "Consultation Diagnosis",
-                  date: prescriptionDate,
-                  overview: clinicalSummary?.overview || "",
-                  medicines: medicines
-                })}
-                className="inline-flex items-center gap-1.5 text-xs text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-300 dark:border-teal-800 px-3 py-1.5 rounded hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors font-medium"
-                title="Download or print a structured summary report of this particular prescription"
+                onClick={handleDownloadSummary}
+                className="inline-flex items-center gap-1.5 text-xs text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-300 dark:border-teal-800 px-3 py-1.5 rounded hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors font-medium shadow-xs"
+                title="Download a structured summary report of this particular prescription"
               >
-                <Download className="w-3.5 h-3.5" />
-                Download Summary Report
+                {downloadSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Summary Downloaded!</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Summary Report</span>
+                  </>
+                )}
               </button>
               <button
                 type="button"
@@ -1676,36 +1703,26 @@ export default function ScanPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => downloadOcrPrescriptionSummary({
-                    patientEmail: targetPatientEmail || getActivePatientEmail(),
-                    doctorName: extractedDoctor || "Attending Physician",
-                    hospital: extractedHospital || "Clinical Facility",
-                    diagnosis: extractedDiagnosis || "Consultation Diagnosis",
-                    date: prescriptionDate,
-                    overview: clinicalSummary?.overview || "",
-                    medicines: medicines
-                  })}
+                  onClick={handleDownloadSummary}
                   disabled={isSaving || medicines.length === 0}
                   className="inline-flex items-center gap-1.5 px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium rounded transition-colors disabled:opacity-50"
-                  title="Download or print a comprehensive summary report directly from this OCR scan"
+                  title="Download a comprehensive summary report directly from this OCR scan"
                 >
-                  <Download className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                  Download Summary Report
+                  {downloadSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Summary Downloaded!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                      <span>Download Summary Report</span>
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
-                  onClick={async () => {
-                    downloadOcrPrescriptionSummary({
-                      patientEmail: targetPatientEmail || getActivePatientEmail(),
-                      doctorName: extractedDoctor || "Attending Physician",
-                      hospital: extractedHospital || "Clinical Facility",
-                      diagnosis: extractedDiagnosis || "Consultation Diagnosis",
-                      date: prescriptionDate,
-                      overview: clinicalSummary?.overview || "",
-                      medicines: medicines
-                    });
-                    await handleSavePrescription();
-                  }}
+                  onClick={handleSaveAndDownload}
                   disabled={isSaving || medicines.length === 0}
                   className="inline-flex items-center gap-1.5 px-4 py-2 border border-teal-700 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded transition-colors disabled:opacity-50 shadow-sm"
                   title="Save prescription to medical records AND download printable clinical summary"

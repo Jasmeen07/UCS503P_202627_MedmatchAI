@@ -2520,6 +2520,17 @@ export function generateMedicalSummaryHtml(
   </style>
 </head>
 <body>
+  <div class="no-print" style="margin-bottom: 20px; padding: 12px 18px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <div style="font-size: 13px; color: #15803d; font-weight: 600;">
+      ✓ Downloaded Medical Summary &bull; Local Clinical Snapshot
+      <span style="display: block; font-size: 11px; font-weight: normal; color: #4b5563; margin-top: 2px;">
+        This document was exported from MedMatch AI. You can open, save as PDF, or print at any time.
+      </span>
+    </div>
+    <button onclick="window.print()" style="cursor: pointer; background: #0d9488; color: #ffffff; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 13px;">
+      🖨️ Print / Save as PDF
+    </button>
+  </div>
   <div class="header">
     <div>
       <div class="subtitle">MedMatch AI Clinical Network • Official Health Summary</div>
@@ -2579,36 +2590,45 @@ export function generateMedicalSummaryHtml(
 </html>`;
 }
 
+export function triggerFileDownload(
+  filename: string,
+  content: string,
+  mimeType = "text/html;charset=utf-8"
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      try {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+        URL.revokeObjectURL(url);
+      } catch {
+        // cleanup ignore
+      }
+    }, 500);
+  } catch (err) {
+    console.error("Failed to trigger file download:", err);
+  }
+}
+
 export function downloadMedicalSummaryReport(
   patientEmail: string,
   options?: { doctorName?: string; hospital?: string; generatedBy?: string }
 ): void {
   if (typeof window === "undefined") return;
   const html = generateMedicalSummaryHtml(patientEmail, options);
-
-  const printWindow = window.open("", "_blank", "width=900,height=900");
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      try {
-        printWindow.print();
-      } catch (e) {
-        console.warn("Print dialog triggered:", e);
-      }
-    }, 450);
-  } else {
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `MedMatch_Summary_${patientEmail.replace(/[^a-zA-Z0-9]/g, "_")}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
+  const safeName = (patientEmail || "Patient").replace(/[^a-zA-Z0-9]/g, "_");
+  const filename = `MedMatch_Summary_${safeName}_${new Date().toISOString().split("T")[0]}.html`;
+  triggerFileDownload(filename, html);
 }
 
 export function downloadOcrPrescriptionSummary(prescriptionData: {
@@ -2744,10 +2764,22 @@ export function downloadOcrPrescriptionSummary(prescriptionData: {
     }
     @media print {
       body { padding: 0; }
+      .no-print { display: none; }
     }
   </style>
 </head>
 <body>
+  <div class="no-print" style="margin-bottom: 20px; padding: 12px 18px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <div style="font-size: 13px; color: #15803d; font-weight: 600;">
+      ✓ Downloaded OCR Prescription Summary &bull; Local Clinical Record
+      <span style="display: block; font-size: 11px; font-weight: normal; color: #4b5563; margin-top: 2px;">
+        Extracted and verified by MedMatch AI OCR. You can open, save as PDF, or print at any time.
+      </span>
+    </div>
+    <button onclick="window.print()" style="cursor: pointer; background: #0d9488; color: #ffffff; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 13px;">
+      🖨️ Print / Save as PDF
+    </button>
+  </div>
   <div class="header">
     <div>
       <div class="subtitle">MedMatch AI OCR Diagnostic Feed • Structured Clinical Extract</div>
@@ -2818,29 +2850,10 @@ export function downloadOcrPrescriptionSummary(prescriptionData: {
 </body>
 </html>`;
 
-  const printWindow = window.open("", "_blank", "width=900,height=900");
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      try {
-        printWindow.print();
-      } catch (e) {
-        console.warn("Print dialog triggered:", e);
-      }
-    }, 450);
-  } else {
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `OCR_Summary_${(prescriptionData.diagnosis || "Prescription").replace(/[^a-zA-Z0-9]/g, "_")}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
+  const safeDiag = (prescriptionData.diagnosis || "Prescription").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
+  const dateSuffix = new Date().toISOString().split("T")[0];
+  const filename = `MedMatch_OCR_Summary_${safeDiag}_${dateSuffix}.html`;
+  triggerFileDownload(filename, html);
 }
 
 // ----------------------------------------------------------------------------

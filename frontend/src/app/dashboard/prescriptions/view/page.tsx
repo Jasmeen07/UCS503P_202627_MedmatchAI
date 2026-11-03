@@ -64,6 +64,7 @@ function PrescriptionDetailContent() {
   const id = searchParams.get("id");
   const [rx, setRx] = useState<PrescriptionRecord | null>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
 
   useEffect(() => {
     const activeEmail = getActivePatientEmail();
@@ -139,19 +140,32 @@ function PrescriptionDetailContent() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => downloadOcrPrescriptionSummary({
-              doctorName: rx.doc,
-              hospital: rx.hospital,
-              diagnosis: rx.diag,
-              date: rx.date,
-              overview: rx.overview || "",
-              medicines: medicineList
-            })}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-teal-600/40 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900 text-xs font-medium rounded transition-colors"
-            title="Download or print structured clinical summary of this prescription"
+            onClick={() => {
+              downloadOcrPrescriptionSummary({
+                doctorName: rx.doc,
+                hospital: rx.hospital,
+                diagnosis: rx.diag,
+                date: rx.date,
+                overview: rx.overview || "",
+                medicines: medicineList
+              });
+              setDownloaded(true);
+              setTimeout(() => setDownloaded(false), 3000);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-teal-600/40 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900 text-xs font-medium rounded transition-colors shadow-xs"
+            title="Download structured clinical summary of this prescription"
           >
-            <Download className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            Download Summary Report
+            {downloaded ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Summary Downloaded!</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>Download Summary Report</span>
+              </>
+            )}
           </button>
           <Link 
             href="/dashboard/insights" 
