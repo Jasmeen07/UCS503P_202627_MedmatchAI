@@ -124,6 +124,26 @@ create table if not exists public.doctor_access_grants (
   created_at timestamptz default now()
 );
 
+-- doctor_access_requests table (bidirectional patient consent lifecycle)
+create table if not exists public.doctor_access_requests (
+  id uuid default uuid_generate_v4() primary key,
+  doctor_id uuid references auth.users(id) on delete set null,
+  doctor_name text not null,
+  doctor_specialty text,
+  hospital text,
+  doctor_license text,
+  patient_id uuid references auth.users(id) on delete cascade not null,
+  patient_email text not null,
+  patient_name text,
+  patient_uid text,
+  requested_scope text default 'Full Clinical History, Prescriptions & Lab Scans',
+  clinical_reason text not null,
+  status text not null check (status in ('pending', 'approved', 'declined', 'revoked')) default 'pending',
+  is_emergency boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- audit_log table
 create table if not exists public.audit_log (
   id uuid default uuid_generate_v4() primary key,
@@ -146,6 +166,9 @@ create index if not exists idx_appointments_user on public.appointments(user_id)
 create index if not exists idx_appointments_date on public.appointments(appointment_date);
 create index if not exists idx_doctor_access_patient on public.doctor_access_grants(patient_id);
 create index if not exists idx_doctor_access_doctor on public.doctor_access_grants(doctor_id);
+create index if not exists idx_doctor_requests_patient on public.doctor_access_requests(patient_id);
+create index if not exists idx_doctor_requests_doctor on public.doctor_access_requests(doctor_id);
+create index if not exists idx_doctor_requests_status on public.doctor_access_requests(status);
 create index if not exists idx_audit_user on public.audit_log(user_id);
 
 -- Enable RLS
@@ -158,6 +181,7 @@ alter table public.documents enable row level security;
 alter table public.ai_analyses enable row level security;
 alter table public.appointments enable row level security;
 alter table public.doctor_access_grants enable row level security;
+alter table public.doctor_access_requests enable row level security;
 alter table public.audit_log enable row level security;
 
 -- Drop existing policies to allow clean re-runs
@@ -192,6 +216,13 @@ drop policy if exists "Patients can view own grants" on public.doctor_access_gra
 drop policy if exists "Doctors can view grants to them" on public.doctor_access_grants;
 drop policy if exists "Patients can create grants" on public.doctor_access_grants;
 drop policy if exists "Patients can revoke grants" on public.doctor_access_grants;
+drop policy if exists "Patients can view requests for their data" on public.doctor_access_requests;
+drop policy if exists "Doctors can view requests they sent" on public.doctor_access_requests;
+drop policy if exists "Doctors can insert access requests" on public.doctor_access_requests;
+drop policy if exists "Patients can update request status" on public.doctor_access_requests;
+drop policy if exists "Doctors with active grants can view patient prescriptions" on public.prescriptions;
+drop policy if exists "Doctors with active grants can view patient prescription medicines" on public.prescription_medicines;
+drop policy if exists "Doctors with active grants can view patient documents" on public.documents;
 drop policy if exists "Users can view own audit log" on public.audit_log;
 drop policy if exists "System can insert audit entries" on public.audit_log;
 
@@ -249,6 +280,44 @@ create policy "Patients can view own grants" on public.doctor_access_grants for 
 create policy "Doctors can view grants to them" on public.doctor_access_grants for select using (auth.uid() = doctor_id);
 create policy "Patients can create grants" on public.doctor_access_grants for insert with check (auth.uid() = patient_id);
 create policy "Patients can revoke grants" on public.doctor_access_grants for update using (auth.uid() = patient_id);
+
+-- doctor_access_requests policies
+create policy "Patients can view requests for their data" on public.doctor_access_requests for select using (auth.uid() = patient_id);
+create policy "Doctors can view requests they sent" on public.doctor_access_requests for select using (auth.uid() = doctor_id);
+create policy "Doctors can insert access requests" on public.doctor_access_requests for insert with check (auth.uid() = doctor_id);
+create policy "Patients can update request status" on public.doctor_access_requests for update using (auth.uid() = patient_id);
+
+-- Authorized Doctors can view patient prescriptions and documents
+create policy "Doctors with active grants can view patient prescriptions" on public.prescriptions for select using (
+  exists (
+    select 1 from public.doctor_access_grants g 
+    where g.patient_id = user_id 
+      and (g.doctor_id = auth.uid() or g.doctor_email = (select email from auth.users where id = auth.uid()))
+      and g.revoked = false 
+      and g.expires_at > now()
+  )
+);
+
+create policy "Doctors with active grants can view patient prescription medicines" on public.prescription_medicines for select using (
+  exists (
+    select 1 from public.prescriptions p
+    join public.doctor_access_grants g on g.patient_id = p.user_id
+    where p.id = prescription_id
+      and (g.doctor_id = auth.uid() or g.doctor_email = (select email from auth.users where id = auth.uid()))
+      and g.revoked = false
+      and g.expires_at > now()
+  )
+);
+
+create policy "Doctors with active grants can view patient documents" on public.documents for select using (
+  exists (
+    select 1 from public.doctor_access_grants g 
+    where g.patient_id = user_id 
+      and (g.doctor_id = auth.uid() or g.doctor_email = (select email from auth.users where id = auth.uid()))
+      and g.revoked = false 
+      and g.expires_at > now()
+  )
+);
 
 create policy "Users can view own audit log" on public.audit_log for select using (auth.uid() = user_id);
 create policy "System can insert audit entries" on public.audit_log for insert with check (true);

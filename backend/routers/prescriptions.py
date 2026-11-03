@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Any, List, Optional
 from pydantic import BaseModel
-from auth import get_current_user, get_supabase_client_for_user
+from auth import get_current_user, get_supabase_client_for_user, get_supabase_admin_client
 from config import get_settings, Settings
-from datetime import date
+from datetime import date, datetime
 
 router = APIRouter()
 
@@ -155,3 +155,91 @@ async def delete_prescription(
     if not res.data:
         raise HTTPException(status_code=404, detail="Prescription not found or delete failed")
     return {"message": "Prescription deleted successfully"}
+
+@router.get("/{rx_id}/summary", response_model=dict)
+async def get_prescription_clinical_summary(
+    rx_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+):
+    """
+    Generate and return a structured clinical summary report for a specific prescription.
+    Suitable for direct patient download or clinical handover.
+    """
+    client = get_supabase_client_for_user(user, settings)
+    res = client.table("prescriptions").select("*, prescription_medicines(*)").eq("id", rx_id).single().execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Prescription not found")
+
+    rx = res.data
+    medicines = rx.get("prescription_medicines", [])
+    med_lines = []
+    for i, m in enumerate(medicines, 1):
+        instructions = f" ({m['instructions']})" if m.get("instructions") else ""
+        use = f" - Purpose: {m['intended_use']}" if m.get("intended_use") else ""
+        med_lines.append(f"{i}. {m['medicine_name']} {m.get('dosage') or ''} - {m.get('frequency') or 'As directed'} for {m.get('duration') or 'N/A'}{instructions}{use}")
+
+    medicines_text = "\n".join(med_lines) if med_lines else "None recorded"
+    
+    summary_text = (
+        f"MEDMATCH-AI CLINICAL PRESCRIPTION SUMMARY REPORT\n"
+        f"================================================\n"
+        f"Document ID: {rx['id']}\n"
+        f"Generated At: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+        f"Prescribing Clinician: {rx.get('doctor_name') or 'Treating Physician'}\n"
+        f"Healthcare Facility: {rx.get('hospital_name') or 'Clinical Center'}\n"
+        f"Date Prescribed: {rx.get('prescribed_date') or 'N/A'}\n"
+        f"Primary Diagnosis: {rx.get('diagnosis') or 'Clinical Evaluation'}\n\n"
+        f"PRESCRIBED MEDICATIONS & REGIMEN:\n"
+        f"{medicines_text}\n\n"
+        f"CLINICAL NOTES & INSTRUCTIONS:\n"
+        f"{rx.get('notes') or 'Take medications exactly as prescribed. Return if symptoms worsen.'}\n\n"
+        f"VERIFICATION STATUS:\n"
+        f"Source: {rx.get('source') or 'manual'} (Confidence: {rx.get('ocr_confidence') or 'Standard'})\n"
+        f"This document is an electronic extract from MedMatch-AI Health Vault.\n"
+    )
+
+    return {
+        "prescriptionId": rx["id"],
+        "doctorName": rx.get("doctor_name"),
+        "hospitalName": rx.get("hospital_name"),
+        "diagnosis": rx.get("diagnosis"),
+        "prescribedDate": rx.get("prescribed_date"),
+        "medicinesCount": len(medicines),
+        "medicines": medicines,
+        "summaryText": summary_text
+    }
+
+@router.get("/patient/{patient_id}/summary", response_model=dict)
+async def get_patient_aggregate_summary(
+    patient_id: str,
+    user: dict[str, Any] = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+):
+    """
+    Generate an aggregated clinical summary report of all prescriptions and active medications for a patient.
+    Accessible to the patient or authorized consulting physicians.
+    """
+    admin_client = get_supabase_admin_client(settings)
+    now = datetime.now().isoformat()
+
+    # Verify authorization: patient themself OR doctor with active unrevoked grant
+    if user["id"] != patient_id:
+        grant = admin_client.table("doctor_access_grants").select("id").eq("patient_id", patient_id).or_(f"doctor_id.eq.{user['id']},doctor_email.eq.{user['email'].lower()}").eq("revoked", False).gt("expires_at", now).execute()
+        if not grant.data:
+            raise HTTPException(status_code=403, detail="Unauthorized: No active clinical authorization for this patient.")
+
+    rx_res = admin_client.table("prescriptions").select("*, prescription_medicines(*)").eq("user_id", patient_id).execute()
+    prescriptions = rx_res.data or []
+
+    total_meds = sum(len(r.get("prescription_medicines", [])) for r in prescriptions)
+    active_rx = [r for r in prescriptions if r.get("status") == "active"]
+
+    return {
+        "patientId": patient_id,
+        "totalPrescriptions": len(prescriptions),
+        "activePrescriptions": len(active_rx),
+        "totalMedicinesCount": total_meds,
+        "prescriptions": prescriptions,
+        "generatedAt": now
+    }
