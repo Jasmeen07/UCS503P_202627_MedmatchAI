@@ -31,6 +31,7 @@ import {
   clearUserSession,
   UserSession
 } from "@/lib/auth";
+import { createClient } from "@/lib/client";
 import { 
   getHospitalRegisteredPatients,
   getAllDoctorAccessRequests,
@@ -65,6 +66,9 @@ export default function DoctorPortalPage() {
   const [patientDocuments, setPatientDocuments] = useState<PatientDocument[]>([]);
   const [clinicalViewerTab, setClinicalViewerTab] = useState<"prescriptions" | "reports">("prescriptions");
   const [activeZoomImage, setActiveZoomImage] = useState<string | null>(null);
+  const [accessDeniedError, setAccessDeniedError] = useState<string | null>(null);
+  const [networkOfflineNotice, setNetworkOfflineNotice] = useState<string | null>(null);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
 
   // Request Access Modal
   const [requestTargetPatient, setRequestTargetPatient] = useState<DoctorPatientRecord | null>(null);
@@ -140,9 +144,13 @@ export default function DoctorPortalPage() {
             if (freshSelected.accessStatus === "granted" || freshSelected.accessStatus === "emergency_override") {
               setPatientPrescriptions(getPatientPrescriptions(freshSelected.patientEmail));
               setPatientDocuments(getPatientDocuments(freshSelected.patientEmail));
+              setAccessDeniedError(null);
             } else {
               setPatientPrescriptions([]);
               setPatientDocuments([]);
+              if (freshSelected.accessStatus === "revoked") {
+                setAccessDeniedError("Access Revoked: The patient has revoked your clinical authorization. Record decryption keys have been invalidated.");
+              }
             }
           }
         }
@@ -162,21 +170,82 @@ export default function DoctorPortalPage() {
     router.replace("/login");
   };
 
-  const handleOpenPatientChart = (p: DoctorPatientRecord) => {
+  const handleOpenPatientChart = async (p: DoctorPatientRecord) => {
     setSelectedPatient(p);
-    if (p.accessStatus === "granted" || p.accessStatus === "emergency_override") {
-      setPatientPrescriptions(getPatientPrescriptions(p.patientEmail));
-      setPatientDocuments(getPatientDocuments(p.patientEmail));
-    } else {
+    setClinicalViewerTab("prescriptions");
+    setAccessDeniedError(null);
+    setNetworkOfflineNotice(null);
+
+    // If access is revoked or unauthorized, enforce access denied and clear data immediately
+    if (p.accessStatus === "revoked") {
+      setAccessDeniedError("Access Revoked: The patient has revoked your access to their medical records. Decryption authorization has been terminated.");
       setPatientPrescriptions([]);
       setPatientDocuments([]);
+      return;
     }
-    setClinicalViewerTab("prescriptions");
+
+    if (p.accessStatus !== "granted" && p.accessStatus !== "emergency_override") {
+      setAccessDeniedError("Authorization Required: You do not have active clinical authorization to view this patient's records.");
+      setPatientPrescriptions([]);
+      setPatientDocuments([]);
+      return;
+    }
+
+    // Live backend verification if backend URL is configured
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (backendUrl) {
+      setIsLoadingChart(true);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+        const token = data?.session?.access_token;
+        const targetId = p.patientUid || p.patientEmail;
+
+        const res = await fetch(`${backendUrl}/api/sharing/doctor/patient-records/${encodeURIComponent(targetId)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+
+        if (res.status === 403) {
+          const errData = await res.json().catch(() => null);
+          const detail = errData?.detail || "403 Forbidden: Access revoked or not granted by the patient.";
+          setAccessDeniedError(detail);
+          setPatientPrescriptions([]);
+          setPatientDocuments([]);
+          // Synchronize local patient record status
+          p.accessStatus = "revoked";
+          setSelectedPatient({ ...p, accessStatus: "revoked" });
+          setIsLoadingChart(false);
+          return;
+        }
+
+        if (res.ok) {
+          const liveData = await res.json();
+          setPatientPrescriptions(liveData.prescriptions || []);
+          setPatientDocuments(liveData.documents || []);
+          setIsLoadingChart(false);
+          return;
+        } else {
+          setNetworkOfflineNotice(`Backend server returned HTTP ${res.status}. Falling back to verified clinical snapshot.`);
+        }
+      } catch (networkErr) {
+        console.warn("Backend server connection failed, using verified snapshot:", networkErr);
+        setNetworkOfflineNotice("Hospital backend server is offline or unreachable. Displaying local verified clinical snapshot for demonstration.");
+      } finally {
+        setIsLoadingChart(false);
+      }
+    }
+
+    // Fallback to local verified patient records only when access is granted
+    setPatientPrescriptions(getPatientPrescriptions(p.patientEmail));
+    setPatientDocuments(getPatientDocuments(p.patientEmail));
   };
 
   const handleClosePatientChart = () => {
     setSelectedPatient(null);
     setActiveZoomImage(null);
+    setAccessDeniedError(null);
+    setNetworkOfflineNotice(null);
+    setIsLoadingChart(false);
   };
 
   const handleOpenRequestModal = (p: DoctorPatientRecord) => {
@@ -624,11 +693,11 @@ export default function DoctorPortalPage() {
                     <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                       {selectedPatient.patientUid}
                     </span>
-                    {(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") ? (
+                    {(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") && !accessDeniedError ? (
                       <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60">
                         Verified Clinical Vault
                       </span>
-                    ) : selectedPatient.accessStatus === "revoked" ? (
+                    ) : selectedPatient.accessStatus === "revoked" || (accessDeniedError && accessDeniedError.includes("403")) ? (
                       <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded border border-rose-200/60 dark:border-rose-800/60">
                         Access Revoked by Patient
                       </span>
@@ -646,7 +715,7 @@ export default function DoctorPortalPage() {
 
               {/* Prominent Action Bar */}
               <div className="flex items-center gap-2.5">
-                {(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") ? (
+                {(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") && !accessDeniedError ? (
                   <>
                     <button
                       onClick={() => downloadMedicalSummaryReport(selectedPatient.patientEmail, { doctorName: userSession?.name || "Dr. Reeta Bhambri" })}
@@ -685,20 +754,25 @@ export default function DoctorPortalPage() {
               </div>
             </div>
 
-            {/* If Access is Revoked or Unauthorized */}
-            {!(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") ? (
+            {/* If Access is Revoked, Unauthorized, or Backend 403 Forbidden */}
+            {accessDeniedError || !(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") ? (
               <div className="py-16 px-6 text-center max-w-lg mx-auto space-y-4">
                 <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-200 dark:border-rose-800">
                   <ShieldAlert className="w-7 h-7" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                    {selectedPatient.accessStatus === "revoked" ? "Access Revoked by Patient" : "Record Access Unauthorized"}
+                    {accessDeniedError && accessDeniedError.includes("403")
+                      ? "403 Forbidden — Clinical Access Revoked"
+                      : selectedPatient.accessStatus === "revoked"
+                      ? "Access Revoked by Patient"
+                      : "Record Access Unauthorized"}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                    {selectedPatient.accessStatus === "revoked"
-                      ? "The patient has revoked your access to their medical records. You cannot view prescriptions or diagnostic reports until a new access request is submitted and accepted."
-                      : "You do not have active clinical authorization to view this patient's records."}
+                    {accessDeniedError ||
+                      (selectedPatient.accessStatus === "revoked"
+                        ? "The patient has revoked your access to their medical records. You cannot view prescriptions or diagnostic reports until a new access request is submitted and accepted."
+                        : "You do not have active clinical authorization to view this patient's records.")}
                   </p>
                 </div>
                 <div className="pt-2 flex items-center justify-center gap-3">
@@ -723,6 +797,25 @@ export default function DoctorPortalPage() {
               </div>
             ) : (
               <>
+            {/* Offline / Demonstration Notice if backend was unreachable */}
+            {networkOfflineNotice && (
+              <div className="mx-6 mb-4 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/90 dark:bg-amber-950/50 flex items-center justify-between text-xs text-amber-800 dark:text-amber-200">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>{networkOfflineNotice}</span>
+                </div>
+                <span className="text-[10px] font-mono uppercase bg-amber-100 dark:bg-amber-900/80 px-2 py-0.5 rounded text-amber-900 dark:text-amber-200 font-semibold">
+                  Offline Demo Snapshot
+                </span>
+              </div>
+            )}
+
+            {isLoadingChart && (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-500">
+                <RefreshCw className="w-5 h-5 animate-spin text-teal-600" />
+                <p className="text-xs">Verifying authorization with hospital server...</p>
+              </div>
+            )}
             {/* Read-Only Record Section Selector */}
             <div className="flex items-center gap-6 text-xs font-semibold border-b border-slate-200/80 dark:border-slate-800/80 pb-2">
               <button

@@ -3281,7 +3281,7 @@ export function getPatientDossier(email?: string | null, tokenOverride?: string 
         { substance: "No Severe Drug Hypersensitivities Logged", reaction: "N/A", severity: "Low" }
       ],
       chronicConditions: treatmentGroups.map(tg => tg.name),
-      clinicalAlertBanner: "Patient Health Vault Record: Verified cryptographic snapshot from Cloud Firestore tenant vault.",
+      clinicalAlertBanner: "Patient Health Vault Record: Verified cryptographic snapshot from Supabase PostgreSQL tenant vault.",
       episodes,
       activeMedications,
       prescriptions: getPatientPrescriptions(user),
