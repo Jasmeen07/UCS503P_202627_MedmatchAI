@@ -50,6 +50,22 @@ const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
     createdAt: 1700000000000
   },
   {
+    id: "usr-demo-harpreet",
+    email: "harpreet.s@example.com",
+    password: "Password123",
+    name: "Harpreet Singh",
+    role: "patient",
+    createdAt: 1700000000000
+  },
+  {
+    id: "usr-demo-amandeep",
+    email: "amandeep.sharma@example.com",
+    password: "Password123",
+    name: "Amandeep Sharma",
+    role: "patient",
+    createdAt: 1700000000000
+  },
+  {
     id: "usr-demo-doctor",
     email: "doctor@medmatch.com",
     password: "Doctor123",

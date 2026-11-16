@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/client";
-import { setUserSession, validateCredentials, registerNewAccount } from "@/lib/auth";
+import { setUserSession, validateCredentials, registerNewAccount, getRegisteredAccounts } from "@/lib/auth";
 import { User as UserIcon, Stethoscope, Pill, Sun, Moon, ShieldCheck, Check } from "lucide-react";
 import "./auth.css";
 
@@ -216,11 +216,17 @@ function AuthFormInner() {
           });
 
           if (!error && data?.user) {
+            const existingAccounts = getRegisteredAccounts();
+            const existing = existingAccounts.find(a => (a.email || "").toLowerCase().trim() === cleanEmail);
+            const detectedRole = (data.user.user_metadata?.role as any) || 
+              existing?.role || 
+              (cleanEmail.includes("doctor") || cleanEmail.includes("dr.") || cleanEmail.includes("dr_") || cleanEmail.startsWith("dr") ? "doctor" : "patient");
+
             const newSession = {
               id: data.user.id,
               email: data.user.email || cleanEmail,
-              name: data.user.user_metadata?.name || data.user.user_metadata?.username || cleanEmail.split("@")[0],
-              role: (data.user.user_metadata?.role as any) || "patient",
+              name: data.user.user_metadata?.name || data.user.user_metadata?.username || existing?.name || cleanEmail.split("@")[0],
+              role: detectedRole,
               loggedInAt: Date.now()
             };
             setUserSession(newSession);
