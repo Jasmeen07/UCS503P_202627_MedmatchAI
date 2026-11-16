@@ -50,22 +50,6 @@ const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
     createdAt: 1700000000000
   },
   {
-    id: "usr-demo-harpreet",
-    email: "harpreet.s@example.com",
-    password: "Password123",
-    name: "Harpreet Singh",
-    role: "patient",
-    createdAt: 1700000000000
-  },
-  {
-    id: "usr-demo-amandeep",
-    email: "amandeep.sharma@example.com",
-    password: "Password123",
-    name: "Amandeep Sharma",
-    role: "patient",
-    createdAt: 1700000000000
-  },
-  {
     id: "usr-demo-doctor",
     email: "doctor@medmatch.com",
     password: "Doctor123",
@@ -111,8 +95,19 @@ export function getRegisteredAccounts(): RegisteredAccount[] {
       localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(DEFAULT_ACCOUNTS));
       return [...DEFAULT_ACCOUNTS];
     }
-    const parsed = JSON.parse(raw);
+    let parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
+      // Purge synthetic demo sample accounts (never real logged-in users)
+      const prevLen = parsed.length;
+      parsed = parsed.filter((a: any) => {
+        const e = (a.email || "").toLowerCase().trim();
+        const n = (a.name || "").toLowerCase().trim();
+        return !e.includes("harpreet") && !e.includes("amandeep") && !n.includes("harpreet") && !n.includes("amandeep");
+      });
+      if (parsed.length !== prevLen) {
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(parsed));
+      }
+
       // Ensure default demo accounts are always present and correctly typed without wiping existing users
       let updated = false;
       for (const def of DEFAULT_ACCOUNTS) {
