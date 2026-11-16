@@ -38,7 +38,8 @@ import {
   getPatientPrescriptions,
   getActivePatientEmail,
   PRESET_DOCTORS,
-  PresetDoctor
+  PresetDoctor,
+  syncDoctorRequestAction
 } from "@/lib/patientData";
 
 const SPECIALTIES = [
@@ -127,6 +128,13 @@ export default function AppointmentsPage() {
     }
     const docs = Array.from(docsMap.entries()).map(([name, hospital]) => ({ name, hospital }));
     setTreatingDoctors(docs);
+
+    const handleSync = () => {
+      const email = getActivePatientEmail();
+      setAppointments(getPatientAppointments(email));
+    };
+    window.addEventListener("medmatch_access_update", handleSync);
+    return () => window.removeEventListener("medmatch_access_update", handleSync);
   }, []);
 
   const showToast = (msg: string) => {
@@ -327,6 +335,9 @@ export default function AppointmentsPage() {
     const updated = appointments.filter((a) => String(a.id) !== String(id));
     setAppointments(updated);
     savePatientAppointments(updated, activeEmail);
+    try {
+      syncDoctorRequestAction(`req-${id}`, "cancel");
+    } catch {}
     showToast(`Cancelled appointment "${title}".`);
     if (detailItem && String(detailItem.id) === String(id)) {
       setDetailItem(null);

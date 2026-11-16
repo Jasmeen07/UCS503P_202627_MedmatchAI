@@ -100,14 +100,18 @@ export interface DoctorRequest {
   patientName: string;
   patientEmail: string;
   patientUid: string;
+  doctorName?: string;
+  doctorId?: string;
   reason: string;
   date: string;
   time: string;
   specialty: string;
   urgency: "Routine" | "Priority" | "Follow-up";
-  status: "pending" | "confirmed" | "rescheduled" | "completed";
+  status: "pending" | "confirmed" | "rescheduled" | "completed" | "cancelled";
   dossierToken: string;
+  location?: string;
   notes?: string;
+  createdAt?: number;
 }
 
 export interface PresetDoctor {
@@ -878,45 +882,21 @@ export function savePatientAppointments(appointments: AppointmentItem[], email?:
 export const INITIAL_DOCTOR_REQUESTS: DoctorRequest[] = [
   {
     id: "req-1",
-    patientName: "Simranjit Kaur",
-    patientEmail: "jk0822123@gmail.com",
+    patientName: "Jasmeen Kaur",
+    patientEmail: "patient@medmatch.com",
     patientUid: "PT-2026-LUD-8821",
+    doctorName: "Dr. Reeta Bhambri",
+    doctorId: "dr-reeta",
     reason: "Antenatal Ultrasound & 28-Week Gestational Review",
-    date: "Sept 18, 2026",
+    date: "Nov 20, 2026",
     time: "10:30 AM",
+    location: "Ranjit Maternity Clinic & Nursing Home",
     specialty: "Obstetrics & Antenatal Care",
     urgency: "Priority",
     status: "confirmed",
     dossierToken: "EMG-8821-VLT",
-    notes: "Patient reports mild ankle edema. Blood pressure stable. Folic acid and iron adherence reported regular."
-  },
-  {
-    id: "req-2",
-    patientName: "Harpreet Singh",
-    patientEmail: "harpreet.s@example.com",
-    patientUid: "PT-2026-LUD-3312",
-    reason: "Post-Operative Wound Inspection & Suture Removal",
-    date: "Sept 17, 2026",
-    time: "11:45 AM",
-    specialty: "General Surgery",
-    urgency: "Routine",
-    status: "confirmed",
-    dossierToken: "EMG-3312-VLT",
-    notes: "Day 10 post-laparoscopic follow-up. Sterile dressing intact."
-  },
-  {
-    id: "req-3",
-    patientName: "Amandeep Sharma",
-    patientEmail: "amandeep.sharma@example.com",
-    patientUid: "PT-2026-LUD-4091",
-    reason: "Routine Antenatal BP & Hemoglobin Assessment",
-    date: "Sept 19, 2026",
-    time: "05:15 PM",
-    specialty: "Obstetrics & Antenatal Care",
-    urgency: "Follow-up",
-    status: "pending",
-    dossierToken: "EMG-4091-VLT",
-    notes: "Second visit. Needs routine complete blood count review."
+    notes: "Patient reports mild ankle edema. Blood pressure stable. Folic acid and iron adherence regular.",
+    createdAt: 1700000000000
   }
 ];
 
@@ -925,8 +905,20 @@ export function getDoctorRequests(): DoctorRequest[] {
   try {
     const raw = localStorage.getItem("medmatch_doctor_requests");
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      let parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Purge synthetic demo sample accounts (never real logged-in users)
+        const prevLen = parsed.length;
+        parsed = parsed.filter((r: any) => {
+          const e = (r.patientEmail || "").toLowerCase().trim();
+          const n = (r.patientName || "").toLowerCase().trim();
+          return !e.includes("harpreet") && !e.includes("amandeep") && !n.includes("harpreet") && !n.includes("amandeep");
+        });
+        if (parsed.length !== prevLen) {
+          localStorage.setItem("medmatch_doctor_requests", JSON.stringify(parsed));
+        }
+        return parsed;
+      }
     }
     localStorage.setItem("medmatch_doctor_requests", JSON.stringify(INITIAL_DOCTOR_REQUESTS));
     return [...INITIAL_DOCTOR_REQUESTS];
@@ -945,6 +937,34 @@ export function saveDoctorRequests(requests: DoctorRequest[]): void {
   }
 }
 
+export function getDoctorAppointments(
+  doctorId?: string,
+  doctorEmail?: string,
+  doctorName?: string,
+  includeAllHospital: boolean = true
+): DoctorRequest[] {
+  const all = getDoctorRequests();
+  if (includeAllHospital) return all;
+
+  const cleanDocId = (doctorId || "").toLowerCase().trim();
+  const cleanDocEmail = (doctorEmail || "").toLowerCase().trim();
+  const cleanDocName = (doctorName || "").toLowerCase().trim().replace(/^dr\.?\s*/i, "");
+
+  if (!cleanDocId && !cleanDocEmail && !cleanDocName) return all;
+
+  return all.filter((r) => {
+    const rDocId = (r.doctorId || "").toLowerCase();
+    const rDocName = (r.doctorName || "").toLowerCase().replace(/^dr\.?\s*/i, "");
+
+    if (cleanDocId && rDocId === cleanDocId) return true;
+    if (cleanDocName && rDocName && (rDocName.includes(cleanDocName) || cleanDocName.includes(rDocName))) return true;
+    if ((cleanDocId === "dr-reeta" || cleanDocEmail.includes("reeta")) && (!r.doctorId || r.doctorId === "dr-reeta" || rDocName.includes("reeta"))) return true;
+    if (cleanDocEmail && (r as any).doctorEmail?.toLowerCase() === cleanDocEmail) return true;
+
+    return false;
+  });
+}
+
 export function addDoctorRequest(req: Omit<DoctorRequest, "id">): DoctorRequest {
   const current = getDoctorRequests();
   const newReq: DoctorRequest = {
@@ -953,13 +973,16 @@ export function addDoctorRequest(req: Omit<DoctorRequest, "id">): DoctorRequest 
   };
   const updated = [newReq, ...current];
   saveDoctorRequests(updated);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("medmatch_access_update"));
+  }
   return newReq;
 }
 
 export function syncDoctorRequestAction(
   requestId: string | number,
-  action: "confirm" | "reschedule" | "complete",
-  payload?: { date?: string; time?: string }
+  action: "confirm" | "reschedule" | "complete" | "cancel",
+  payload?: { date?: string; time?: string; location?: string }
 ): void {
   const requests = getDoctorRequests();
   const target = requests.find(r => String(r.id) === String(requestId));
@@ -973,10 +996,12 @@ export function syncDoctorRequestAction(
           ...r, 
           date: payload.date || r.date, 
           time: payload.time || r.time, 
+          location: payload.location || r.location,
           status: "rescheduled" as const 
         };
       }
       if (action === "complete") return { ...r, status: "completed" as const };
+      if (action === "cancel") return { ...r, status: "cancelled" as const };
     }
     return r;
   });
@@ -994,14 +1019,20 @@ export function syncDoctorRequestAction(
             ...a, 
             date: payload.date || a.date, 
             time: payload.time || a.time,
+            location: payload.location || a.location,
             status: "upcoming" as const 
           };
         }
         if (action === "complete") return { ...a, status: "past" as const };
+        if (action === "cancel") return { ...a, status: "past" as const };
       }
       return a;
     });
     savePatientAppointments(updatedApps, target.patientEmail);
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("medmatch_access_update"));
   }
 }
 
@@ -1019,22 +1050,42 @@ export function addPatientAppointment(apt: Omit<AppointmentItem, "id">, email?: 
   // Real-time synchronization to Doctor Portal
   try {
     const access = getPatientAccessControl(user);
+    const accounts = getRegisteredAccounts();
+    const account = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
+    const patientName = account?.name || access.patientName || (isDemoPatient(user) ? "Jasmeen Kaur" : user.split("@")[0]);
+    const patientUid = access.patientUid || `PT-2026-${(account?.id || user).replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase()}-8821`;
+
+    const docTarget = (apt.doc || "").toLowerCase();
+    let docId = "dr-general";
+    if (docTarget.includes("duggal")) docId = "dr-duggal";
+    else if (docTarget.includes("reeta") || docTarget.includes("bhambri")) docId = "dr-reeta";
+    else if (docTarget.includes("patel")) docId = "dr-patel";
+    else if (docTarget.includes("sharma")) docId = "dr-sharma";
+    else if (docTarget.includes("gupta")) docId = "dr-gupta";
+
     const doctorReq: DoctorRequest = {
       id: `req-${newId}`,
-      patientName: access.patientName || "Patient",
+      patientName: patientName,
       patientEmail: user,
-      patientUid: access.patientUid || "PT-2026-LUD-8821",
+      patientUid: patientUid,
+      doctorName: apt.doc,
+      doctorId: docId,
       reason: apt.title,
       date: apt.date,
       time: apt.time,
+      location: apt.location,
       specialty: apt.specialty || "General Medicine",
-      urgency: "Routine",
+      urgency: apt.title.toLowerCase().includes("emergency") ? "Priority" : "Routine",
       status: "confirmed",
       dossierToken: access.token || "EMG-8821-VLT",
-      notes: apt.notes ? `${apt.notes} (Location: ${apt.location})` : `Booked via MedMatch Portal. Location: ${apt.location}`
+      notes: apt.notes ? `${apt.notes} (Location: ${apt.location})` : `Booked via Patient Portal. Location: ${apt.location}`,
+      createdAt: Date.now()
     };
     const reqs = getDoctorRequests();
     saveDoctorRequests([doctorReq, ...reqs.filter(r => r.id !== doctorReq.id)]);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("medmatch_access_update"));
+    }
   } catch (e) {
     console.warn("Could not sync appointment to doctor queue:", e);
   }
@@ -1057,6 +1108,32 @@ export function updatePatientAppointment(
     return a;
   });
   savePatientAppointments(updated, email);
+
+  // Sync to doctor queue
+  try {
+    const docReqs = getDoctorRequests();
+    const updatedDocReqs = docReqs.map((r) => {
+      const matchId = String(r.id) === `req-${id}` || String(r.id).replace("req-", "") === String(id);
+      const matchTitle = updatedItem && r.reason === updatedItem.title;
+      if (matchId || matchTitle) {
+        return {
+          ...r,
+          date: patch.date || r.date,
+          time: patch.time || r.time,
+          location: patch.location || r.location,
+          status: patch.status === "past" ? ("completed" as const) : ("confirmed" as const)
+        };
+      }
+      return r;
+    });
+    saveDoctorRequests(updatedDocReqs);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("medmatch_access_update"));
+    }
+  } catch (e) {
+    console.warn("Could not sync appointment update to doctor queue:", e);
+  }
+
   return updatedItem;
 }
 

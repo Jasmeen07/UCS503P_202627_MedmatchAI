@@ -24,7 +24,11 @@ import {
   LogOut,
   Send,
   AlertCircle,
-  ShieldAlert
+  ShieldAlert,
+  Calendar,
+  CalendarDays,
+  MapPin,
+  Clock3
 } from "lucide-react";
 import { 
   verifyActiveSession,
@@ -43,7 +47,10 @@ import {
   StoredPrescription,
   PatientDocument,
   DoctorPatientRecord,
-  DoctorAccessPermissionRequest
+  DoctorAccessPermissionRequest,
+  DoctorRequest,
+  getDoctorAppointments,
+  syncDoctorRequestAction
 } from "@/lib/patientData";
 
 export default function DoctorPortalPage() {
@@ -54,11 +61,20 @@ export default function DoctorPortalPage() {
   // Data state
   const [patients, setPatients] = useState<DoctorPatientRecord[]>([]);
   const [allRequests, setAllRequests] = useState<DoctorAccessPermissionRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<"patients" | "requests" | "emergency">("patients");
+  const [doctorAppointments, setDoctorAppointments] = useState<DoctorRequest[]>([]);
+  const [activeTab, setActiveTab] = useState<"patients" | "appointments" | "requests" | "emergency">("patients");
 
   // Search & Filter
   const [patientSearch, setPatientSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "granted" | "pending" | "needs_request">("all");
+
+  // Appointment filters & state
+  const [appointmentFilter, setAppointmentFilter] = useState<"all" | "upcoming" | "completed">("upcoming");
+  const [appointmentSearch, setAppointmentSearch] = useState("");
+  const [rescheduleAppointment, setRescheduleAppointment] = useState<DoctorRequest | null>(null);
+  const [rescheduleNewDate, setRescheduleNewDate] = useState("");
+  const [rescheduleNewTime, setRescheduleNewTime] = useState("");
+  const [rescheduleNewLocation, setRescheduleNewLocation] = useState("");
 
   // Selected Patient Clinical Chart Viewer (Read-Only)
   const [selectedPatient, setSelectedPatient] = useState<DoctorPatientRecord | null>(null);
@@ -114,6 +130,8 @@ export default function DoctorPortalPage() {
     const patientList = getHospitalRegisteredPatients(docId, docEmail, docName);
     setPatients(patientList);
     setAllRequests(getAllDoctorAccessRequests().filter(r => r.doctorId === docId || (docEmail && (r as any).doctorEmail?.toLowerCase() === docEmail.toLowerCase())));
+    const apps = getDoctorAppointments(docId, docEmail, docName, true);
+    setDoctorAppointments(apps);
   };
 
   useEffect(() => {
@@ -269,6 +287,65 @@ export default function DoctorPortalPage() {
   const handleOpenRequestModal = (p: DoctorPatientRecord) => {
     setRequestTargetPatient(p);
     setRequestReason(`Clinical consultation, health evaluation & medication reconciliation for ${p.patientName}`);
+  };
+
+  const handleCompleteAppointment = (aptId: string | number, patientName: string) => {
+    syncDoctorRequestAction(aptId, "complete");
+    loadRegistryData();
+    showToast(`Consultation marked as completed for ${patientName}! Patient dashboard has been updated.`);
+  };
+
+  const handleCancelDoctorAppointment = (aptId: string | number, patientName: string) => {
+    if (!confirm(`Are you sure you want to cancel the appointment for ${patientName}?`)) return;
+    syncDoctorRequestAction(aptId, "cancel");
+    loadRegistryData();
+    showToast(`Appointment cancelled for ${patientName}.`);
+  };
+
+  const handleOpenDoctorReschedule = (apt: DoctorRequest) => {
+    setRescheduleAppointment(apt);
+    setRescheduleNewDate(apt.date || "");
+    setRescheduleNewTime(apt.time || "10:30 AM");
+    setRescheduleNewLocation(apt.location || "Ranjit Maternity Clinic & Consultation Suite");
+  };
+
+  const handleSaveDoctorReschedule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rescheduleAppointment) return;
+
+    let formattedDate = rescheduleNewDate;
+    if (rescheduleNewDate && rescheduleNewDate.includes("-")) {
+      try {
+        const parts = rescheduleNewDate.split("-");
+        if (parts.length === 3) {
+          const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          formattedDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        }
+      } catch {}
+    }
+
+    syncDoctorRequestAction(rescheduleAppointment.id, "reschedule", {
+      date: formattedDate,
+      time: rescheduleNewTime || rescheduleAppointment.time,
+      location: rescheduleNewLocation || rescheduleAppointment.location
+    });
+
+    loadRegistryData();
+    showToast(`Consultation rescheduled for ${rescheduleAppointment.patientName} to ${formattedDate} at ${rescheduleNewTime}!`);
+    setRescheduleAppointment(null);
+  };
+
+  const handleOpenDossierFromAppointment = (apt: DoctorRequest) => {
+    const matched = patients.find(p => p.patientEmail.toLowerCase() === apt.patientEmail.toLowerCase());
+    if (matched) {
+      if (matched.accessStatus === "granted" || matched.accessStatus === "emergency_override") {
+        handleOpenPatientChart(matched);
+      } else {
+        handleOpenRequestModal(matched);
+      }
+    } else {
+      showToast(`Patient record for ${apt.patientName} not found in hospital directory.`);
+    }
   };
 
   const handleSendAccessRequest = (e: React.FormEvent) => {
@@ -455,6 +532,16 @@ export default function DoctorPortalPage() {
                 <span className="text-[11px] text-teal-600 dark:text-teal-400 uppercase tracking-wider block">Records Authorized</span>
                 <span className="text-xl font-bold text-teal-700 dark:text-teal-300 font-mono">{authorizedCount}</span>
               </div>
+              <div 
+                className="px-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors rounded-lg py-1"
+                onClick={() => { setActiveTab("appointments"); setSelectedPatient(null); }}
+                title="View Consultation Appointments Queue"
+              >
+                <span className="text-[11px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">Consultation Queue</span>
+                <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300 font-mono">
+                  {doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length}
+                </span>
+              </div>
               <div className="pl-5">
                 <span className="text-[11px] text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Awaiting Consent</span>
                 <span className="text-xl font-bold text-amber-700 dark:text-amber-300 font-mono">{pendingCount}</span>
@@ -469,18 +556,34 @@ export default function DoctorPortalPage() {
             onClick={() => { setActiveTab("patients"); setSelectedPatient(null); }}
             className={`pb-2 -mb-3 transition-colors relative ${
               activeTab === "patients"
-                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600 font-bold"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium"
             }`}
           >
             Registered Patient Directory ({patients.length})
           </button>
           <button
+            onClick={() => { setActiveTab("appointments"); setSelectedPatient(null); }}
+            className={`pb-2 -mb-3 transition-colors relative inline-flex items-center gap-1.5 ${
+              activeTab === "appointments"
+                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600 font-bold"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium"
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Consultations & OPD Queue</span>
+            {doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                {doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => { setActiveTab("requests"); setSelectedPatient(null); }}
             className={`pb-2 -mb-3 transition-colors relative ${
               activeTab === "requests"
-                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600 font-bold"
+                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium"
             }`}
           >
             Authorization Requests Log ({allRequests.length})
@@ -563,8 +666,18 @@ export default function DoctorPortalPage() {
                                 {patient.patientName.slice(0, 2).toUpperCase()}
                               </div>
                               <div>
-                                <div className="font-semibold text-slate-900 dark:text-slate-100">
-                                  {patient.patientName}
+                                <div className="font-semibold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-1.5">
+                                  <span>{patient.patientName}</span>
+                                  {(() => {
+                                    const upAppt = doctorAppointments.find(a => a.patientEmail.toLowerCase() === patient.patientEmail.toLowerCase() && (a.status === "confirmed" || a.status === "rescheduled"));
+                                    if (!upAppt) return null;
+                                    return (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.2 rounded border border-indigo-200/50 dark:border-indigo-800/50">
+                                        <Calendar className="w-2.5 h-2.5 text-indigo-500" />
+                                        <span>{upAppt.date}</span>
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="font-mono text-[10px] text-slate-400">
                                   {patient.patientUid} • {patient.bloodGroup}
@@ -834,6 +947,47 @@ export default function DoctorPortalPage() {
                 <p className="text-xs">Verifying authorization with hospital server...</p>
               </div>
             )}
+            {/* Patient Consultations & Appointment Schedule */}
+            {doctorAppointments.filter(a => a.patientEmail.toLowerCase() === selectedPatient.patientEmail.toLowerCase()).length > 0 && (
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-teal-600" />
+                    <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      Consultation History &amp; Scheduled Appointments
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    {doctorAppointments.filter(a => a.patientEmail.toLowerCase() === selectedPatient.patientEmail.toLowerCase()).length} recorded
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {doctorAppointments.filter(a => a.patientEmail.toLowerCase() === selectedPatient.patientEmail.toLowerCase()).map(apt => (
+                    <div key={apt.id} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{apt.reason}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                          apt.status === "completed" ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                        }`}>
+                          {apt.status === "completed" ? "Completed" : "Scheduled"}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-teal-700 dark:text-teal-300 flex items-center gap-1.5 font-medium">
+                        <Clock className="w-3 h-3" />
+                        <span>{apt.date} at {apt.time}</span>
+                      </div>
+                      {apt.notes && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                          &quot;{apt.notes}&quot;
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Read-Only Record Section Selector */}
             <div className="flex items-center gap-6 text-xs font-semibold border-b border-slate-200/80 dark:border-slate-800/80 pb-2">
               <button
@@ -982,6 +1136,220 @@ export default function DoctorPortalPage() {
             )}
             </>
             )}
+          </div>
+        )}
+
+        {/* =========================================================================
+            VIEW 2: CONSULTATIONS & OPD APPOINTMENT QUEUE
+            ========================================================================= */}
+        {activeTab === "appointments" && !selectedPatient && (
+          <div className="space-y-4">
+            {/* Controls Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search consultations by patient, UID, or reason..."
+                  value={appointmentSearch}
+                  onChange={(e) => setAppointmentSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:border-teal-500 transition-colors"
+                />
+              </div>
+
+              {/* Status Filter Pills */}
+              <div className="flex items-center gap-1.5 text-xs">
+                {(["upcoming", "completed", "all"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setAppointmentFilter(filter)}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                      appointmentFilter === filter
+                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {filter === "upcoming" && `Upcoming & Confirmed (${doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length})`}
+                    {filter === "completed" && `Completed (${doctorAppointments.filter(a => a.status === "completed").length})`}
+                    {filter === "all" && `All (${doctorAppointments.length})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Appointments Grid */}
+            {(() => {
+              const filteredList = doctorAppointments.filter((apt) => {
+                if (appointmentFilter === "upcoming") {
+                  if (apt.status === "completed" || apt.status === "cancelled") return false;
+                } else if (appointmentFilter === "completed") {
+                  if (apt.status !== "completed") return false;
+                }
+                if (!appointmentSearch.trim()) return true;
+                const q = appointmentSearch.toLowerCase().trim();
+                return (
+                  apt.patientName.toLowerCase().includes(q) ||
+                  apt.patientEmail.toLowerCase().includes(q) ||
+                  apt.patientUid.toLowerCase().includes(q) ||
+                  apt.reason.toLowerCase().includes(q) ||
+                  (apt.notes || "").toLowerCase().includes(q) ||
+                  apt.date.toLowerCase().includes(q)
+                );
+              });
+
+              if (filteredList.length === 0) {
+                return (
+                  <div className="py-16 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40">
+                    <CalendarDays className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      No consultations found in this queue
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
+                      When patients book or request appointments from the patient portal, they will appear here with live synchronization.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredList.map((apt) => {
+                    const matchedPatient = patients.find(p => p.patientEmail.toLowerCase() === apt.patientEmail.toLowerCase());
+                    const hasAccess = matchedPatient && (matchedPatient.accessStatus === "granted" || matchedPatient.accessStatus === "emergency_override");
+                    const isCompleted = apt.status === "completed";
+                    const isCancelled = apt.status === "cancelled";
+
+                    return (
+                      <div
+                        key={apt.id}
+                        className={`rounded-xl border p-5 transition-all bg-white dark:bg-slate-900 flex flex-col justify-between ${
+                          isCompleted
+                            ? "border-slate-200/60 dark:border-slate-800/60 opacity-80"
+                            : isCancelled
+                            ? "border-rose-200/60 dark:border-rose-900/40 opacity-70"
+                            : "border-slate-200 dark:border-slate-800 hover:border-teal-500/50 shadow-xs"
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          {/* Header: Patient Info & Badges */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                                  {apt.patientName}
+                                </span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                  {apt.patientUid}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                {apt.patientEmail}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              {apt.urgency === "Priority" && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/50 dark:border-rose-800/50">
+                                  Priority
+                                </span>
+                              )}
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                  isCompleted
+                                    ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                    : isCancelled
+                                    ? "bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-300"
+                                    : apt.status === "rescheduled"
+                                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60"
+                                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60"
+                                }`}
+                              >
+                                {isCompleted ? "Completed" : isCancelled ? "Cancelled" : apt.status === "rescheduled" ? "Rescheduled" : "Confirmed"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Consultation Topic */}
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                              {apt.reason}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              Specialty: <span className="font-medium text-slate-700 dark:text-slate-300">{apt.specialty}</span>
+                            </div>
+                          </div>
+
+                          {/* Schedule Pill: Date, Time & Location */}
+                          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-1">
+                            <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-semibold">
+                              <Clock className="w-3.5 h-3.5 text-teal-600" />
+                              <span>{apt.date} • {apt.time}</span>
+                            </div>
+                            {apt.location && (
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-[11px]">
+                                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="truncate">{apt.location}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Notes */}
+                          {apt.notes && (
+                            <div className="text-[11px] text-slate-600 dark:text-slate-400 bg-teal-50/40 dark:bg-teal-950/20 p-2 rounded-lg border border-teal-100/40 dark:border-teal-900/30">
+                              <span className="font-semibold text-teal-800 dark:text-teal-300">Visit Notes: </span>
+                              {apt.notes}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Bar */}
+                        <div className="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleOpenDossierFromAppointment(apt)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-2xs cursor-pointer"
+                              title={hasAccess ? "Open Patient Medical Vault" : "Request Clinical Access"}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>{hasAccess ? "Open Dossier" : "Request Access"}</span>
+                            </button>
+
+                            <Link
+                              href={`/dashboard/scan?patientEmail=${encodeURIComponent(apt.patientEmail)}&patientName=${encodeURIComponent(apt.patientName)}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              title="Scan & Digitize Prescription for this Visit"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                              <span>Scan Rx</span>
+                            </Link>
+                          </div>
+
+                          {!isCompleted && !isCancelled && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleOpenDoctorReschedule(apt)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs transition-colors cursor-pointer"
+                                title="Reschedule Consultation"
+                              >
+                                <Clock3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleCompleteAppointment(apt.id, apt.patientName)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/60 dark:border-emerald-800/60 transition-colors cursor-pointer"
+                                title="Mark Consultation Completed"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Complete</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1197,6 +1565,100 @@ export default function DoctorPortalPage() {
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>Execute Emergency Override</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL: DOCTOR RESCHEDULE CONSULTATION
+          ========================================================================= */}
+      {rescheduleAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 max-w-md w-full rounded-xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400 font-bold text-base">
+                <Calendar className="w-4 h-4" />
+                <h3>Reschedule Consultation</h3>
+              </div>
+              <button 
+                onClick={() => setRescheduleAppointment(null)}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDoctorReschedule} className="space-y-3.5 text-xs">
+              <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/50 text-slate-700 dark:text-slate-300">
+                Rescheduling consultation for:
+                <div className="font-bold text-teal-900 dark:text-teal-200 mt-0.5">
+                  {rescheduleAppointment.patientName} ({rescheduleAppointment.reason})
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  Current: {rescheduleAppointment.date} at {rescheduleAppointment.time}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  New Date
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={rescheduleNewDate.includes("-") ? rescheduleNewDate : ""}
+                  onChange={(e) => setRescheduleNewDate(e.target.value)}
+                  className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  Consultation Time Slot
+                </label>
+                <select
+                  value={rescheduleNewTime}
+                  onChange={(e) => setRescheduleNewTime(e.target.value)}
+                  className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                >
+                  <option value="09:30 AM">09:30 AM (Morning OPD)</option>
+                  <option value="10:30 AM">10:30 AM (Morning OPD)</option>
+                  <option value="11:45 AM">11:45 AM (Clinical Rounds)</option>
+                  <option value="02:30 PM">02:30 PM (Afternoon OPD)</option>
+                  <option value="04:00 PM">04:00 PM (Evening Consultation)</option>
+                  <option value="05:15 PM">05:15 PM (Evening Review)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  Consultation Location / Clinic Room
+                </label>
+                <input
+                  type="text"
+                  value={rescheduleNewLocation}
+                  onChange={(e) => setRescheduleNewLocation(e.target.value)}
+                  className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRescheduleAppointment(null)}
+                  className="px-3 py-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg font-bold text-white bg-teal-600 hover:bg-teal-700 transition-colors inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Confirm &amp; Sync Schedule</span>
                 </button>
               </div>
             </form>
