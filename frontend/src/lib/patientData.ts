@@ -1323,15 +1323,240 @@ export interface PatientDossierData {
 
 export const DEFAULT_EMERGENCY_TOKEN = "EMG-8821-VLT";
 
+export interface PatientAllergy {
+  substance: string;
+  reaction: string;
+  severity: "High" | "Moderate" | "Low";
+}
+
+export interface PatientEmergencyProfile {
+  bloodGroup: string;
+  allergies: PatientAllergy[];
+  emergencyContact: {
+    name: string;
+    relation: string;
+    phone: string;
+  };
+  chronicConditions: string[];
+  organDonor: boolean;
+  medicalDirectives?: string;
+  updatedAt?: string;
+}
+
+export interface EmergencyTokenRecord {
+  token: string;
+  email: string;
+  patientName: string;
+  patientUid: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export function registerEmergencyToken(record: EmergencyTokenRecord): void {
+  if (typeof window === "undefined") return;
+  try {
+    const key = "medmatch_emergency_token_registry";
+    const existingRaw = localStorage.getItem(key);
+    const registry: Record<string, EmergencyTokenRecord> = existingRaw ? JSON.parse(existingRaw) : {};
+    registry[record.token.toUpperCase().trim()] = record;
+    localStorage.setItem(key, JSON.stringify(registry));
+  } catch (e) {
+    console.error("Failed to register emergency token:", e);
+  }
+}
+
+export function resolveEmergencyToken(token: string): EmergencyTokenRecord | null {
+  if (typeof window === "undefined") return null;
+  const upper = (token || "").trim().toUpperCase();
+  if (!upper) return null;
+
+  // 1. Direct registry lookup
+  try {
+    const key = "medmatch_emergency_token_registry";
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const registry: Record<string, EmergencyTokenRecord> = JSON.parse(raw);
+      if (registry[upper]) return registry[upper];
+    }
+  } catch (e) {
+    console.error("Failed to query emergency token registry:", e);
+  }
+
+  // 2. Scan registered accounts' stored emergency tokens
+  try {
+    const accounts = getRegisteredAccounts();
+    for (const acc of accounts) {
+      const accEmail = (acc.email || "").toLowerCase().trim();
+      const userToken = localStorage.getItem(getPatientStorageKey("emergency_token", accEmail));
+      if (userToken && userToken.trim().toUpperCase() === upper) {
+        const record: EmergencyTokenRecord = {
+          token: upper,
+          email: accEmail,
+          patientName: acc.name || (accEmail === "jk0822123@gmail.com" ? "Jasmeen Kaur" : accEmail.split("@")[0]),
+          patientUid: `PT-2026-${(acc.id || accEmail).replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase()}-VLT`,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        };
+        registerEmergencyToken(record);
+        return record;
+      }
+    }
+  } catch (e) {
+    console.error("Failed scanning user emergency tokens:", e);
+  }
+
+  return null;
+}
+
+export function getPatientEmergencyProfile(email?: string | null): PatientEmergencyProfile {
+  if (typeof window === "undefined") {
+    return {
+      bloodGroup: "B+ (Rh Positive)",
+      allergies: [
+        { substance: "Amoxicillin / Penicillin G", reaction: "Anaphylactoid Urticaria & Bronchospasm", severity: "High" },
+        { substance: "NSAIDs (Diclofenac)", reaction: "Gastric Mucosal Erythema / Severe Dyspepsia", severity: "Moderate" }
+      ],
+      emergencyContact: {
+        name: "Emergency Contact",
+        relation: "Family",
+        phone: "+91 98765-43210"
+      },
+      chronicConditions: ["Hypertension"],
+      organDonor: true,
+      medicalDirectives: "Full clinical code. In case of trauma, verify penicillin hypersensitivity prior to beta-lactam administration.",
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const key = getPatientStorageKey("emergency_profile", user);
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error("Failed to load patient emergency profile:", e);
+  }
+
+  // Sensible default tailored to the account
+  const accounts = getRegisteredAccounts();
+  const acc = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
+  const patientName = acc?.name || (user === "jk0822123@gmail.com" ? "Jasmeen Kaur" : user.split("@")[0]);
+
+  const defaultProfile: PatientEmergencyProfile = {
+    bloodGroup: user.includes("harpreet") ? "O+ (Rh Positive)" : user.includes("amandeep") ? "A+ (Rh Positive)" : "B+ (Rh Positive)",
+    allergies: user.includes("harpreet") 
+      ? [{ substance: "Penicillin G", reaction: "Severe hives & anaphylaxis", severity: "High" }]
+      : user.includes("amandeep")
+      ? [{ substance: "Sulfonamides (Bactrim)", reaction: "Erythema Multiforme", severity: "High" }]
+      : [
+          { substance: "Amoxicillin / Penicillin G", reaction: "Anaphylactoid Urticaria & Bronchospasm", severity: "High" },
+          { substance: "NSAIDs (Diclofenac)", reaction: "Gastric Mucosal Erythema / Severe Dyspepsia", severity: "Moderate" }
+        ],
+    emergencyContact: {
+      name: user.includes("harpreet") ? "Gurpreet Kaur" : user.includes("amandeep") ? "Vikram Sharma" : "Jaswinder Singh",
+      relation: "Spouse",
+      phone: "+91 98765-43210"
+    },
+    chronicConditions: [],
+    organDonor: true,
+    medicalDirectives: "Full resuscitation code. Verify drug allergies before beta-lactam administration.",
+    updatedAt: new Date().toISOString()
+  };
+
+  try {
+    localStorage.setItem(key, JSON.stringify(defaultProfile));
+  } catch {}
+
+  return defaultProfile;
+}
+
+export function savePatientEmergencyProfile(profile: PatientEmergencyProfile, email?: string | null): void {
+  if (typeof window === "undefined") return;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  const key = getPatientStorageKey("emergency_profile", user);
+  try {
+    const updated = {
+      ...profile,
+      updatedAt: new Date().toISOString()
+    };
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Failed to save patient emergency profile:", e);
+  }
+}
+
+export function recordPatientDossierScan(email: string, token: string): void {
+  if (typeof window === "undefined" || !email) return;
+  const user = email.trim().toLowerCase();
+  try {
+    const key = getPatientStorageKey("access_audit_log", user);
+    const existingRaw = localStorage.getItem(key);
+    let auditLog: AccessAuditEntry[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+    const now = new Date();
+    const timeString = now.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+    const newEntry: AccessAuditEntry = {
+      id: `aud-qr-${Date.now()}`,
+      timestamp: timeString,
+      accessorName: "Emergency First Responder / QR Scan",
+      accessorRole: "Emergency Physician",
+      accessType: "QR Code Scanned",
+      reason: `Emergency Vault Scan (Pass Token: ${token})`,
+      status: "Emergency Logged"
+    };
+
+    const updatedLog = [newEntry, ...auditLog.filter(a => a.id !== newEntry.id).slice(0, 24)];
+    localStorage.setItem(key, JSON.stringify(updatedLog));
+
+    // Also trigger notification for patient
+    addPatientNotification({
+      patientEmail: user,
+      type: "emergency_access",
+      title: "🚨 Emergency Medical ID Pass Scanned",
+      message: `Your Emergency Medical Pass (${token}) was scanned by first responders or medical personnel. Read-only health snapshot was securely accessed.`,
+      severity: "critical",
+      actionUrl: "/dashboard/sharing"
+    }, user);
+  } catch (e) {
+    console.error("Failed recording dossier scan:", e);
+  }
+}
+
 export function getEmergencyToken(email?: string | null): string {
   if (typeof window === "undefined") return DEFAULT_EMERGENCY_TOKEN;
   const user = (email || getActivePatientEmail()).trim().toLowerCase();
   const key = getPatientStorageKey("emergency_token", user);
   try {
-    const existing = localStorage.getItem(key);
-    if (existing) return existing;
-    localStorage.setItem(key, DEFAULT_EMERGENCY_TOKEN);
-    return DEFAULT_EMERGENCY_TOKEN;
+    let token = localStorage.getItem(key);
+    if (!token) {
+      if (isDemoPatient(user)) {
+        token = user.includes("harpreet") ? "EMG-3312-VLT" : user.includes("amandeep") ? "EMG-4091-VLT" : DEFAULT_EMERGENCY_TOKEN;
+      } else {
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        token = `EMG-${randomSuffix}-VLT`;
+      }
+      localStorage.setItem(key, token);
+    }
+
+    const accounts = getRegisteredAccounts();
+    const acc = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
+    const patientName = acc?.name || (user === "jk0822123@gmail.com" ? "Jasmeen Kaur" : user.split("@")[0]);
+    const patientUid = `PT-2026-${(acc?.id || user).replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase()}-VLT`;
+
+    registerEmergencyToken({
+      token,
+      email: user,
+      patientName,
+      patientUid,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    });
+
+    return token;
   } catch {
     return DEFAULT_EMERGENCY_TOKEN;
   }
@@ -1345,6 +1570,18 @@ export function generateEmergencyToken(email?: string | null): string {
   const newToken = `EMG-${randomSuffix}-VLT`;
   try {
     localStorage.setItem(key, newToken);
+    const accounts = getRegisteredAccounts();
+    const acc = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
+    const patientName = acc?.name || (user === "jk0822123@gmail.com" ? "Jasmeen Kaur" : user.split("@")[0]);
+    const patientUid = `PT-2026-${(acc?.id || user).replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase()}-VLT`;
+    registerEmergencyToken({
+      token: newToken,
+      email: user,
+      patientName,
+      patientUid,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+    });
   } catch (e) {
     console.error("Failed to generate new emergency token:", e);
   }
@@ -3482,23 +3719,51 @@ function getSimranjitKaurDossier(token: string): PatientDossierData {
 
 export function getPatientDossier(email?: string | null, tokenOverride?: string | null): PatientDossierData {
   const rawToken = (tokenOverride || "").trim().toUpperCase();
-  const rawEmail = (email || getActivePatientEmail()).trim().toLowerCase();
+  let resolvedEmail = (email || "").trim().toLowerCase();
+  let resolvedName = "";
+  let resolvedUid = "";
 
-  // 1. Route by token or patient identity for Harpreet Singh
-  if (rawToken.includes("3312") || rawEmail.includes("harpreet")) {
+  // 1. If a token was provided, attempt to resolve via emergency registry
+  if (rawToken) {
+    const regRecord = resolveEmergencyToken(rawToken);
+    if (regRecord) {
+      resolvedEmail = regRecord.email;
+      resolvedName = regRecord.patientName;
+      resolvedUid = regRecord.patientUid;
+    }
+  }
+
+  // 2. Demo token matching
+  if (rawToken.includes("3312") || resolvedEmail.includes("harpreet")) {
     return getHarpreetSinghDossier(rawToken || "EMG-3312-VLT");
   }
 
-  // 2. Route by token or patient identity for Amandeep Sharma
-  if (rawToken.includes("4091") || rawEmail.includes("amandeep")) {
+  if (rawToken.includes("4091") || resolvedEmail.includes("amandeep")) {
     return getAmandeepSharmaDossier(rawToken || "EMG-4091-VLT");
   }
 
-  // 3. If a non-demo user is logged in and not looking up a specific demo token, return their scoped vault
-  if (!isDemoPatient(rawEmail) && rawEmail !== "anonymous" && !rawToken.includes("8821")) {
-    const user = rawEmail;
+  if (rawToken.includes("8821") && (!resolvedEmail || resolvedEmail === "anonymous" || resolvedEmail.includes("simranjit"))) {
+    return getSimranjitKaurDossier(rawToken || DEFAULT_EMERGENCY_TOKEN);
+  }
+
+  // 3. Fallback to active logged-in user if not resolved yet
+  if (!resolvedEmail || resolvedEmail === "anonymous") {
+    resolvedEmail = getActivePatientEmail().trim().toLowerCase();
+  }
+
+  // 4. If we have a non-demo user, construct real live dynamic dossier
+  if (!isDemoPatient(resolvedEmail) && resolvedEmail !== "anonymous") {
+    const user = resolvedEmail;
     const token = rawToken || getEmergencyToken(user);
+    const emergencyProfile = getPatientEmergencyProfile(user);
     const treatmentGroups = getPatientTreatmentGroups(user);
+    const userPrescriptions = getPatientPrescriptions(user);
+
+    const accounts = getRegisteredAccounts();
+    const acc = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
+    const patientName = resolvedName || acc?.name || (user === "jk0822123@gmail.com" ? "Jasmeen Kaur" : user.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
+    const patientUid = resolvedUid || `PT-2026-REG-${(acc?.id || user).replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase()}`;
+
     const episodes: ClinicalEpisode[] = treatmentGroups.map(tg => ({
       id: tg.id,
       title: tg.name,
@@ -3517,6 +3782,8 @@ export function getPatientDossier(email?: string | null, tokenOverride?: string 
     }));
 
     const activeMedications: PatientDossierData["activeMedications"] = [];
+
+    // Extract medications from treatment groups
     treatmentGroups.forEach(tg => {
       if (tg.status === "active" || tg.status === "monitoring") {
         (tg.medications || []).forEach(m => {
@@ -3533,37 +3800,60 @@ export function getPatientDossier(email?: string | null, tokenOverride?: string 
       }
     });
 
+    // Also extract real medications from scanned OCR prescriptions
+    userPrescriptions.forEach(p => {
+      const docName = p.doc || "Treating Physician";
+      const diagName = p.diag || "Prescription Order";
+      (p.medicines || []).forEach(m => {
+        const medName = m.medicine_name || m.name;
+        if (medName) {
+          const exists = activeMedications.some(existing => existing.name.toLowerCase() === medName.toLowerCase());
+          if (!exists) {
+            activeMedications.push({
+              name: medName,
+              dosage: m.dosage || m.dose || "Standard Dose",
+              frequency: m.frequency || m.freq || "Daily",
+              timing: m.instructions || m.instr || "Post-prandial",
+              instructions: m.instructions || m.instr || "As directed by physician",
+              prescribedBy: docName,
+              episodeName: diagName
+            });
+          }
+        }
+      });
+    });
+
     const now = new Date();
     const generatedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
     const expiresDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const expiresAt = expiresDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
     return {
-      patientName: user.split("@")[0].toUpperCase(),
+      patientName,
       email: user,
-      ageGender: "Patient / Verified",
-      bloodGroup: "O+ (Positive)",
-      patientUid: `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`,
-      emergencyContact: {
-        name: "Primary Emergency Contact",
-        relation: "Family",
-        phone: "+91 98000-00000"
-      },
-      allergies: [
-        { substance: "No Severe Drug Hypersensitivities Logged", reaction: "N/A", severity: "Low" }
-      ],
-      chronicConditions: treatmentGroups.map(tg => tg.name),
-      clinicalAlertBanner: "Patient Health Vault Record: Verified cryptographic snapshot from Supabase PostgreSQL tenant vault.",
+      ageGender: "Patient / Verified Citizen",
+      bloodGroup: emergencyProfile.bloodGroup || "O+ (Rh Positive)",
+      patientUid,
+      emergencyContact: emergencyProfile.emergencyContact,
+      allergies: emergencyProfile.allergies.length > 0 
+        ? emergencyProfile.allergies 
+        : [{ substance: "No Known Drug Allergies (NKDA)", reaction: "None Reported", severity: "Low" }],
+      chronicConditions: emergencyProfile.chronicConditions.length > 0 
+        ? emergencyProfile.chronicConditions 
+        : treatmentGroups.map(tg => tg.name),
+      clinicalAlertBanner: emergencyProfile.medicalDirectives 
+        ? `Patient Clinical Directives: ${emergencyProfile.medicalDirectives}`
+        : "Emergency Medical Dossier: Real-time cryptographic snapshot from MedMatch AI patient vault.",
       episodes,
       activeMedications,
-      prescriptions: getPatientPrescriptions(user),
+      prescriptions: userPrescriptions,
       token,
       generatedAt,
       expiresAt
     };
   }
 
-  // 4. Default: Simranjit Kaur (EMG-8821-VLT)
+  // 5. Default fallback: Simranjit Kaur
   return getSimranjitKaurDossier(rawToken || DEFAULT_EMERGENCY_TOKEN);
 }
 

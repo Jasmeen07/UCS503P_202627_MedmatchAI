@@ -29,6 +29,7 @@ import {
   PatientDossierData, 
   getActivePatientEmail,
   getPatientPrescriptions,
+  recordPatientDossierScan,
   StoredPrescription 
 } from "@/lib/patientData";
 
@@ -87,6 +88,11 @@ export default function PatientDossierPage() {
     const data = getPatientDossier(patientParam, tokenParam);
     setDossier(data);
     setPrescriptions(data.prescriptions || getPatientPrescriptions(data.email));
+
+    // Stamped into immutable security audit trail
+    if (tokenParam) {
+      recordPatientDossierScan(data.email, tokenParam);
+    }
   }, []);
 
   const handlePrint = () => {

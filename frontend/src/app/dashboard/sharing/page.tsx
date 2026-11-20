@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { 
   UserCheck, 
   Shield, 
@@ -28,7 +29,11 @@ import {
   Smartphone,
   ShieldCheck,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Edit3,
+  HeartPulse,
+  Phone,
+  Trash2
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { 
@@ -47,86 +52,42 @@ import {
   DoctorAccessPermissionRequest,
   getDoctorAccessRequestsForPatient,
   respondToAccessRequest,
-  revokeDoctorAccess
+  revokeDoctorAccess,
+  getPatientEmergencyProfile,
+  savePatientEmergencyProfile,
+  PatientEmergencyProfile,
+  PatientAllergy
 } from "@/lib/patientData";
 
-// Crisp SVG QR Code Component with Medical Cross Emblem
-function EmergencyQrCodeSvg({ token }: { token: string }) {
+// Dynamic Scannable QR Code Component with Medical Cross Emblem
+function DynamicEmergencyQr({ 
+  token, 
+  qrDataUrl 
+}: { 
+  token: string; 
+  qrDataUrl: string;
+}) {
   return (
-    <div className="relative p-3 bg-white rounded-2xl border-2 border-emerald-500/30 shadow-md inline-block">
-      <svg
-        viewBox="0 0 160 160"
-        width="144"
-        height="144"
-        className="w-36 h-36"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Background */}
-        <rect width="160" height="160" fill="#FFFFFF" rx="8" />
-
-        {/* Finder Pattern Top-Left */}
-        <rect x="14" y="14" width="38" height="38" rx="5" fill="#0F172A" />
-        <rect x="20" y="20" width="26" height="26" rx="3" fill="#FFFFFF" />
-        <rect x="26" y="26" width="14" height="14" rx="2" fill="#059669" />
-
-        {/* Finder Pattern Top-Right */}
-        <rect x="108" y="14" width="38" height="38" rx="5" fill="#0F172A" />
-        <rect x="114" y="20" width="26" height="26" rx="3" fill="#FFFFFF" />
-        <rect x="120" y="26" width="14" height="14" rx="2" fill="#059669" />
-
-        {/* Finder Pattern Bottom-Left */}
-        <rect x="14" y="108" width="38" height="38" rx="5" fill="#0F172A" />
-        <rect x="20" y="114" width="26" height="26" rx="3" fill="#FFFFFF" />
-        <rect x="26" y="120" width="14" height="14" rx="2" fill="#059669" />
-
-        {/* Timing Lines */}
-        <line x1="56" y1="28" x2="104" y2="28" stroke="#0F172A" stroke-width="3" stroke-dasharray="4,4" />
-        <line x1="28" y1="56" x2="28" y2="104" stroke="#0F172A" stroke-width="3" stroke-dasharray="4,4" />
-
-        {/* Data Matrix Glyphs */}
-        <rect x="62" y="14" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="76" y="18" width="6" height="6" rx="1.5" fill="#0F172A" />
-        <rect x="90" y="14" width="8" height="8" rx="1.5" fill="#0F172A" />
-
-        <rect x="60" y="38" width="7" height="7" rx="1.5" fill="#0F172A" />
-        <rect x="74" y="38" width="8" height="8" rx="1.5" fill="#059669" />
-        <rect x="88" y="42" width="6" height="6" rx="1.5" fill="#0F172A" />
-
-        <rect x="16" y="62" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="30" y="66" width="6" height="6" rx="1.5" fill="#0F172A" />
-        <rect x="42" y="60" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="110" y="62" width="7" height="7" rx="1.5" fill="#0F172A" />
-        <rect x="124" y="66" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="138" y="60" width="6" height="6" rx="1.5" fill="#0F172A" />
-
-        <rect x="14" y="78" width="6" height="6" rx="1.5" fill="#0F172A" />
-        <rect x="26" y="80" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="40" y="76" width="7" height="7" rx="1.5" fill="#0F172A" />
-        <rect x="112" y="78" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="126" y="80" width="6" height="6" rx="1.5" fill="#059669" />
-        <rect x="138" y="76" width="8" height="8" rx="1.5" fill="#0F172A" />
-
-        <rect x="62" y="112" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="78" y="116" width="6" height="6" rx="1.5" fill="#0F172A" />
-        <rect x="92" y="110" width="7" height="7" rx="1.5" fill="#0F172A" />
-
-        <rect x="60" y="132" width="7" height="7" rx="1.5" fill="#0F172A" />
-        <rect x="74" y="136" width="8" height="8" rx="1.5" fill="#059669" />
-        <rect x="88" y="130" width="6" height="6" rx="1.5" fill="#0F172A" />
-
-        <rect x="112" y="112" width="7" height="7" rx="1.5" fill="#0F172A" />
-        <rect x="126" y="116" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="138" y="110" width="6" height="6" rx="1.5" fill="#0F172A" />
-
-        <rect x="110" y="132" width="8" height="8" rx="1.5" fill="#0F172A" />
-        <rect x="124" y="134" width="6" height="6" rx="1.5" fill="#0F172A" />
-        <rect x="136" y="130" width="8" height="8" rx="1.5" fill="#059669" />
-
-        {/* Center Clinical Cross Emblem */}
-        <rect x="65" y="65" width="30" height="30" rx="7" fill="#FFFFFF" stroke="#059669" stroke-width="2" />
-        <rect x="77" y="70" width="6" height="20" rx="2" fill="#059669" />
-        <rect x="70" y="77" width="20" height="6" rx="2" fill="#059669" />
-      </svg>
+    <div className="relative p-3 bg-white rounded-2xl border-2 border-emerald-500/40 shadow-lg inline-block group">
+      {qrDataUrl ? (
+        <div className="relative">
+          <img 
+            src={qrDataUrl} 
+            alt={`Emergency QR Code for ${token}`} 
+            className="w-36 h-36 object-contain rounded-xl"
+          />
+          {/* Center Clinical Cross Emblem */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-8 h-8 rounded-lg bg-white shadow-md border-2 border-emerald-600 flex items-center justify-center">
+              <span className="text-emerald-700 font-black text-lg leading-none">+</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="w-36 h-36 flex items-center justify-center bg-slate-50 rounded-xl">
+          <RefreshCw className="w-6 h-6 text-slate-400 animate-spin" />
+        </div>
+      )}
     </div>
   );
 }
@@ -141,6 +102,20 @@ export default function SharingPage() {
   
   // Emergency QR Token State
   const [emergencyToken, setEmergencyToken] = useState("EMG-8821-VLT");
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [emergencyProfile, setEmergencyProfile] = useState<PatientEmergencyProfile | null>(null);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState<PatientEmergencyProfile>({
+    bloodGroup: "B+ (Rh Positive)",
+    allergies: [],
+    emergencyContact: { name: "", relation: "", phone: "" },
+    chronicConditions: [],
+    organDonor: true,
+    medicalDirectives: ""
+  });
+  const [newAllergySubstance, setNewAllergySubstance] = useState("");
+  const [newAllergyReaction, setNewAllergyReaction] = useState("");
+  const [newAllergySeverity, setNewAllergySeverity] = useState<"High" | "Moderate" | "Low">("High");
   const [tokenCopied, setTokenCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -168,6 +143,59 @@ export default function SharingPage() {
     const requests = getDoctorAccessRequestsForPatient(email);
     setPendingRequests(requests.filter(r => r.status === "pending"));
     setActiveDoctorRequests(requests.filter(r => r.status === "approved"));
+    const prof = getPatientEmergencyProfile(email);
+    setEmergencyProfile(prof);
+    setProfileForm(prof);
+  };
+
+  useEffect(() => {
+    if (!emergencyToken) return;
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+    const targetUrl = `${origin}/dossier?token=${emergencyToken}`;
+    QRCode.toDataURL(targetUrl, {
+      width: 320,
+      margin: 1,
+      color: {
+        dark: "#0F172A",
+        light: "#FFFFFF"
+      },
+      errorCorrectionLevel: "H"
+    }).then(url => {
+      setQrDataUrl(url);
+    }).catch(err => {
+      console.error("Failed to generate emergency QR:", err);
+    });
+  }, [emergencyToken]);
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    savePatientEmergencyProfile(profileForm, activeEmail);
+    setEmergencyProfile(profileForm);
+    setIsEditProfileOpen(false);
+    showToast("Emergency Medical ID & Allergy Profile updated.");
+  };
+
+  const handleAddAllergy = () => {
+    if (!newAllergySubstance.trim()) return;
+    const newAllergy: PatientAllergy = {
+      substance: newAllergySubstance.trim(),
+      reaction: newAllergyReaction.trim() || "Hypersensitivity / Rash",
+      severity: newAllergySeverity
+    };
+    setProfileForm(prev => ({
+      ...prev,
+      allergies: [...prev.allergies, newAllergy]
+    }));
+    setNewAllergySubstance("");
+    setNewAllergyReaction("");
+    setNewAllergySeverity("High");
+  };
+
+  const handleRemoveAllergy = (index: number) => {
+    setProfileForm(prev => ({
+      ...prev,
+      allergies: prev.allergies.filter((_, i) => i !== index)
+    }));
   };
 
   useEffect(() => {
@@ -341,7 +369,7 @@ export default function SharingPage() {
           
           {/* QR Visual */}
           <div className="flex flex-col items-center shrink-0">
-            <EmergencyQrCodeSvg token={emergencyToken} />
+            <DynamicEmergencyQr token={emergencyToken} qrDataUrl={qrDataUrl} />
             <div className="mt-3 flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Valid • Auto-expires in 23h 48m</span>
@@ -426,6 +454,116 @@ export default function SharingPage() {
             </div>
           </div>
 
+        </div>
+      </div>
+
+      {/* EMERGENCY MEDICAL ID & ALLERGY PROFILE CARD */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200 shrink-0">
+              <HeartPulse className="w-5 h-5 text-rose-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900">
+                  Emergency Medical ID &amp; Allergy Profile
+                </h3>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  Live in QR Pass
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Critical trauma data displayed instantly to ER doctors and first responders when scanning your QR pass.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (emergencyProfile) setProfileForm(emergencyProfile);
+              setIsEditProfileOpen(true);
+            }}
+            className="dash-btn-secondary text-xs px-3.5 py-2 flex items-center gap-1.5 self-start sm:self-auto font-bold text-teal-700 bg-teal-50 border-teal-200 hover:bg-teal-100"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit Medical ID</span>
+          </button>
+        </div>
+
+        {/* 4-Column Clinical Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-5">
+          {/* Blood Group */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              Blood Group &amp; Rh Factor
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-lg font-black text-rose-700 bg-rose-100 px-3 py-0.5 rounded-lg border border-rose-300">
+                {emergencyProfile?.bloodGroup || "O+ (Rh Positive)"}
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 block mt-2">Compatible for emergency transfusion matching</span>
+          </div>
+
+          {/* Emergency Contact */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              Primary Emergency Contact
+            </span>
+            <div className="text-sm font-bold text-slate-900 mt-1">
+              {emergencyProfile?.emergencyContact.name || "Primary Contact"}
+            </div>
+            <div className="text-xs text-slate-600">
+              Relationship: {emergencyProfile?.emergencyContact.relation || "Family"}
+            </div>
+            <a
+              href={`tel:${emergencyProfile?.emergencyContact.phone || "+919876543210"}`}
+              className="text-xs font-semibold text-teal-700 hover:underline flex items-center gap-1 mt-1.5"
+            >
+              <Phone className="w-3 h-3 text-teal-600" />
+              {emergencyProfile?.emergencyContact.phone || "+91 98765-43210"}
+            </a>
+          </div>
+
+          {/* Documented Drug Allergies */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              Documented Drug Allergies
+            </span>
+            {emergencyProfile && emergencyProfile.allergies.length > 0 ? (
+              <div className="space-y-1.5 mt-1.5 max-h-24 overflow-y-auto">
+                {emergencyProfile.allergies.map((alg, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs bg-white px-2 py-1 rounded border border-rose-200">
+                    <span className="font-bold text-rose-950 truncate">{alg.substance}</span>
+                    <span className="text-[9px] font-extrabold uppercase px-1 rounded bg-rose-100 text-rose-800">
+                      {alg.severity}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-emerald-700 font-semibold mt-2 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                NKDA (No Known Drug Allergies)
+              </div>
+            )}
+          </div>
+
+          {/* Directives & Organ Donor */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+              Directives &amp; Organ Donor
+            </span>
+            <div className="text-xs font-semibold text-slate-800 mt-1">
+              Organ Donor:{" "}
+              <span className={emergencyProfile?.organDonor ? "text-emerald-700 font-bold" : "text-slate-500"}>
+                {emergencyProfile?.organDonor ? "Yes (Registered)" : "Not Registered"}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1.5 line-clamp-2 italic">
+              "{emergencyProfile?.medicalDirectives || "Full resuscitation code protocol."}"
+            </p>
+          </div>
         </div>
       </div>
 
@@ -805,6 +943,223 @@ export default function SharingPage() {
                   className="dash-btn-primary px-5 py-2 text-sm font-semibold"
                 >
                   Generate &amp; Grant Access
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT EMERGENCY MEDICAL ID MODAL */}
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-rose-50 rounded-xl text-rose-600 border border-rose-200">
+                  <HeartPulse className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Edit Emergency Medical ID
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Update your blood group, emergency contact, and drug allergies
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsEditProfileOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Blood Group &amp; Rh Factor
+                </label>
+                <select
+                  value={profileForm.bloodGroup}
+                  onChange={(e) => setProfileForm(p => ({ ...p, bloodGroup: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+                >
+                  <option value="O+ (Rh Positive)">O+ (Rh Positive)</option>
+                  <option value="O- (Rh Negative)">O- (Rh Negative) - Universal Donor</option>
+                  <option value="A+ (Rh Positive)">A+ (Rh Positive)</option>
+                  <option value="A- (Rh Negative)">A- (Rh Negative)</option>
+                  <option value="B+ (Rh Positive)">B+ (Rh Positive)</option>
+                  <option value="B- (Rh Negative)">B- (Rh Negative)</option>
+                  <option value="AB+ (Rh Positive)">AB+ (Rh Positive) - Universal Recipient</option>
+                  <option value="AB- (Rh Negative)">AB- (Rh Negative)</option>
+                </select>
+              </div>
+
+              {/* Emergency Contact */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+                  Emergency Contact Details
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">Contact Name</label>
+                    <input
+                      type="text"
+                      value={profileForm.emergencyContact.name}
+                      onChange={(e) => setProfileForm(p => ({
+                        ...p,
+                        emergencyContact: { ...p.emergencyContact, name: e.target.value }
+                      }))}
+                      placeholder="e.g. Jaswinder Singh"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">Relationship</label>
+                    <input
+                      type="text"
+                      value={profileForm.emergencyContact.relation}
+                      onChange={(e) => setProfileForm(p => ({
+                        ...p,
+                        emergencyContact: { ...p.emergencyContact, relation: e.target.value }
+                      }))}
+                      placeholder="e.g. Spouse / Parent"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-600 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={profileForm.emergencyContact.phone}
+                    onChange={(e) => setProfileForm(p => ({
+                      ...p,
+                      emergencyContact: { ...p.emergencyContact, phone: e.target.value }
+                    }))}
+                    placeholder="e.g. +91 98765-43210"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Documented Allergies */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+                  Documented Drug Hypersensitivities &amp; Allergies
+                </span>
+
+                {profileForm.allergies.length > 0 ? (
+                  <div className="space-y-2">
+                    {profileForm.allergies.map((alg, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-white border border-rose-200 text-xs">
+                        <div>
+                          <span className="font-bold text-rose-950">{alg.substance}</span>
+                          <span className="text-slate-500 ml-1.5">({alg.reaction})</span>
+                          <span className="text-[10px] font-bold uppercase ml-2 px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">
+                            {alg.severity}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAllergy(index)}
+                          className="p-1 rounded text-rose-600 hover:bg-rose-50"
+                          title="Remove allergy"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500 italic">No drug allergies listed (NKDA).</div>
+                )}
+
+                {/* Add Allergy Inline */}
+                <div className="pt-2 border-t border-slate-200 space-y-2">
+                  <span className="text-[11px] font-semibold text-slate-700 block">Add New Drug Allergy</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Substance (e.g. Penicillin)"
+                      value={newAllergySubstance}
+                      onChange={(e) => setNewAllergySubstance(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Reaction (e.g. Anaphylaxis)"
+                      value={newAllergyReaction}
+                      onChange={(e) => setNewAllergyReaction(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                    />
+                    <select
+                      value={newAllergySeverity}
+                      onChange={(e) => setNewAllergySeverity(e.target.value as any)}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white"
+                    >
+                      <option value="High">High</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddAllergy}
+                    disabled={!newAllergySubstance.trim()}
+                    className="dash-btn-secondary text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Allergy to List</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Directives & Organ Donor */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Clinical Directives / Special Instructions
+                </label>
+                <textarea
+                  value={profileForm.medicalDirectives || ""}
+                  onChange={(e) => setProfileForm(p => ({ ...p, medicalDirectives: e.target.value }))}
+                  placeholder="e.g. Full resuscitation code. Avoid beta-lactams and NSAIDs. Patient has cardiac pacemaker."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="organDonor"
+                  checked={profileForm.organDonor}
+                  onChange={(e) => setProfileForm(p => ({ ...p, organDonor: e.target.checked }))}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                />
+                <label htmlFor="organDonor" className="text-xs font-semibold text-slate-800">
+                  Registered Organ Donor
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="dash-btn-secondary px-4 py-2 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="dash-btn-primary px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm"
+                >
+                  Save Emergency Profile
                 </button>
               </div>
             </form>
