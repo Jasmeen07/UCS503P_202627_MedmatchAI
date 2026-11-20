@@ -177,9 +177,19 @@ export default function SharingPage() {
     const handleUpdate = () => loadSharingData(email);
     window.addEventListener("medmatch_access_update", handleUpdate);
     window.addEventListener("storage", handleUpdate);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      bc = new BroadcastChannel("medmatch_access_channel");
+      bc.onmessage = () => {
+        loadSharingData(email);
+      };
+    }
+
     return () => {
       window.removeEventListener("medmatch_access_update", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
+      if (bc) bc.close();
     };
   }, []);
 
@@ -255,7 +265,10 @@ export default function SharingPage() {
 
   const handleRevoke = (id: number | string, emailToRevoke: string) => {
     revokePatientShare(id, activeEmail);
-    revokeDoctorAccess(activeEmail, "dr-reeta");
+    const docId = (emailToRevoke.toLowerCase().includes("reeta") || emailToRevoke.toLowerCase().includes("bhambri") || emailToRevoke.toLowerCase().includes("doctor"))
+      ? "dr-reeta"
+      : emailToRevoke;
+    revokeDoctorAccess(activeEmail, docId);
     setActiveShares(prev => prev.filter(s => String(s.id) !== String(id)));
     setHistory(prev => [
       { id: Date.now(), email: emailToRevoke, action: "Access Revoked by Patient", date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
@@ -263,7 +276,7 @@ export default function SharingPage() {
     ]);
     const ac = getPatientAccessControl(activeEmail);
     setAccessControl(ac);
-    showToast(`Access revoked for ${emailToRevoke}.`);
+    showToast(`Access revoked for ${emailToRevoke}. Decryption authorization invalidated.`);
   };
 
   const handleRevokeDoctorGrant = (req: DoctorAccessPermissionRequest) => {
@@ -274,6 +287,19 @@ export default function SharingPage() {
       ...prev
     ]);
     showToast(`Access revoked for ${req.doctorName}. The doctor must submit a new request if they need to access your records again.`);
+  };
+
+  const handleRevokeAllDoctorGrants = () => {
+    if (!confirm("Are you sure you want to revoke all active doctor access grants? All consulting physicians will immediately lose access to your records.")) return;
+    revokeDoctorAccess(activeEmail, "all");
+    activeShares.forEach(s => revokePatientShare(s.id, activeEmail));
+    setActiveShares([]);
+    loadSharingData(activeEmail);
+    setHistory(prev => [
+      { id: Date.now(), email: "All Consulting Doctors", action: "All Doctor Access Grants Revoked by Patient", date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
+      ...prev
+    ]);
+    showToast("All doctor access grants have been revoked. Records are locked.");
   };
 
   return (
@@ -485,6 +511,16 @@ export default function SharingPage() {
           <h3 className="text-lg font-bold text-[var(--dash-text)]">
             Active Provider Grants ({activeShares.length + activeDoctorRequests.length})
           </h3>
+          {(activeShares.length > 0 || activeDoctorRequests.length > 0) && (
+            <button
+              onClick={handleRevokeAllDoctorGrants}
+              className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Instantly revoke record access for all consulting physicians"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>Revoke All Access</span>
+            </button>
+          )}
         </div>
 
         {activeShares.length === 0 && activeDoctorRequests.length === 0 ? (

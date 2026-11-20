@@ -55,4 +55,21 @@ runs.json
 # Presentation and UML assets (keep local only)
 *.pptx
 ~$*.pptx
+*.docx
+~$*.docx
+report_assets/
+generate_diagrams.py
+build_report.py
 uml_diagrams/
+
+build_clean_report.py
+verify_report.py
+
+update_confusion_matrix.py
+
+
+build_expanded_report.py
+build_full_comprehensive_report.py
+check_pages.ps1
+test_builder_template.py
+

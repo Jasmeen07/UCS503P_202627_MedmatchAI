@@ -28,7 +28,13 @@ import {
   Calendar,
   CalendarDays,
   MapPin,
-  Clock3
+  Clock3,
+  Users,
+  Lock,
+  Activity,
+  Check,
+  UserCheck,
+  Shield
 } from "lucide-react";
 import { 
   verifyActiveSession,
@@ -111,8 +117,9 @@ export default function DoctorPortalPage() {
 
   const getDoctorId = () => {
     if (!userSession) return "dr-reeta";
-    if (userSession.email?.includes("duggal")) return "dr-duggal";
-    if (userSession.email?.includes("reeta") || userSession.email?.includes("bhambri")) return "dr-reeta";
+    const email = (userSession.email || "").toLowerCase();
+    if (email.includes("duggal")) return "dr-duggal";
+    if (email.includes("reeta") || email.includes("bhambri") || email === "doctor@medmatch.com") return "dr-reeta";
     return `doc-${userSession.email?.split("@")[0] || userSession.id || "doctor"}`;
   };
 
@@ -129,7 +136,11 @@ export default function DoctorPortalPage() {
     const docEmail = userSession?.email;
     const patientList = getHospitalRegisteredPatients(docId, docEmail, docName);
     setPatients(patientList);
-    setAllRequests(getAllDoctorAccessRequests().filter(r => r.doctorId === docId || (docEmail && (r as any).doctorEmail?.toLowerCase() === docEmail.toLowerCase())));
+    setAllRequests(getAllDoctorAccessRequests().filter(r => 
+      r.doctorId === docId || 
+      (docId === "dr-reeta" && (r.doctorId === "doc-doctor" || r.doctorName?.includes("Bhambri") || r.doctorName?.includes("Reeta"))) ||
+      (docEmail && (r as any).doctorEmail?.toLowerCase() === docEmail.toLowerCase())
+    ));
     const apps = getDoctorAppointments(docId, docEmail, docName, true);
     setDoctorAppointments(apps);
   };
@@ -173,6 +184,14 @@ export default function DoctorPortalPage() {
         const docEmail = userSession?.email;
         const freshRoster = getHospitalRegisteredPatients(docId, docEmail, docName);
         setPatients(freshRoster);
+        setAllRequests(getAllDoctorAccessRequests().filter(r => 
+          r.doctorId === docId || 
+          (docId === "dr-reeta" && (r.doctorId === "doc-doctor" || r.doctorName?.includes("Bhambri") || r.doctorName?.includes("Reeta"))) ||
+          (docEmail && (r as any).doctorEmail?.toLowerCase() === docEmail.toLowerCase())
+        ));
+        const apps = getDoctorAppointments(docId, docEmail, docName, true);
+        setDoctorAppointments(apps);
+
         if (selectedPatient) {
           const freshSelected = freshRoster.find(p => p.patientEmail.toLowerCase() === selectedPatient.patientEmail.toLowerCase());
           if (freshSelected) {
@@ -186,6 +205,8 @@ export default function DoctorPortalPage() {
               setPatientDocuments([]);
               if (freshSelected.accessStatus === "revoked") {
                 setAccessDeniedError("Access Revoked: The patient has revoked your clinical authorization. Record decryption keys have been invalidated.");
+              } else {
+                setAccessDeniedError("Authorization Required: You do not have active clinical authorization to view this patient's records.");
               }
             }
           }
@@ -194,9 +215,19 @@ export default function DoctorPortalPage() {
 
       window.addEventListener("medmatch_access_update", handleUpdate);
       window.addEventListener("storage", handleUpdate);
+
+      let bc: BroadcastChannel | null = null;
+      if (typeof BroadcastChannel !== "undefined") {
+        bc = new BroadcastChannel("medmatch_access_channel");
+        bc.onmessage = () => {
+          handleUpdate();
+        };
+      }
+
       return () => {
         window.removeEventListener("medmatch_access_update", handleUpdate);
         window.removeEventListener("storage", handleUpdate);
+        if (bc) bc.close();
       };
     }
   }, [isVerifyingDoctor, selectedPatient?.patientEmail, userSession?.email]);
@@ -286,7 +317,11 @@ export default function DoctorPortalPage() {
 
   const handleOpenRequestModal = (p: DoctorPatientRecord) => {
     setRequestTargetPatient(p);
-    setRequestReason(`Clinical consultation, health evaluation & medication reconciliation for ${p.patientName}`);
+    if (p.accessStatus === "revoked") {
+      setRequestReason(`Re-authorization Request: Clinical record re-evaluation & medication review for ${p.patientName}`);
+    } else {
+      setRequestReason(`Clinical consultation, health evaluation & medication reconciliation for ${p.patientName}`);
+    }
   };
 
   const handleCompleteAppointment = (aptId: string | number, patientName: string) => {
@@ -359,9 +394,9 @@ export default function DoctorPortalPage() {
     createDoctorAccessRequest({
       doctorId: docId,
       doctorName: docName,
-      doctorSpecialty: userSession?.email?.includes("duggal") ? "Gastrointestinal Surgery" : userSession?.email?.includes("reeta") ? "Obstetrics & Antenatal Care" : "General Medicine & Clinical Practice",
+      doctorSpecialty: userSession?.email?.includes("duggal") ? "Gastrointestinal Surgery" : (userSession?.email?.includes("reeta") || userSession?.email === "doctor@medmatch.com") ? "Obstetrics & Antenatal Care" : "General Medicine & Clinical Practice",
       hospital: "MedMatch Integrated Hospital & Clinical Network",
-      doctorLicense: userSession?.email?.includes("duggal") ? "MCI-48192" : userSession?.email?.includes("reeta") ? "MCI-34182" : "MCI-78190",
+      doctorLicense: userSession?.email?.includes("duggal") ? "MCI-48192" : (userSession?.email?.includes("reeta") || userSession?.email === "doctor@medmatch.com") ? "MCI-34182" : "MCI-78190",
       patientEmail: requestTargetPatient.patientEmail,
       patientName: requestTargetPatient.patientName,
       patientUid: requestTargetPatient.patientUid,
@@ -435,6 +470,9 @@ export default function DoctorPortalPage() {
 
   const authorizedCount = patients.filter(p => p.accessStatus === "granted" || p.accessStatus === "emergency_override").length;
   const pendingCount = patients.filter(p => p.accessStatus === "pending").length;
+  const revokedCount = patients.filter(p => p.accessStatus === "revoked").length;
+  const needsActionCount = patients.filter(p => p.accessStatus === "revoked" || p.accessStatus === "none" || p.accessStatus === "declined").length;
+  const confirmedAppointmentsCount = doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length;
 
   if (isVerifyingDoctor) {
     return (
@@ -510,83 +548,207 @@ export default function DoctorPortalPage() {
       {/* Main Workstation Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
         
-        {/* Unified Editorial Telemetry Strip (NO BOXES / NO CARDS) */}
-        <section className="py-4 border-b border-slate-200/80 dark:border-slate-800/80 mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-6">
+        {/* Executive Clinical Telemetry Header */}
+        <section className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div className="space-y-1">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                Hospital Patient Workstation
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Direct clinical record access, prescription verification &amp; patient consent directory
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+                  Hospital Patient Workstation
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Sync Connected
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                Patient consent registry, real-time cryptographic record access, and OPD consultation queue
               </p>
             </div>
 
-            {/* Seamless Linear Metrics */}
-            <div className="flex items-center divide-x divide-slate-200 dark:divide-slate-800 text-xs">
-              <div className="pr-5">
-                <span className="text-[11px] text-slate-400 uppercase tracking-wider block">Hospital Patients</span>
-                <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono">{patients.length}</span>
-              </div>
-              <div className="px-5">
-                <span className="text-[11px] text-teal-600 dark:text-teal-400 uppercase tracking-wider block">Records Authorized</span>
-                <span className="text-xl font-bold text-teal-700 dark:text-teal-300 font-mono">{authorizedCount}</span>
-              </div>
-              <div 
-                className="px-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors rounded-lg py-1"
-                onClick={() => { setActiveTab("appointments"); setSelectedPatient(null); }}
-                title="View Consultation Appointments Queue"
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={loadRegistryData}
+                className="px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                title="Refresh patient authorization statuses"
               >
-                <span className="text-[11px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">Consultation Queue</span>
-                <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300 font-mono">
-                  {doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length}
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Sync Registry</span>
+              </button>
+              <Link
+                href="/dashboard/scan"
+                className="px-3.5 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Scan Rx (OCR)</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* 4 Responsive Executive Telemetry Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Registered Cohort */}
+            <div 
+              onClick={() => { setActiveTab("patients"); setStatusFilter("all"); setSelectedPatient(null); }}
+              className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-xs hover:border-teal-500/50 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                </div>
+                <span className="text-[10px] font-bold font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  Registry
                 </span>
               </div>
-              <div className="pl-5">
-                <span className="text-[11px] text-amber-600 dark:text-amber-400 uppercase tracking-wider block">Awaiting Consent</span>
-                <span className="text-xl font-bold text-amber-700 dark:text-amber-300 font-mono">{pendingCount}</span>
+              <div>
+                <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 font-mono tracking-tight block">
+                  {patients.length}
+                </span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Hospital Patients
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                <span>Active patient cohort</span>
+                <span className="text-teal-600 dark:text-teal-400 font-semibold group-hover:underline">View all →</span>
+              </div>
+            </div>
+
+            {/* Card 2: Records Authorized */}
+            <div 
+              onClick={() => { setActiveTab("patients"); setStatusFilter("granted"); setSelectedPatient(null); }}
+              className="bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-950/60 rounded-2xl p-5 shadow-xs hover:border-emerald-500/60 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Unlocked
+                </span>
+              </div>
+              <div>
+                <span className="text-2xl sm:text-3xl font-extrabold text-emerald-700 dark:text-emerald-400 font-mono tracking-tight block">
+                  {authorizedCount}
+                </span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Records Authorized
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                <span>{patients.length > 0 ? Math.round((authorizedCount / patients.length) * 100) : 0}% of registry decrypted</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold group-hover:underline">Filter →</span>
+              </div>
+            </div>
+
+            {/* Card 3: Consultation Queue */}
+            <div 
+              onClick={() => { setActiveTab("appointments"); setSelectedPatient(null); }}
+              className="bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-950/60 rounded-2xl p-5 shadow-xs hover:border-indigo-500/60 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <CalendarDays className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                  OPD Queue
+                </span>
+              </div>
+              <div>
+                <span className="text-2xl sm:text-3xl font-extrabold text-indigo-700 dark:text-indigo-300 font-mono tracking-tight block">
+                  {confirmedAppointmentsCount}
+                </span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Consultation Visits
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                <span>Scheduled OPD clinic appointments</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-semibold group-hover:underline">Open Queue →</span>
+              </div>
+            </div>
+
+            {/* Card 4: Action Needed & Revoked */}
+            <div 
+              onClick={() => { setActiveTab("patients"); setStatusFilter("needs_request"); setSelectedPatient(null); }}
+              className="bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-rose-950/60 rounded-2xl p-5 shadow-xs hover:border-rose-500/60 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
+                  Action Needed
+                </span>
+              </div>
+              <div>
+                <span className="text-2xl sm:text-3xl font-extrabold text-rose-700 dark:text-rose-400 font-mono tracking-tight block">
+                  {needsActionCount}
+                </span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Revoked &amp; Locked
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                <span>{revokedCount} revoked • {pendingCount} awaiting</span>
+                <span className="text-rose-600 dark:text-rose-400 font-semibold group-hover:underline">Review →</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Workstation View Switcher Tabs (Simple Clinical Tabs, No Boxes) */}
-        <div className="flex items-center gap-6 border-b border-slate-200/80 dark:border-slate-800/80 pb-3 mb-6 text-xs font-semibold">
+        {/* Workstation Elevated Segmented Tab Controls */}
+        <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-6 overflow-x-auto">
           <button
             onClick={() => { setActiveTab("patients"); setSelectedPatient(null); }}
-            className={`pb-2 -mb-3 transition-colors relative ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "patients"
-                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600 font-bold"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium"
+                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            Registered Patient Directory ({patients.length})
+            <Users className="w-3.5 h-3.5" />
+            <span>Registered Patients</span>
+            <span className={`px-2 py-0.2 rounded-full text-[10px] font-mono ${
+              activeTab === "patients" ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+            }`}>
+              {patients.length}
+            </span>
           </button>
+
           <button
             onClick={() => { setActiveTab("appointments"); setSelectedPatient(null); }}
-            className={`pb-2 -mb-3 transition-colors relative inline-flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "appointments"
-                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600 font-bold"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium"
+                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Consultations & OPD Queue</span>
-            {doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                {doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length}
+            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Consultations &amp; OPD Queue</span>
+            {confirmedAppointmentsCount > 0 && (
+              <span className="px-2 py-0.2 rounded-full text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                {confirmedAppointmentsCount}
               </span>
             )}
           </button>
+
           <button
             onClick={() => { setActiveTab("requests"); setSelectedPatient(null); }}
-            className={`pb-2 -mb-3 transition-colors relative ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "requests"
-                ? "text-teal-700 dark:text-teal-400 border-b-2 border-teal-600 font-bold"
-                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 font-medium"
+                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
-            Authorization Requests Log ({allRequests.length})
+            <Shield className="w-3.5 h-3.5 text-teal-600" />
+            <span>Authorization Requests Log</span>
+            <span className={`px-2 py-0.2 rounded-full text-[10px] font-mono ${
+              activeTab === "requests" ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+            }`}>
+              {allRequests.length}
+            </span>
           </button>
         </div>
 
@@ -595,208 +757,238 @@ export default function DoctorPortalPage() {
             ========================================================================= */}
         {activeTab === "patients" && !selectedPatient && (
           <div className="space-y-4">
-            {/* Search and Category Filter Strip (Minimal, Clean) */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3">
+            {/* Search and Category Filter Toolbar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
               <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search registered patients by name, email, or UID..."
+                  placeholder="Search by patient name, email, condition, or UID..."
                   value={patientSearch}
                   onChange={(e) => setPatientSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:border-teal-500 transition-colors"
+                  className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-slate-900 dark:text-slate-100"
                 />
+                {patientSearch && (
+                  <button
+                    onClick={() => setPatientSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
-              {/* Status Filter Pills */}
-              <div className="flex items-center gap-1.5 text-xs">
-                {(["all", "granted", "pending", "needs_request"] as const).map((filter) => (
+              {/* Segmented Filter Pills */}
+              <div className="flex items-center gap-1.5 text-xs overflow-x-auto pb-1 sm:pb-0">
+                {(
+                  [
+                    { key: "all", label: `All Patients (${patients.length})` },
+                    { key: "granted", label: `Authorized (${authorizedCount})` },
+                    { key: "pending", label: `Awaiting (${pendingCount})` },
+                    { key: "needs_request", label: `Action Needed (${needsActionCount})` },
+                  ] as const
+                ).map(({ key, label }) => (
                   <button
-                    key={filter}
-                    onClick={() => setStatusFilter(filter)}
-                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                      statusFilter === filter
-                        ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                    key={key}
+                    onClick={() => setStatusFilter(key)}
+                    className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      statusFilter === key
+                        ? "bg-teal-700 text-white dark:bg-teal-600 dark:text-white shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                     }`}
                   >
-                    {filter === "all" && "All"}
-                    {filter === "granted" && "Authorized"}
-                    {filter === "pending" && "Awaiting Patient"}
-                    {filter === "needs_request" && "Action Needed"}
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Patient Directory Table / Ledger (NO BOXES, Clean Clinical Rows) */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200/80 dark:border-slate-800/80 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-                    <th className="py-3 px-3">Patient Identity</th>
-                    <th className="py-3 px-3">Contact</th>
-                    <th className="py-3 px-3 text-center">Prescriptions</th>
-                    <th className="py-3 px-3 text-center">Diagnostic Reports</th>
-                    <th className="py-3 px-3">Access Authorization</th>
-                    <th className="py-3 px-3 text-right">Workstation Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-900/60">
-                  {filteredPatients.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400">
-                        No registered patients matching your filter criteria.
-                      </td>
+            {/* Patient Directory Table Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200/90 dark:border-slate-800 text-[11px] text-slate-500 uppercase tracking-wider font-bold">
+                      <th className="py-3.5 px-4">Patient Identity</th>
+                      <th className="py-3.5 px-4">Demographics &amp; Contact</th>
+                      <th className="py-3.5 px-4 text-center">Clinical Vault</th>
+                      <th className="py-3.5 px-4">Authorization Status</th>
+                      <th className="py-3.5 px-4 text-right">Workstation Action</th>
                     </tr>
-                  ) : (
-                    filteredPatients.map((patient) => {
-                      const isGranted = patient.accessStatus === "granted" || patient.accessStatus === "emergency_override";
-                      const isPending = patient.accessStatus === "pending";
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {filteredPatients.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-16 text-center text-slate-400">
+                          <Users className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
+                          <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                            No registered patients match this filter
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                            Try adjusting your search query or reset the filter to view all hospital patients.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPatients.map((patient) => {
+                        const isGranted = patient.accessStatus === "granted" || patient.accessStatus === "emergency_override";
+                        const isPending = patient.accessStatus === "pending";
+                        const isRevoked = patient.accessStatus === "revoked";
 
-                      return (
-                        <tr 
-                          key={patient.patientEmail}
-                          className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors group"
-                        >
-                          {/* Patient Identity */}
-                          <td className="py-3.5 px-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-300 text-xs shrink-0">
-                                {patient.patientName.slice(0, 2).toUpperCase()}
-                              </div>
-                              <div>
-                                <div className="font-semibold text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-1.5">
-                                  <span>{patient.patientName}</span>
-                                  {(() => {
-                                    const upAppt = doctorAppointments.find(a => a.patientEmail.toLowerCase() === patient.patientEmail.toLowerCase() && (a.status === "confirmed" || a.status === "rescheduled"));
-                                    if (!upAppt) return null;
-                                    return (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.2 rounded border border-indigo-200/50 dark:border-indigo-800/50">
-                                        <Calendar className="w-2.5 h-2.5 text-indigo-500" />
-                                        <span>{upAppt.date}</span>
-                                      </span>
-                                    );
-                                  })()}
+                        return (
+                          <tr 
+                            key={patient.patientEmail}
+                            className="hover:bg-teal-50/20 dark:hover:bg-slate-800/40 transition-colors group"
+                          >
+                            {/* Patient Identity */}
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                  {patient.patientName.slice(0, 2).toUpperCase()}
                                 </div>
-                                <div className="font-mono text-[10px] text-slate-400">
-                                  {patient.patientUid} • {patient.bloodGroup}
+                                <div>
+                                  <div className="font-bold text-sm text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-1.5">
+                                    <span>{patient.patientName}</span>
+                                    {(() => {
+                                      const upAppt = doctorAppointments.find(a => a.patientEmail.toLowerCase() === patient.patientEmail.toLowerCase() && (a.status === "confirmed" || a.status === "rescheduled"));
+                                      if (!upAppt) return null;
+                                      return (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/60">
+                                          <Calendar className="w-3 h-3 text-indigo-500" />
+                                          <span>{upAppt.date}</span>
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                      {patient.patientUid}
+                                    </span>
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/60">
+                                      {patient.bloodGroup}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Contact */}
-                          <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400">
-                            <div>{patient.patientEmail}</div>
-                            <div className="text-[11px] text-slate-400 font-mono">{patient.phoneNumber}</div>
-                          </td>
+                            {/* Demographics & Contact */}
+                            <td className="py-4 px-4">
+                              <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{patient.patientEmail}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{patient.phoneNumber}</div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">{patient.ageGender}</div>
+                            </td>
 
-                          {/* Prescriptions */}
-                          <td className="py-3.5 px-3 text-center">
-                            <span className="font-mono font-medium text-slate-700 dark:text-slate-300">
-                              {patient.prescriptionsCount ?? 0}
-                            </span>
-                          </td>
-
-                          {/* Diagnostic Reports */}
-                          <td className="py-3.5 px-3 text-center">
-                            <span className="font-mono font-medium text-slate-700 dark:text-slate-300">
-                              {patient.documentsCount ?? 0}
-                            </span>
-                          </td>
-
-                          {/* Access Authorization Status */}
-                          <td className="py-3.5 px-3">
-                            {isGranted ? (
-                              <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span>Access Granted</span>
-                                {patient.accessStatus === "emergency_override" && (
-                                  <span className="text-[10px] uppercase font-bold text-rose-600 dark:text-rose-400 ml-1">
-                                    [ER Break-Glass]
+                            {/* Clinical Vault Summary */}
+                            <td className="py-4 px-4 text-center">
+                              <div className="inline-flex flex-col items-center gap-1">
+                                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 max-w-[180px] truncate block" title={patient.primaryCondition}>
+                                  {patient.primaryCondition}
+                                </span>
+                                <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                                    {patient.prescriptionsCount ?? 0} Rx
                                   </span>
-                                )}
+                                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                                    {patient.documentsCount ?? 0} Labs
+                                  </span>
+                                </div>
                               </div>
-                            ) : isPending ? (
-                              <div className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                <span>Awaiting Patient Approval</span>
-                              </div>
-                            ) : patient.accessStatus === "revoked" ? (
-                              <div className="inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                <span>Access Revoked</span>
-                              </div>
-                            ) : patient.accessStatus === "declined" ? (
-                              <div className="inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                                <span>Request Declined</span>
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center gap-1.5 text-slate-400 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-                                <span>Authorization Required</span>
-                              </div>
-                            )}
-                          </td>
+                            </td>
 
-                          {/* Workstation Actions */}
-                          <td className="py-3.5 px-3 text-right">
-                            <div className="inline-flex items-center justify-end gap-2">
+                            {/* Access Authorization Status */}
+                            <td className="py-4 px-4">
                               {isGranted ? (
-                                <>
-                                  <button
-                                    onClick={() => handleOpenPatientChart(patient)}
-                                    className="px-3 py-1.5 rounded-md font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                    title="Open Read-Only Clinical Records"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>View Records</span>
-                                  </button>
-                                  <button
-                                    onClick={() => downloadMedicalSummaryReport(patient.patientEmail, { doctorName: userSession?.name || "Dr. Reeta Bhambri" })}
-                                    className="px-2.5 py-1.5 rounded-md font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                    title="Download/Print Clinical Summary"
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">Summary</span>
-                                  </button>
-                                </>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span>Access Granted</span>
+                                  {patient.accessStatus === "emergency_override" && (
+                                    <span className="text-[10px] uppercase font-extrabold text-rose-600 dark:text-rose-400 ml-1">
+                                      [ER Override]
+                                    </span>
+                                  )}
+                                </div>
                               ) : isPending ? (
-                                <button
-                                  onClick={() => handleOpenRequestModal(patient)}
-                                  className="px-3 py-1.5 rounded-md text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors text-xs font-medium cursor-pointer"
-                                  title="Resend or update clinical access request"
-                                >
-                                  Pending Authorization
-                                </button>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                                  <span>Awaiting Approval</span>
+                                </div>
+                              ) : isRevoked ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                                  <Lock className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Access Revoked</span>
+                                </div>
+                              ) : patient.accessStatus === "declined" ? (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Request Declined</span>
+                                </div>
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => handleOpenRequestModal(patient)}
-                                    className="px-3 py-1.5 rounded-md font-semibold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Send className="w-3 h-3" />
-                                    <span>{patient.accessStatus === "revoked" ? "Request Access Again" : "Request Access"}</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenEmergencyBreakGlass(patient)}
-                                    className="text-[11px] text-rose-600 hover:text-rose-800 dark:text-rose-400 font-medium hover:underline ml-1"
-                                    title="Emergency Break-Glass Override"
-                                  >
-                                    Emergency
-                                  </button>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Authorization Required</span>
                                 </div>
                               )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                            </td>
+
+                            {/* Workstation Actions */}
+                            <td className="py-4 px-4 text-right">
+                              <div className="inline-flex items-center justify-end gap-2">
+                                {isGranted ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleOpenPatientChart(patient)}
+                                      className="px-3.5 py-1.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-102"
+                                      title="Open Decrypted Clinical Records"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>View Records</span>
+                                    </button>
+                                    <button
+                                      onClick={() => downloadMedicalSummaryReport(patient.patientEmail, { doctorName: userSession?.name || "Dr. Reeta Bhambri" })}
+                                      className="px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                      title="Download/Print Clinical Summary"
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                      <span className="hidden sm:inline">Summary</span>
+                                    </button>
+                                  </>
+                                ) : isPending ? (
+                                  <button
+                                    onClick={() => handleOpenRequestModal(patient)}
+                                    className="px-3.5 py-1.5 rounded-xl text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/70 transition-colors text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
+                                    title="Awaiting patient consent. Click to update request."
+                                  >
+                                    <Clock className="w-3 h-3 text-amber-600" />
+                                    <span>Pending Authorization</span>
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      onClick={() => handleOpenRequestModal(patient)}
+                                      className="px-3.5 py-1.5 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-102"
+                                    >
+                                      <Send className="w-3.5 h-3.5" />
+                                      <span>{isRevoked ? "Request Access Again" : "Request Access"}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenEmergencyBreakGlass(patient)}
+                                      className="text-[11px] text-rose-600 hover:text-rose-800 dark:text-rose-400 font-semibold hover:underline px-1 py-1"
+                                      title="Emergency Break-Glass Override"
+                                    >
+                                      Emergency
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -887,43 +1079,62 @@ export default function DoctorPortalPage() {
 
             {/* If Access is Revoked, Unauthorized, or Backend 403 Forbidden */}
             {accessDeniedError || !(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") ? (
-              <div className="py-16 px-6 text-center max-w-lg mx-auto space-y-4">
-                <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-200 dark:border-rose-800">
-                  <ShieldAlert className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                    {accessDeniedError && accessDeniedError.includes("403")
-                      ? "403 Forbidden — Clinical Access Revoked"
-                      : selectedPatient.accessStatus === "revoked"
-                      ? "Access Revoked by Patient"
-                      : "Record Access Unauthorized"}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                    {accessDeniedError ||
-                      (selectedPatient.accessStatus === "revoked"
-                        ? "The patient has revoked your access to their medical records. You cannot view prescriptions or diagnostic reports until a new access request is submitted and accepted."
-                        : "You do not have active clinical authorization to view this patient's records.")}
-                  </p>
-                </div>
-                <div className="pt-2 flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => {
-                      const p = selectedPatient;
-                      handleClosePatientChart();
-                      handleOpenRequestModal(p);
-                    }}
-                    className="px-4 py-2 rounded-lg font-semibold text-white bg-teal-600 hover:bg-teal-700 text-xs inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Request Access Again</span>
-                  </button>
-                  <button
-                    onClick={handleClosePatientChart}
-                    className="px-4 py-2 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs border border-slate-200 dark:border-slate-700 cursor-pointer"
-                  >
-                    Close Chart
-                  </button>
+              <div className="py-12 px-6">
+                <div className="bg-gradient-to-b from-rose-50/60 via-white to-rose-50/30 dark:from-rose-950/20 dark:via-slate-900 dark:to-rose-950/10 border-2 border-rose-200 dark:border-rose-900/60 rounded-3xl p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-5 animate-in zoom-in-95 duration-200">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-300 dark:border-rose-800 shadow-sm">
+                    <ShieldAlert className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
+                      <Lock className="w-3.5 h-3.5" />
+                      403 Access Revoked
+                    </span>
+                    <h3 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                      {accessDeniedError && accessDeniedError.includes("403")
+                        ? "403 Forbidden — Clinical Access Revoked"
+                        : selectedPatient.accessStatus === "revoked"
+                        ? "Clinical Access Revoked by Patient"
+                        : "Record Access Authorization Required"}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-md mx-auto">
+                      {accessDeniedError ||
+                        (selectedPatient.accessStatus === "revoked"
+                          ? `The patient (${selectedPatient.patientName}) has actively revoked your clinical access privileges. Cryptographic decryption keys for their prescriptions and lab scans have been terminated.`
+                          : `You do not have active clinical authorization to view ${selectedPatient.patientName}'s medical vault.`)}
+                    </p>
+                  </div>
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      onClick={() => {
+                        const p = selectedPatient;
+                        handleClosePatientChart();
+                        handleOpenRequestModal(p);
+                      }}
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Request Access Again</span>
+                    </button>
+                    <button
+                      onClick={handleClosePatientChart}
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs sm:text-sm border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                    >
+                      Return to Directory
+                    </button>
+                  </div>
+                  <div className="pt-2 border-t border-rose-100 dark:border-rose-900/30">
+                    <button
+                      onClick={() => {
+                        const p = selectedPatient;
+                        handleClosePatientChart();
+                        handleOpenEmergencyBreakGlass(p);
+                      }}
+                      className="text-xs text-rose-600 hover:text-rose-800 dark:text-rose-400 font-semibold hover:underline inline-flex items-center gap-1"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>Emergency Break-Glass Override Protocol</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1416,39 +1627,54 @@ export default function DoctorPortalPage() {
           MODAL: REQUEST ACCESS DIALOG
           ========================================================================= */}
       {requestTargetPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 max-w-lg w-full rounded-xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 max-w-lg w-full rounded-2xl p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
-                Request Clinical Record Access
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-600 flex items-center justify-center font-bold">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
+                    {requestTargetPatient.accessStatus === "revoked" ? "Re-Request Clinical Record Access" : "Request Clinical Record Access"}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {requestTargetPatient.accessStatus === "revoked" ? "Send re-authorization prompt to patient" : "Patient consent required to decrypt records"}
+                  </p>
+                </div>
+              </div>
               <button 
                 onClick={() => setRequestTargetPatient(null)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSendAccessRequest} className="space-y-3.5 text-xs">
-              <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-100 dark:border-teal-900/50 text-slate-700 dark:text-slate-300 leading-relaxed">
-                You are requesting permission to access the personal health records of:
-                <div className="font-bold text-teal-900 dark:text-teal-200 mt-1">
-                  {requestTargetPatient.patientName} ({requestTargetPatient.patientEmail})
+            <form onSubmit={handleSendAccessRequest} className="space-y-4 text-xs">
+              <div className="p-3.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/70 dark:border-teal-900/50 text-slate-700 dark:text-slate-300 leading-relaxed">
+                <span className="text-slate-500 text-[11px] block">Target Patient:</span>
+                <div className="font-bold text-sm text-teal-900 dark:text-teal-200 mt-0.5">
+                  {requestTargetPatient.patientName} • {requestTargetPatient.patientUid}
                 </div>
-                <div className="text-[11px] text-teal-700 dark:text-teal-400 mt-0.5">
-                  The patient will receive an authorization prompt on their dashboard and can accept or reject access.
+                <div className="text-[11px] text-teal-700 dark:text-teal-400 mt-1">
+                  {requestTargetPatient.patientEmail} • {requestTargetPatient.phoneNumber}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-2 pt-2 border-t border-teal-100 dark:border-teal-900/40">
+                  {requestTargetPatient.accessStatus === "revoked"
+                    ? "Notice: Access was previously revoked by this patient. Submitting this form dispatches a new re-authorization request to their patient dashboard."
+                    : "The patient will receive an authorization prompt on their dashboard and can review your clinical justification."}
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-                  Clinical Scope
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Requested Clinical Scope
                 </label>
                 <select
                   value={requestScope}
                   onChange={(e) => setRequestScope(e.target.value)}
-                  className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                 >
                   <option value="Full Prescriptions, Medications & Diagnostic Reports">Full Prescriptions, Medications &amp; Diagnostic Reports</option>
                   <option value="Active Medications & Drug-Drug Safety History">Active Medications &amp; Drug-Drug Safety History</option>
@@ -1457,34 +1683,40 @@ export default function DoctorPortalPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-                  Clinical Justification / Reason
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                  Clinical Justification &amp; Consultation Reason
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   required
                   value={requestReason}
                   onChange={(e) => setRequestReason(e.target.value)}
                   placeholder="e.g. Antenatal consultation, medication reconciliation and allergy check"
-                  className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setRequestTargetPatient(null)}
-                  className="px-3 py-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingRequest}
-                  className="px-4 py-2 rounded-lg font-bold text-white bg-teal-600 hover:bg-teal-700 transition-colors inline-flex items-center gap-1.5 shadow-xs"
+                  className="px-5 py-2.5 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-sm transition-all inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{isSubmittingRequest ? "Dispatching..." : "Send Request to Patient"}</span>
+                  <span>
+                    {isSubmittingRequest
+                      ? "Dispatching Request..."
+                      : requestTargetPatient.accessStatus === "revoked"
+                      ? "Dispatch Re-Authorization Request"
+                      : "Send Request to Patient"}
+                  </span>
                 </button>
               </div>
             </form>

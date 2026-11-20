@@ -1526,6 +1526,7 @@ export function setPatientDoctorAccessState(granted: boolean, email?: string | n
       status: granted ? "Granted" : "Revoked",
       reason: granted ? "Patient re-enabled doctor access pass" : "Patient paused / revoked external doctor access"
     }, user);
+    notifyAccessStateChange();
   } catch (e) {
     console.warn("Failed to set doctor access state:", e);
   }
@@ -1894,8 +1895,53 @@ function notifyAccessStateChange(): void {
     try {
       window.dispatchEvent(new Event("medmatch_access_update"));
       window.dispatchEvent(new Event("storage"));
+      if (typeof BroadcastChannel !== "undefined") {
+        const bc = new BroadcastChannel("medmatch_access_channel");
+        bc.postMessage({ type: "ACCESS_UPDATE", timestamp: Date.now() });
+        bc.close();
+      }
     } catch {}
   }
+}
+
+export function getPatientRevokedDoctors(email?: string | null): string[] {
+  if (typeof window === "undefined") return [];
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  try {
+    const raw = localStorage.getItem(getPatientStorageKey("revoked_doctors", user));
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addPatientRevokedDoctor(doctorId: string, email?: string | null): void {
+  if (typeof window === "undefined") return;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  try {
+    const key = getPatientStorageKey("revoked_doctors", user);
+    const raw = localStorage.getItem(key);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    const docNorm = (doctorId || "").toLowerCase().trim();
+    if (docNorm && !list.includes(docNorm)) {
+      list.push(docNorm);
+    }
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch {}
+}
+
+export function removePatientRevokedDoctor(doctorId: string, email?: string | null): void {
+  if (typeof window === "undefined") return;
+  const user = (email || getActivePatientEmail()).trim().toLowerCase();
+  try {
+    const key = getPatientStorageKey("revoked_doctors", user);
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const list: string[] = JSON.parse(raw);
+    const docNorm = (doctorId || "").toLowerCase().trim();
+    const updated = list.filter(d => d !== docNorm && d !== "all");
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch {}
 }
 
 export function getHospitalRegisteredPatients(
@@ -1905,6 +1951,7 @@ export function getHospitalRegisteredPatients(
 ): DoctorPatientRecord[] {
   const cleanDocEmail = (doctorEmail || "").toLowerCase().trim();
   const cleanDocName = (doctorName || "").toLowerCase().trim().replace(/^dr\.?\s*/i, "");
+  const normalizedDocId = (doctorId || "dr-reeta").toLowerCase().trim();
 
   const accounts = getRegisteredAccounts().filter(a => {
     if (a.role !== "patient") return false;
@@ -1920,11 +1967,20 @@ export function getHospitalRegisteredPatients(
     if (a.name && /^dr\.?\s+/i.test(a.name.trim())) return false;
     return true;
   });
+
   const allRequests = getAllDoctorAccessRequests();
-  const requests = allRequests.filter(r => 
-    r.doctorId === doctorId || 
-    (cleanDocEmail && (r as any).doctorEmail?.toLowerCase() === cleanDocEmail)
-  );
+  const requests = allRequests.filter(r => {
+    const rDocId = (r.doctorId || "").toLowerCase().trim();
+    const rEmail = ((r as any).doctorEmail || "").toLowerCase().trim();
+    const rName = (r.doctorName || "").toLowerCase().trim();
+
+    return (
+      rDocId === normalizedDocId ||
+      (cleanDocEmail && rEmail === cleanDocEmail) ||
+      (normalizedDocId === "dr-reeta" && (rDocId === "doc-doctor" || rEmail.includes("doctor@medmatch.com") || rName.includes("bhambri") || rName.includes("reeta"))) ||
+      (normalizedDocId === "doc-doctor" && (rDocId === "dr-reeta" || rName.includes("bhambri")))
+    );
+  });
 
   return accounts.map(a => {
     const userEmail = a.email.toLowerCase();
@@ -1932,25 +1988,50 @@ export function getHospitalRegisteredPatients(
     const rxs = getPatientPrescriptions(userEmail);
     const docs = getPatientDocuments(userEmail);
     const ac = getPatientAccessControl(userEmail);
+    const revokedDoctors = getPatientRevokedDoctors(userEmail);
+
+    const isExplicitlyRevoked = 
+      revokedDoctors.includes("all") ||
+      revokedDoctors.includes(normalizedDocId) ||
+      (normalizedDocId === "dr-reeta" && (revokedDoctors.includes("doc-doctor") || revokedDoctors.includes("dr.reeta@ranjitmaternity.com") || revokedDoctors.includes("doctor@medmatch.com"))) ||
+      (cleanDocEmail && revokedDoctors.includes(cleanDocEmail));
 
     let accessStatus: DoctorPatientRecord["accessStatus"] = "none";
+
     if (req) {
-      if (req.status === "approved") {
+      if (req.status === "approved" && !isExplicitlyRevoked && ac.accessGranted !== false) {
         accessStatus = req.isEmergency ? "emergency_override" : "granted";
       } else if (req.status === "pending") {
         accessStatus = "pending";
-      } else if (req.status === "revoked") {
+      } else if (req.status === "revoked" || isExplicitlyRevoked || ac.accessGranted === false) {
         accessStatus = "revoked";
       } else if (req.status === "declined") {
         accessStatus = "declined";
-      }
-    } else {
-      if (ac && ac.accessGranted === false) {
-        accessStatus = "revoked";
-      } else if (isDemoPatient(userEmail)) {
-        accessStatus = "granted";
       } else {
         accessStatus = "none";
+      }
+    } else {
+      if (isExplicitlyRevoked || (ac && ac.accessGranted === false)) {
+        accessStatus = "revoked";
+      } else {
+        // Check active provider share grants
+        const patientShares = getPatientShares(userEmail);
+        const hasMatchingShare = patientShares.some(s => {
+          if (s.status !== "active") return false;
+          const sEmail = s.email.toLowerCase();
+          return (
+            (cleanDocEmail && sEmail.includes(cleanDocEmail)) ||
+            (cleanDocName && sEmail.includes(cleanDocName)) ||
+            sEmail.includes(normalizedDocId) ||
+            (normalizedDocId === "dr-reeta" && (sEmail.includes("reeta") || sEmail.includes("bhambri") || sEmail.includes("doctor@medmatch.com")))
+          );
+        });
+
+        if (hasMatchingShare) {
+          accessStatus = "granted";
+        } else {
+          accessStatus = "none";
+        }
       }
     }
 
@@ -2162,6 +2243,14 @@ export function createDoctorAccessRequest(
   const now = new Date();
   const timestamp = now.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
+  // Un-blacklist doctor from patient's revoked list if they are re-requesting access
+  removePatientRevokedDoctor(params.doctorId, params.patientEmail);
+  if (params.doctorId === "dr-reeta" || params.doctorId === "doc-doctor") {
+    removePatientRevokedDoctor("dr-reeta", params.patientEmail);
+    removePatientRevokedDoctor("doc-doctor", params.patientEmail);
+    removePatientRevokedDoctor("doctor@medmatch.com", params.patientEmail);
+  }
+
   const newReq: DoctorAccessPermissionRequest = {
     id: `req-acc-${Date.now()}`,
     ...params,
@@ -2170,7 +2259,7 @@ export function createDoctorAccessRequest(
     updatedAt: timestamp
   };
 
-  const updatedRequests = [newReq, ...all.filter(r => !(r.doctorId === params.doctorId && r.patientEmail.toLowerCase() === params.patientEmail.toLowerCase()))];
+  const updatedRequests = [newReq, ...all.filter(r => !(r.doctorId.toLowerCase() === params.doctorId.toLowerCase() && r.patientEmail.toLowerCase() === params.patientEmail.toLowerCase()))];
   saveDoctorAccessRequests(updatedRequests);
 
   // Update association in doctor roster
@@ -2235,6 +2324,14 @@ export function respondToAccessRequest(
 
   // If approved, create Doctor Share Item and Audit Entry
   if (decision === "approved") {
+    removePatientRevokedDoctor(target.doctorId, target.patientEmail);
+    if (target.doctorId === "dr-reeta" || target.doctorId === "doc-doctor") {
+      removePatientRevokedDoctor("dr-reeta", target.patientEmail);
+      removePatientRevokedDoctor("doc-doctor", target.patientEmail);
+      removePatientRevokedDoctor("doctor@medmatch.com", target.patientEmail);
+    }
+    setPatientDoctorAccessState(true, target.patientEmail);
+
     addPatientShare({
       email: `${target.doctorId}@ranjitmaternity.com`,
       scope: target.requestedScope,
@@ -2278,13 +2375,30 @@ export function respondToAccessRequest(
 }
 
 export function revokeDoctorAccess(patientEmail: string, doctorId: string = "dr-reeta"): boolean {
-  updateDoctorPatientAccessStatus(patientEmail, "revoked", doctorId);
+  const normDocId = (doctorId || "dr-reeta").toLowerCase().trim();
+  updateDoctorPatientAccessStatus(patientEmail, "revoked", normDocId);
+
+  // Blacklist doctor in patient's revoked doctors ledger
+  addPatientRevokedDoctor(normDocId, patientEmail);
+  if (normDocId === "dr-reeta" || normDocId === "all") {
+    addPatientRevokedDoctor("dr-reeta", patientEmail);
+    addPatientRevokedDoctor("doc-doctor", patientEmail);
+    addPatientRevokedDoctor("doctor@medmatch.com", patientEmail);
+    addPatientRevokedDoctor("dr.reeta@ranjitmaternity.com", patientEmail);
+  }
 
   // Update any existing active requests
   const all = getAllDoctorAccessRequests();
   let doctorDisplayName = "Treating Physician";
   const updated = all.map(r => {
-    if ((r.doctorId === doctorId || doctorId === "all") && r.patientEmail.toLowerCase() === patientEmail.toLowerCase()) {
+    const rDocId = (r.doctorId || "").toLowerCase().trim();
+    const rEmail = ((r as any).doctorEmail || "").toLowerCase().trim();
+    const matchId = 
+      normDocId === "all" || 
+      rDocId === normDocId || 
+      (cleanDocMatch(normDocId, rDocId, rEmail));
+
+    if (matchId && r.patientEmail.toLowerCase() === patientEmail.toLowerCase()) {
       doctorDisplayName = r.doctorName || doctorDisplayName;
       return { 
         ...r, 
@@ -2299,7 +2413,14 @@ export function revokeDoctorAccess(patientEmail: string, doctorId: string = "dr-
   // Clean up any corresponding patient share items
   try {
     const currentShares = getPatientShares(patientEmail);
-    const updatedShares = currentShares.filter(s => !s.email.toLowerCase().includes(doctorId.toLowerCase()));
+    const updatedShares = currentShares.filter(s => {
+      if (normDocId === "all") return false;
+      const sEmail = s.email.toLowerCase();
+      if (normDocId === "dr-reeta" || normDocId.includes("bhambri") || normDocId.includes("reeta")) {
+        return !sEmail.includes("reeta") && !sEmail.includes("bhambri") && !sEmail.includes("doctor");
+      }
+      return !sEmail.includes(normDocId);
+    });
     savePatientShares(updatedShares, patientEmail);
   } catch (err) {
     console.warn("Could not remove share item:", err);
@@ -2310,7 +2431,7 @@ export function revokeDoctorAccess(patientEmail: string, doctorId: string = "dr-
     accessorRole: "Patient Self",
     accessType: "Passcode Verified",
     status: "Revoked",
-    reason: `Patient revoked consultation access for ${doctorDisplayName} (${doctorId}). Re-authorization required.`
+    reason: `Patient revoked consultation access for ${doctorDisplayName} (${normDocId}). Re-authorization required.`
   }, patientEmail);
 
   addPatientNotification({
@@ -2324,6 +2445,12 @@ export function revokeDoctorAccess(patientEmail: string, doctorId: string = "dr-
 
   notifyAccessStateChange();
   return true;
+}
+
+function cleanDocMatch(targetDoc: string, rDocId: string, rEmail: string): boolean {
+  if (targetDoc === "dr-reeta" && (rDocId === "doc-doctor" || rEmail.includes("doctor@medmatch.com") || rEmail.includes("reeta"))) return true;
+  if (targetDoc === "doc-doctor" && (rDocId === "dr-reeta" || rEmail.includes("doctor@medmatch.com"))) return true;
+  return false;
 }
 
 // ============================================================================
