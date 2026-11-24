@@ -1,4 +1,4 @@
-﻿# MedMatch AI
+# MedMatch AI
 
 > Intelligent Clinical Handwriting Transcription, Multimodal Verification & Patient Data Governance Ecosystem
 
@@ -61,10 +61,14 @@ Our team conducted extensive experimental iterations to solve handwritten clinic
 └────────────────────────────────────────┬─────────────────────────────────────────┘
                                          ▼
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Phase 5: Doctor Handwriting Calibration (Few-Shot & In-Context Learning)         │
+│ Phase 5: Multi-Doctor Handwriting Calibration (Few-Shot & In-Context Learning)   │
 │ └── Evaluated few-shot visual calibration (prescription_reader_simple.ipynb).    │
-│ └── In-context rules for Dr. Reeta Bhambri (Ranjit Maternity Clinic):            │
-│     shorthands 'Tab.' with loop, '650m', 'Gestofit 200', 'P/V Exam'.             │
+│ └── Ingested 5 calibration sheets per physician across 4 practicing doctors:     │
+│     1. Dr. Reeta Bhambri (Obstetrics & Antenatal, PMC Regd. EP-22045)            │
+│     2. Dr. Lovepreet (General Medicine & Infectious Diseases, PMC Regd. 48912)   │
+│     3. Dr. Sandeep Kumar (Family Medicine & Chronic Care, PMC Regd. 52104)       │
+│     4. Dr. Meenakshi Jain (Primary Healthcare, PMC Regd. 39420)                  │
+│ └── Calibrates non-standard glyphs ('Tab.' loop, '650m', 'SOS', Latin timing).   │
 │ └── Note: In-context few-shot prompt adaptation; not weight-level fine-tuning.   │
 └────────────────────────────────────────┬─────────────────────────────────────────┘
                                          ▼
@@ -130,7 +134,10 @@ Our team conducted extensive experimental iterations to solve handwritten clinic
 ### 1. Calibrated Prescription Transcription
 - Ingests high-resolution images or multi-page PDF prescription documents.
 - Uses **Google Gemini 3.6 Flash** multimodal VLM with whole-document 2D spatial attention.
-- Injects doctor-specific handwriting glyph mappings and abbreviations (e.g. `Tab.` with high loop deciphered as `Tab.`, `650m` normalized to `650mg`, `7ds` to `7 days`).
+- Supports **4 Calibrated Doctor Profiles** (Dr. Reeta Bhambri, Dr. Lovepreet, Dr. Sandeep Kumar, Dr. Meenakshi Jain) alongside **Universal Mode (Default)** for unbiased transcription of prescriptions from any hospital or physician.
+- Ingests 5 standardized handwriting calibration sheets per doctor: Continuous Writing, Formulary & Generics, Dosages/Frequencies, Look-Alike Sound-Alike (LASA) Confusable Pairs, and Special Instructions/Signatures.
+- Interactive Microfilm Timeline Gallery in `/dashboard/scan` allows clinicians to inspect high-resolution ground-truth calibration sheets side-by-side with recognized tokens.
+- One-click specimen presets load pre-annotated prescription folios for instant evaluation and testing.
 - Normalizes extracted medicines into structured records containing brand name, generic pharmacological molecule, exact strength, administration frequency (`OD`, `BD`, `TDS`, `1-0-1`, `SOS`), duration, and dietary instructions.
 - Enforces field-level confidence ratings (`high`, `medium`, `low`) and flags ambiguous cursive lines with `needs_review: true` and candidate brand suggestions.
 
@@ -155,17 +162,28 @@ Our team conducted extensive experimental iterations to solve handwritten clinic
 - Every patient record is partitioned by authenticated user UUID (`auth.uid() = user_id`).
 - Zero cross-tenant data leakage: newly registered accounts receive clean, private vaults, while demo records are allocated strictly to the designated evaluation account (`jk0822123@gmail.com`).
 
-### 6. Clinical Care & Emergency QR Sharing (`/dashboard/sharing` & `/dossier`)
-- Generates encrypted, time-bounded Emergency QR codes enabling emergency physicians and consulting clinicians to view a read-only clinical dossier without requiring patient login credentials.
-- **Read-Only Emergency Dossier (`/dossier?token=...`):** High-fidelity clinical snapshot displaying patient demographics, blood group, emergency contacts, active condition episodes, active verified medications, and documented allergy warnings.
+### 6. Dynamic Real-Patient Emergency Pass & QR Sharing (`/dashboard/sharing` & `/dossier`)
+- **Dynamic Real-Patient Emergency Token (`EMG-...-VLT`):** Cryptographically generates a live, time-bounded emergency access token for any authenticated patient (e.g. Jasmeen Kaur or any newly registered user), moving beyond static demo fallbacks.
+- **Client-Side Live QR Code:** Renders high-contrast scannable QR codes in real-time, enabling emergency first responders, ambulance staff, and ER trauma clinicians to access the read-only Emergency Clinical Dossier (`/dossier?token=...`) on mobile devices without patient authentication.
+- **Interactive Medical ID Profile Editor:** Integrated directly into `/dashboard/sharing`, allowing patients to update their Blood Group (e.g., `O+`, `B+`, `AB-`), Primary Emergency Contact (Name, Relationship, Phone number), Documented Allergies, and Living Directives / Resuscitation Code Status with instantaneous persistence.
+- **Live Scanned Medication Synchronization:** Automatically aggregates real medicines and diagnosis episodes extracted from scanned OCR prescriptions into the emergency dossier active medication timeline.
+- **Security & Lifecycle Control:** 24-hour expiration window with one-click token regeneration, instant emergency session revocation, and audit logging.
 - **Downloadable Summary Reports:** Single-click comprehensive text/PDF summary report export available from the Prescriptions archive, Scanner HUD, and Doctor Portal.
 
 ### 7. Doctor Clinical Portal & Consent Workstation (`/doctor`)
 - Dedicated clinic workstation for medical practitioners (e.g., Dr. Reeta Bhambri, Ranjit Hospital & Maternity Home).
-- **Hospital Patient Directory:** Displays registered patients with real-time access status badges (`none`, `pending`, `granted`, `declined`, `revoked`).
+- **Physician Identity & Shift Telemetry:** Clinical header with verified medical council license (`PMC Regd. EP-22045`), hospital affiliation, dynamic time-aware greeting (Morning/Afternoon/Evening), and shift ID (`Shift ID: OPD-2026-CH-01`).
+- **Executive Clinical Telemetry Cards:** 4 live metric hubs tracking Total Registered Cohort, Decrypted Vaults (with unlocked percentage bar), OPD Consultation Queue, and Revoked / Action Needed records.
+- **Structured Master-Companion Layout on the Front Page:**
+  - **Primary Column (70%): Patient Clinical Roster** with a quick layout toggle between:
+    - **Interactive Cards View (Default):** Visually structured medical cards featuring real-time consent banners (*Vault Decrypted & Authorized* in Emerald, *Awaiting Patient Consent* in Amber, *Access Revoked by Patient* in Rose), demographic badges, blood group tag, primary condition, Rx and Lab counts, scheduled OPD consultation badges, and contextual action buttons (**"Open Medical Vault"** vs. high-contrast **"Request Access Again"**).
+    - **Dense Clinical Table View:** For rapid scanning and batch review during busy hospital shifts.
+  - **Companion Column (30%): Clinical Shift Assistant** featuring:
+    - **Today's OPD Queue Preview:** Upcoming consultations with scheduled time, patient name, purpose, and one-click chart launch.
+    - **AI Prescription OCR Assistant:** Direct launcher with badges for the 4 calibrated physicians.
+    - **DPDP Act 2023 & Clinical Governance Seal:** Cryptographic audit trail verification indicator.
 - **Bidirectional Access Request Dispatch:** Doctors submit clinical access requests with mandatory clinical justification and scope.
-- **Verified Patient Chart Viewer:** View read-only prescriptions, extracted medicines, and diagnostic lab reports once authorized by the patient.
-- **Instant Patient Revocation Lockout:** If a patient revokes access from their dashboard, the doctor portal locks the records in real time across sessions. To view records again, the doctor must dispatch a new request.
+- **Instant Patient Revocation Lockout:** When a patient revokes access from their health vault, the doctor portal locks the records in real time across sessions. To view records again, the doctor must dispatch a new request via the prominent "Request Access Again" action.
 - **Emergency "Break-Glass" Override:** Strict clinical override protocol for acute life-threatening situations requiring physician license attestation, permanently sealed into the immutable audit ledger.
 
 ---
@@ -213,7 +231,7 @@ Medmatch-AI/
 │       ├── auth.ts               # Session management and role-based routing
 │       ├── patientData.ts        # Tenant-isolated data engine & consent lifecycle
 │       ├── gemini-client.ts      # Client-side Google Gemini runner fallback
-│       ├── doctorCalibration.ts  # Doctor handwriting prompt calibration rules
+│       ├── doctorCalibration.ts  # Multi-doctor handwriting calibration engine & ground-truth profiles
 │       └── drug-interactions.ts  # Rule-based DDI matrix & chronotherapeutic schedules
 ├── backend/                      # FastAPI Python Service
 │   ├── main.py                   # REST app, CORS middleware, router registration, /health
@@ -292,7 +310,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Engineering Roles & Member Contributions:**
   - **Jasmeen Kaur** (Roll: 1024030103) — Lead ML & Backend Security Architect
     - Evaluated TrOCR & Florence-2 benchmarks; architected Gemini 3.6 Flash VLM pipeline.
-    - Engineered Doctor Handwriting Calibration Engine with Dr. Reeta Bhambri dataset.
+    - Engineered Multi-Doctor Calibration Engine across 4 practicing physicians (Dr. Reeta Bhambri, Dr. Lovepreet, Dr. Sandeep Kumar, Dr. Meenakshi Jain) with 5-sheet ground-truth ingestion.
+    - Architected dynamic real-patient Emergency Pass, in-browser QR generation, Medical ID editor, and live OCR prescription medication synchronization.
     - Implemented Anti-Bias Context Scoping and multi-tenant patient vault isolation.
     - Designed real-time Drug-Drug Interaction (DDI) screening matrix.
   - **Maitri Mishra** (Roll: 1024030124) — Lead Frontend & Systems Integration Engineer

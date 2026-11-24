@@ -1,4 +1,4 @@
-﻿# MedMatch AI — Frontend Application
+# MedMatch AI — Frontend Application
 
 > Modern, accessible clinical web interface engineered with Next.js 16 (App Router), React 19, Tailwind CSS v4, Supabase Authentication, and Lucide React.
 
@@ -135,7 +135,7 @@ frontend/
         ├── auth.ts           # Session validation, role-based routing, demo hydration
         ├── patientData.ts    # Tenant-isolated data engine, consent workflow, summary downloads
         ├── gemini-client.ts  # Client-side Google Gemini multimodal extraction runner
-        ├── doctorCalibration.ts # Doctor-specific prompt calibration rules (Dr. Reeta Bhambri)
+        ├── doctorCalibration.ts # Multi-doctor handwriting calibration engine (Dr. Reeta Bhambri, Dr. Lovepreet, Dr. Sandeep Kumar, Dr. Meenakshi Jain)
         ├── drug-interactions.ts # Rule-based DDI matrix & chronotherapeutic schedules
         └── utils.ts          # Classname concatenation helper (`cn`)
 ```
@@ -153,10 +153,10 @@ frontend/
 | `/dashboard/scan` | Patient | Multimodal prescription scanner, dual-upload verification, direct summary download |
 | `/dashboard/prescriptions` | Patient | Digital prescription archive, detailed line items, printable PDF reports |
 | `/dashboard/treatments` | Patient | Condition-based clinical episode grouping (e.g. Antenatal, Hypertension) |
-| `/dashboard/sharing` | Patient | Incoming doctor access requests, active provider grants with **Revoke Access**, emergency QR pass |
+| `/dashboard/sharing` | Patient | Incoming doctor access requests, active provider grants with **Revoke Access**, dynamic emergency pass with live QR generator and Medical ID editor |
 | `/dashboard/appointments` | Patient | Book and manage clinic consultation appointments |
 | `/dashboard/insights` | Patient | LLM-assisted drug interaction screening, chronotherapeutic schedule, lifestyle tips |
-| `/doctor` | Doctor | Hospital patient directory, access request dispatch, verified clinical chart viewer, emergency override |
+| `/doctor` | Doctor | Hospital patient directory with interactive card / dense table view, shift telemetry, access request dispatch, verified clinical chart viewer, emergency override |
 | `/dossier` | Emergency / Public Token | Read-only verified clinical dossier accessed via emergency QR token (`/dossier?token=...`) |
 
 ---
