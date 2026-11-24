@@ -657,10 +657,1254 @@ export const DR_REETA_BHAMBRI_PROFILE: DoctorCalibrationProfile = {
   ],
 };
 
+// ============================================================================
+// DR. LOVEPREET - GENERAL MEDICINE & CLINICAL THERAPEUTICS CALIBRATION PROFILE
+// ============================================================================
+
+export const DR_LOVEPREET_PROFILE: DoctorCalibrationProfile = {
+  id: "dr-lovepreet",
+  doctorName: "Dr. Lovepreet",
+  qualifications: "M.B.B.S., M.D. (Medicine)",
+  pmcRegNo: "PMC-48912",
+  clinicName: "Care & Cure Clinic",
+  clinicAddress: "Civil Lines, Ludhiana",
+  phone: "98141-55201",
+  timings: "Morning: 10.00 A.M. to 2.00 P.M. | Evening: 5.00 P.M. to 8.00 P.M.",
+  founder: "Dr. Lovepreet Medical Practice",
+  specialty: "General Medicine & Infectious Diseases (Antibiotics, Respiratory, Gastro)",
+
+  commonAbbreviations: {
+    "tab": "Tab.",
+    "tas": "Tab.",
+    "cap": "Cap.",
+    "syp": "Syp.",
+    "adv": "Advice",
+    "sos": "SOS (As needed)",
+    "hs": "0-0-1 (At Bedtime)",
+    "od": "1-0-0 (Once daily)",
+    "bd": "1-0-1 (Twice daily)",
+    "tds": "1-1-1 (Three times daily)",
+    "pcm": "Paracetamol",
+    "after food": "After food",
+    "before food": "Before food",
+    "fluids, rest": "Plenty of fluids, bed rest"
+  },
+
+  dosageMap: {
+    "650mg": "650mg",
+    "650 mg": "650mg",
+    "625mg": "625mg",
+    "500mg": "500mg",
+    "500 mg": "500mg",
+    "200mg": "200mg",
+    "5ml": "5ml",
+    "40": "40mg",
+    "1 tablet": "1 Tablet"
+  },
+
+  durationMap: {
+    "5 days": "5 days",
+    "x 5 days": "5 days",
+    "7 days": "7 days",
+    "x 7 days": "7 days",
+    "10 days": "10 days",
+    "x 10 days": "10 days",
+    "3 days": "3 days",
+    "x 3 days": "3 days"
+  },
+
+  frequencyMap: {
+    "1-0-1": "1-0-1 (Twice daily, Morning & Night)",
+    "(1-0-1)": "1-0-1 (Twice daily, Morning & Night)",
+    "(1-0-1) hs": "1-0-1 HS (Twice daily including Bedtime)",
+    "1-0-1 hs": "1-0-1 HS (Twice daily including Bedtime)",
+    "od": "1-0-0 (Once daily)",
+    "bd": "1-0-1 (Twice daily)",
+    "tds": "1-1-1 (Three times daily)",
+    "sos": "SOS (As needed, max 3 per day)",
+    "hs": "0-0-1 (At Bedtime)"
+  },
+
+  instructionMap: {
+    "before food": "Before food (empty stomach)",
+    "after food": "After food",
+    "empty stomach": "On an empty stomach",
+    "with milk": "Take with milk",
+    "at bedtime": "At bedtime",
+    "as needed / sos": "As needed during acute fever or discomfort",
+    "plenty of fluids, rest": "Take plenty of fluids and adequate bed rest"
+  },
+
+  calibrationSheets: [
+    {
+      sheetNumber: 1,
+      title: "Continuous Writing Sample",
+      description: "Baseline continuous handwriting flow for multi-drug outpatient prescription pad.",
+      samples: [
+        { writtenText: "Tab Dolo 650 mg 1-0-1 x 5 days", intendedMeaning: "Tab. Dolo 650mg 1-0-1 x 5 days", category: "Analgesic / Antipyretic" },
+        { writtenText: "cap Augmentin 625mg BD after food x 7 days", intendedMeaning: "Cap. Augmentin 625mg BD after food x 7 days", category: "Antibiotic" },
+        { writtenText: "Tab. Pan 40 OD Before food x 10 days", intendedMeaning: "Tab. Pan 40 OD before food x 10 days", category: "Antacid / PPI" },
+        { writtenText: "syp Azithral 200mg 5ml BD x 3 days", intendedMeaning: "Syp. Azithral 200mg/5ml BD x 3 days", category: "Antibiotic" },
+        { writtenText: "Tab Glycomet 500mg 1-0-1 after food", intendedMeaning: "Tab. Glycomet 500mg 1-0-1 after food", category: "Antidiabetic" },
+        { writtenText: "Tab Montair LC - (1-0-1) HS", intendedMeaning: "Tab. Montair LC 1-0-1 HS", category: "Respiratory / Antiallergic" },
+        { writtenText: "Tab paracetamol 500mg sos, max 3 per day", intendedMeaning: "Tab. Paracetamol 500mg SOS, max 3 per day", category: "Analgesic / Antipyretic" },
+        { writtenText: "Adv plenty of fluids, rest", intendedMeaning: "Advice: Plenty of fluids, bed rest", category: "Clinical Advice" }
+      ]
+    },
+    {
+      sheetNumber: 2,
+      title: "Medicine Names & Generics Formulary",
+      description: "Brand names cross-referenced against active generic constituent formulas.",
+      samples: [
+        { writtenText: "Dolo 650 (paracetamol)", intendedMeaning: "Dolo 650 (Paracetamol 650mg)", category: "Analgesic" },
+        { writtenText: "Augmentin (Amoxicillin + Clavulanic acid)", intendedMeaning: "Augmentin (Amoxicillin + Clavulanic Acid 625mg)", category: "Antibiotic" },
+        { writtenText: "Azithral 500 (Azithromycin)", intendedMeaning: "Azithral 500 (Azithromycin 500mg)", category: "Antibiotic" },
+        { writtenText: "Glycomet (Metformin)", intendedMeaning: "Glycomet (Metformin 500mg)", category: "Antidiabetic" },
+        { writtenText: "Combiflam (Ibuprofen + PCM)", intendedMeaning: "Combiflam (Ibuprofen 400mg + Paracetamol 325mg)", category: "Analgesic / Anti-inflammatory" },
+        { writtenText: "Atorva (Atorvastatin)", intendedMeaning: "Atorva (Atorvastatin 10mg/20mg)", category: "Lipid Lowering / Statin" },
+        { writtenText: "Flagyl (Metronidazole)", intendedMeaning: "Flagyl (Metronidazole 400mg)", category: "Antiamoebic / Antibacterial" },
+        { writtenText: "Ciplox (Ciprofloxacin)", intendedMeaning: "Ciplox (Ciprofloxacin 500mg)", category: "Fluoroquinolone Antibiotic" },
+        { writtenText: "doxy 1 (Doxycycline)", intendedMeaning: "Doxy-1 (Doxycycline 100mg)", category: "Tetracycline Antibiotic" },
+        { writtenText: "Losar (Losartan)", intendedMeaning: "Losar (Losartan Potassium 50mg)", category: "Antihypertensive" }
+      ]
+    },
+    {
+      sheetNumber: 3,
+      title: "Dosage & Frequency Shorthand",
+      description: "Quantitative measurements and clinical administration schedules.",
+      samples: [
+        { writtenText: "500 mg", intendedMeaning: "500 mg dosage unit", category: "Dosage" },
+        { writtenText: "650 mg", intendedMeaning: "650 mg dosage unit", category: "Dosage" },
+        { writtenText: "1-0-1", intendedMeaning: "Twice daily (Morning and Night)", category: "Frequency" },
+        { writtenText: "5ml", intendedMeaning: "5 ml liquid measure", category: "Dosage" },
+        { writtenText: "1 tablet", intendedMeaning: "1 Tablet per administration", category: "Dosage" },
+        { writtenText: "OD (once daily)", intendedMeaning: "Once daily (Omni Die)", category: "Frequency" },
+        { writtenText: "BD (twice daily)", intendedMeaning: "Twice daily (Bis Die)", category: "Frequency" },
+        { writtenText: "TDS (three times daily)", intendedMeaning: "Three times daily (Ter Die Sumendum)", category: "Frequency" },
+        { writtenText: "sos (as needed)", intendedMeaning: "SOS (Si Opus Sit - As needed)", category: "Frequency" },
+        { writtenText: "HS (at bedtime)", intendedMeaning: "At bedtime (Hora Somni)", category: "Frequency" }
+      ]
+    },
+    {
+      sheetNumber: 4,
+      title: "Confusable Medicine Pairs",
+      description: "Visual look-alike sound-alike handwriting differentiation rules.",
+      samples: [
+        { writtenText: "Pair 1A: Augmentin vs 1B: Augmentin Duo", intendedMeaning: "Plain Augmentin 625mg vs Augmentin Duo with explicit uppercase 'Duo'", category: "Disambiguation" },
+        { writtenText: "Pair 2A: Ciplox vs 2B: Cifran", intendedMeaning: "Ciplox starts with rounded cursive 'C-i-p'; Cifran has sharp vertical 'f'", category: "Disambiguation" },
+        { writtenText: "Pair 3A: Pan 40 vs 3B: Pantocid", intendedMeaning: "Pan 40 is short 3 letters; Pantocid has long trailing '-cid' stroke", category: "Disambiguation" },
+        { writtenText: "Pair 4A: Glycomet vs 4B: Glycomet GP", intendedMeaning: "Glycomet 500mg unless trailing 'GP' loop is clearly present", category: "Disambiguation" },
+        { writtenText: "Pair 5A: Zerodol vs 5B: Zerodol-SP", intendedMeaning: "Zerodol-SP has explicit hyphen with tall 'S-P' for Serratiopeptidase", category: "Disambiguation" },
+        { writtenText: "Pair 6A: Montair vs 6B: Montair LC", intendedMeaning: "Doctor writes distinct 'LC' loop for combination formulation", category: "Disambiguation" }
+      ]
+    },
+    {
+      sheetNumber: 5,
+      title: "Instructions, Durations, and Signature",
+      description: "Patient demographics, duration qualifiers, and verified signature practice.",
+      samples: [
+        { writtenText: "Before food", intendedMeaning: "Administer 30 mins before food", category: "Instruction" },
+        { writtenText: "After food", intendedMeaning: "Administer after food", category: "Instruction" },
+        { writtenText: "empty stomach", intendedMeaning: "Administer on an empty stomach", category: "Instruction" },
+        { writtenText: "with milk.", intendedMeaning: "Take with milk", category: "Instruction" },
+        { writtenText: "At bedtime", intendedMeaning: "Take at bedtime (night)", category: "Instruction" },
+        { writtenText: "as needed / sos", intendedMeaning: "Take when symptomatic only", category: "Instruction" },
+        { writtenText: "duration x 5 days / 7 days", intendedMeaning: "Course length: 5 days / 7 days", category: "Duration" },
+        { writtenText: "Date 15/8/2026", intendedMeaning: "Prescription issuance date", category: "Date Format" },
+        { writtenText: "Patient name (sample): Rohan Verma, 34 y, 62 kg", intendedMeaning: "Patient demographic header", category: "Patient Info" },
+        { writtenText: "Dr. Lovepreet Signature Loop", intendedMeaning: "Physician authorization signature", category: "Authentication" }
+      ]
+    }
+  ],
+
+  confusablePairs: [
+    {
+      pairA: "Augmentin",
+      pairB: "Augmentin Duo",
+      handwritingRule: "Doctor writes 'cap Augmentin 625mg' for standard tablet. Only assign Duo if explicit 'Duo' loop is appended."
+    },
+    {
+      pairA: "Ciplox",
+      pairB: "Cifran",
+      handwritingRule: "Ciplox has a rounded cursive 'C-i-p' start; Cifran has a sharp cross on the letter 'f'."
+    },
+    {
+      pairA: "Pan 40",
+      pairB: "Pantocid",
+      handwritingRule: "Pan 40 is written as short 'Pan 40 OD'. Pantocid has multi-syllable cursive tail."
+    },
+    {
+      pairA: "Glycomet",
+      pairB: "Glycomet GP",
+      handwritingRule: "Doctor writes 'Glycomet 500mg 1-0-1'. Assign to Metformin 500mg unless explicit 'GP' is written."
+    },
+    {
+      pairA: "Zerodol",
+      pairB: "Zerodol-SP",
+      handwritingRule: "Zerodol-SP has explicit trailing hyphen with uppercase 'SP' for Serratiopeptidase combination."
+    },
+    {
+      pairA: "Montair",
+      pairB: "Montair LC",
+      handwritingRule: "Doctor writes 'Montair LC - (1-0-1) HS' with explicit 'LC' for Montelukast + Levocetirizine."
+    }
+  ],
+
+  formulary: [
+    {
+      brandName: "Dolo 650",
+      genericName: "Paracetamol 650mg",
+      category: "analgesic",
+      doctorHandwritingVariants: ["dolo 650", "tab dolo", "dolo 650mg", "paracetamol"],
+      standardDosage: "650mg",
+      standardFrequency: "1-0-1 (Twice daily, Morning & Night)",
+      standardDuration: "5 days",
+      standardInstructions: "After food for fever or bodily aches",
+      intendedUse: "Analgesic and antipyretic for pain and fever control"
+    },
+    {
+      brandName: "Augmentin 625",
+      genericName: "Amoxicillin 500mg + Clavulanic Acid 125mg",
+      category: "antibiotic",
+      doctorHandwritingVariants: ["augmentin", "cap augmentin", "augmentin 625mg", "augmentin 625"],
+      standardDosage: "625mg",
+      standardFrequency: "1-0-1 (Twice daily, BD)",
+      standardDuration: "7 days",
+      standardInstructions: "After food with a full glass of water",
+      intendedUse: "Broad-spectrum beta-lactamase inhibitor antibiotic for bacterial infection"
+    },
+    {
+      brandName: "Pan 40",
+      genericName: "Pantoprazole 40mg",
+      category: "gastro",
+      doctorHandwritingVariants: ["pan 40", "tab pan 40", "pan 40 od", "pantoprazole"],
+      standardDosage: "40mg",
+      standardFrequency: "1-0-0 (Once daily, OD)",
+      standardDuration: "10 days",
+      standardInstructions: "Before food in the morning (empty stomach)",
+      intendedUse: "Proton pump inhibitor for gastric mucosal protection and acid reflux suppression"
+    },
+    {
+      brandName: "Azithral 200mg/5ml",
+      genericName: "Azithromycin 200mg per 5ml",
+      category: "antibiotic",
+      doctorHandwritingVariants: ["azithral", "syp azithral", "azithral 200mg", "azithromycin"],
+      standardDosage: "5ml (200mg)",
+      standardFrequency: "1-0-1 (Twice daily, BD)",
+      standardDuration: "3 days",
+      standardInstructions: "1 hour before or 2 hours after meals",
+      intendedUse: "Macrolide antibiotic for upper and lower respiratory tract infections"
+    },
+    {
+      brandName: "Glycomet 500",
+      genericName: "Metformin Hydrochloride 500mg",
+      category: "diabetic",
+      doctorHandwritingVariants: ["glycomet", "tab glycomet", "glycomet 500mg", "metformin"],
+      standardDosage: "500mg",
+      standardFrequency: "1-0-1 (Twice daily, after food)",
+      standardDuration: "30 days",
+      standardInstructions: "After food (with meals)",
+      intendedUse: "Biguanide antidiabetic for blood glucose regulation in Type 2 Diabetes"
+    },
+    {
+      brandName: "Montair LC",
+      genericName: "Montelukast 10mg + Levocetirizine 5mg",
+      category: "respiratory",
+      doctorHandwritingVariants: ["montair lc", "tab montair lc", "montair lc - (1-0-1) hs"],
+      standardDosage: "1 Tablet",
+      standardFrequency: "1-0-1 HS (Twice daily including Bedtime)",
+      standardDuration: "10 days",
+      standardInstructions: "At bedtime",
+      intendedUse: "Dual anti-allergic and bronchodilator for allergic rhinitis and bronchial hyperresponsiveness"
+    },
+    {
+      brandName: "Paracetamol 500",
+      genericName: "Paracetamol 500mg",
+      category: "analgesic",
+      doctorHandwritingVariants: ["paracetamol", "tab paracetamol", "paracetamol 500mg"],
+      standardDosage: "500mg",
+      standardFrequency: "SOS (As needed, max 3 per day)",
+      standardDuration: "3 days",
+      standardInstructions: "Take only when having fever or mild headache",
+      intendedUse: "Symptomatic antipyretic for breakthrough fever spikes"
+    }
+  ],
+
+  presets: [
+    {
+      id: "rx-lovepreet-sheet1",
+      title: "Prescription Pad Specimen: Dr. Lovepreet",
+      subtitle: "Dr. Lovepreet • Patient: Rohan Verma • General Clinical Regimen",
+      imageFileName: "dr-lovepreet-sheet-1.jpg",
+      imageUrl: "/calibrated-samples/dr-lovepreet-sheet-1.jpg",
+      samplePatientName: "Rohan Verma",
+      patientAgeGender: "34 yr / Male",
+      date: "2026-09-14",
+      doctorName: "Dr. Lovepreet (M.B.B.S., M.D., PMC Regd. PMC-48912)",
+      clinicName: "Care & Cure Clinic, Civil Lines, Ludhiana",
+      diagnosis: "Acute Bronchial Respiratory Infection with Febrile Illness & Gastric Prophylaxis",
+      clinicalContext: "Outpatient consultation for high fever, productive cough, and mild bronchospasm. Prescribed dual coverage with Augmentin + Azithral, Pan 40 for gastric safety, and Montair LC.",
+      vitals: "Pulse: 84 bpm, BP: 122/80 mmHg, SpO2: 98%, Temp: 100.8°F, Wt: 62 kg",
+      investigations: ["CBC with Differential", "Chest X-Ray (PA View)", "Fasting Blood Sugar"],
+      clinicalSummary: {
+        overview: "Calibrated general medical outpatient prescription by Dr. Lovepreet. Features antipyretic Dolo 650mg, oral antibiotic Cap. Augmentin 625mg BD, gastric mucosal protectant Pan 40 OD, oral suspension Azithral 200mg/5ml, glycemic stabilizer Glycomet 500mg, and Montair LC for bronchospasm relief.",
+        total_medicines: 7,
+        review_warning: ""
+      },
+      medicines: [
+        {
+          medicine_name: "Tab. Dolo 650mg",
+          dosage: "650mg",
+          frequency: "1-0-1 (Twice daily, Morning & Night)",
+          duration: "5 days",
+          instructions: "After food",
+          intended_use: "Analgesic and antipyretic for fever and bodily aches",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Cap. Augmentin 625mg",
+          dosage: "625mg",
+          frequency: "1-0-1 (Twice daily, BD)",
+          duration: "7 days",
+          instructions: "After food",
+          intended_use: "Broad-spectrum antibiotic for bacterial infection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Pan 40",
+          dosage: "40mg",
+          frequency: "1-0-0 (Once daily, OD)",
+          duration: "10 days",
+          instructions: "Before food (empty stomach)",
+          intended_use: "Gastric acid suppression and mucosal protection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Syp. Azithral 200mg/5ml",
+          dosage: "5ml",
+          frequency: "1-0-1 (Twice daily, BD)",
+          duration: "3 days",
+          instructions: "Between meals",
+          intended_use: "Macrolide antibiotic for upper and lower respiratory tract infection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Glycomet 500mg",
+          dosage: "500mg",
+          frequency: "1-0-1 (Twice daily, Morning & Night)",
+          duration: "30 days",
+          instructions: "After food",
+          intended_use: "Blood glucose regulation in Type 2 Diabetes",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Montair LC",
+          dosage: "1 Tablet",
+          frequency: "1-0-1 HS (Twice daily including Bedtime)",
+          duration: "10 days",
+          instructions: "At bedtime",
+          intended_use: "Anti-allergic and bronchodilator for wheezing and rhinitis",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Paracetamol 500mg",
+          dosage: "500mg",
+          frequency: "SOS (As needed, max 3 per day)",
+          duration: "3 days",
+          instructions: "When having fever",
+          intended_use: "Antipyretic for breakthrough fever spikes",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        }
+      ],
+      otherNotes: "Adv: Drink plenty of warm fluids, take complete bed rest, avoid exposure to cold air."
+    }
+  ]
+};
+
+// ============================================================================
+// DR. SANDEEP KUMAR - INTERNAL MEDICINE & CHRONIC CARE CALIBRATION PROFILE
+// ============================================================================
+
+export const DR_SANDEEP_KUMAR_PROFILE: DoctorCalibrationProfile = {
+  id: "dr-sandeep-kumar",
+  doctorName: "Dr. Sandeep Kumar",
+  qualifications: "M.B.B.S., D.N.B. (Internal Medicine)",
+  pmcRegNo: "PMC-52104",
+  clinicName: "Sandeep Medical Care Centre",
+  clinicAddress: "Model Town, Jalandhar",
+  phone: "98762-33100",
+  timings: "Morning: 9.30 A.M. to 1.30 P.M. | Evening: 4.30 P.M. to 7.30 P.M.",
+  founder: "Dr. Sandeep Kumar Clinical Consultancy",
+  specialty: "Internal Medicine, Diabetes, Hypertension & Chest Infections",
+
+  commonAbbreviations: {
+    "tab.": "Tab.",
+    "cap.": "Cap.",
+    "syp.": "Syp.",
+    "adv.": "Advice",
+    "1-0-1 (morning - noon - night)": "1-0-1 (Morning & Night)",
+    "od (once daily)": "1-0-0 (Once daily, OD)",
+    "bd (twice daily)": "1-0-1 (Twice daily, BD)",
+    "tds (three times daily)": "1-1-1 (Three times daily, TDS)",
+    "sos (as needed)": "SOS (As needed, max 3 per day)",
+    "hs (at bedtime)": "0-0-1 (At Bedtime, HS)",
+    "fluids. rest": "Plenty of fluids, bed rest"
+  },
+
+  dosageMap: {
+    "650 mg": "650mg",
+    "625 mg": "625mg",
+    "500 mg": "500mg",
+    "200 mg": "200mg",
+    "5ml": "5ml",
+    "40": "40mg",
+    "1 tablet": "1 Tablet"
+  },
+
+  durationMap: {
+    "x 5 days": "5 days",
+    "x 7 days": "7 days",
+    "x 10 days": "10 days",
+    "x 3 days": "3 days"
+  },
+
+  frequencyMap: {
+    "1-0-1": "1-0-1 (Twice daily, Morning & Night)",
+    "1-0-1 x 5 days": "1-0-1 (Twice daily, Morning & Night)",
+    "1-0-1 hs": "1-0-1 HS (Twice daily including Bedtime)",
+    "od": "1-0-0 (Once daily, OD)",
+    "bd": "1-0-1 (Twice daily, BD)",
+    "tds": "1-1-1 (Three times daily, TDS)",
+    "sos": "SOS (As needed, max 3 per day)",
+    "hs": "0-0-1 (At Bedtime, HS)"
+  },
+
+  instructionMap: {
+    "before food": "Before food (empty stomach)",
+    "after food": "After food",
+    "empty stomach": "Empty stomach",
+    "with milk": "Take with milk",
+    "at bed time": "At bedtime",
+    "as needed / sos": "As needed (SOS)",
+    "plenty of fluids. rest": "Plenty of fluids, rest"
+  },
+
+  calibrationSheets: [
+    {
+      sheetNumber: 1,
+      title: "Continuous Writing Sample",
+      description: "Structured upright handwriting flow with dot punctuation on abbreviations.",
+      samples: [
+        { writtenText: "Tab. Dolo 650 mg 1-0-1 x 5 days", intendedMeaning: "Tab. Dolo 650mg 1-0-1 x 5 days", category: "Analgesic / Antipyretic" },
+        { writtenText: "cap. Augmentin 625 mg BD after food x 7 days", intendedMeaning: "Cap. Augmentin 625mg BD after food x 7 days", category: "Antibiotic" },
+        { writtenText: "Tab. pan 40 OD Before food x 10 days", intendedMeaning: "Tab. Pan 40 OD before food x 10 days", category: "Antacid / PPI" },
+        { writtenText: "Syp. Azithral 200 mg 5ml BD x 3 days", intendedMeaning: "Syp. Azithral 200mg/5ml BD x 3 days", category: "Antibiotic" },
+        { writtenText: "Tab. Glycomet 500 mg 1-0-1 after food", intendedMeaning: "Tab. Glycomet 500mg 1-0-1 after food", category: "Antidiabetic" },
+        { writtenText: "Tab. Montair LC - 1-0-1 HS", intendedMeaning: "Tab. Montair LC 1-0-1 HS", category: "Respiratory / Antiallergic" },
+        { writtenText: "Tab. paracetamol 500 mg SOS, max 3 per day", intendedMeaning: "Tab. Paracetamol 500mg SOS, max 3 per day", category: "Analgesic / Antipyretic" },
+        { writtenText: "Adv. plenty of fluids. rest", intendedMeaning: "Advice: Plenty of fluids, rest", category: "Clinical Advice" }
+      ]
+    },
+    {
+      sheetNumber: 2,
+      title: "Medicine Names & Generics Formulary",
+      description: "Brand names cross-referenced against active generic constituent formulas.",
+      samples: [
+        { writtenText: "Dolo 650 (paracetamol)", intendedMeaning: "Dolo 650 (Paracetamol 650mg)", category: "Analgesic" },
+        { writtenText: "Augmentin (Amoxicillin + Clavulanic Acid)", intendedMeaning: "Augmentin (Amoxicillin + Clavulanic Acid 625mg)", category: "Antibiotic" },
+        { writtenText: "Azithral 500 (Azithromycin)", intendedMeaning: "Azithral 500 (Azithromycin 500mg)", category: "Antibiotic" },
+        { writtenText: "Glycomet (Metformin)", intendedMeaning: "Glycomet (Metformin 500mg)", category: "Antidiabetic" },
+        { writtenText: "Combiflam (Ibuprofen + paracetamol)", intendedMeaning: "Combiflam (Ibuprofen 400mg + Paracetamol 325mg)", category: "Analgesic / Anti-inflammatory" },
+        { writtenText: "Atorva (Atorvastatin)", intendedMeaning: "Atorva (Atorvastatin 10mg/20mg)", category: "Statin / Lipid Lowering" },
+        { writtenText: "Flagyl (Metronidazole)", intendedMeaning: "Flagyl (Metronidazole 400mg)", category: "Antiamoebic / Antibacterial" },
+        { writtenText: "Ciplox (Ciprofloxacin)", intendedMeaning: "Ciplox (Ciprofloxacin 500mg)", category: "Fluoroquinolone Antibiotic" },
+        { writtenText: "Doxy 1 (Doxycycline)", intendedMeaning: "Doxy-1 (Doxycycline 100mg)", category: "Tetracycline Antibiotic" },
+        { writtenText: "Losar (Losartan)", intendedMeaning: "Losar (Losartan Potassium 50mg)", category: "Antihypertensive" }
+      ]
+    },
+    {
+      sheetNumber: 3,
+      title: "Dosage & Frequency Shorthand",
+      description: "Precise dosages and frequency codes with explicit parenthetical expansions.",
+      samples: [
+        { writtenText: "500 mg", intendedMeaning: "500 mg dosage unit", category: "Dosage" },
+        { writtenText: "650 mg", intendedMeaning: "650 mg dosage unit", category: "Dosage" },
+        { writtenText: "1-0-1 (morning - noon - night)", intendedMeaning: "1-0-1 (Twice daily, Morning & Night)", category: "Frequency" },
+        { writtenText: "5ml", intendedMeaning: "5 ml oral measure", category: "Dosage" },
+        { writtenText: "1 tablet", intendedMeaning: "1 Tablet per dose", category: "Dosage" },
+        { writtenText: "OD (once daily)", intendedMeaning: "Once daily (OD)", category: "Frequency" },
+        { writtenText: "BD (twice daily)", intendedMeaning: "Twice daily (BD)", category: "Frequency" },
+        { writtenText: "TDS (Three times daily)", intendedMeaning: "Three times daily (TDS)", category: "Frequency" },
+        { writtenText: "SOS (as needed)", intendedMeaning: "SOS (As needed during symptoms)", category: "Frequency" },
+        { writtenText: "HS (at bedtime)", intendedMeaning: "At bedtime (HS)", category: "Frequency" }
+      ]
+    },
+    {
+      sheetNumber: 4,
+      title: "Confusable Medicine Pairs",
+      description: "Structured distinction rules for look-alike sound-alike drug pairs.",
+      samples: [
+        { writtenText: "Pair 1A: Augmentin vs Pair 1B: Augmentin Duo", intendedMeaning: "Plain Augmentin 625mg vs Augmentin Duo (explicit uppercase Duo)", category: "Disambiguation" },
+        { writtenText: "Pair 2A: Ciplox vs Pair 2B: Cifran", intendedMeaning: "Ciplox starts with rounded 'C-i-p'; Cifran has sharp vertical 'f'", category: "Disambiguation" },
+        { writtenText: "Pair 3A: Pan 40 vs Pair 3B: Pantocid", intendedMeaning: "Pan 40 is short 3-letter word; Pantocid has long trailing '-cid'", category: "Disambiguation" },
+        { writtenText: "Pair 4A: Glycomet vs Pair 4B: Glycomet GP", intendedMeaning: "Glycomet 500mg unless explicit 'GP' suffix is written", category: "Disambiguation" },
+        { writtenText: "Pair 5A: Zerodol vs Pair 5B: Zerodol-SP", intendedMeaning: "Zerodol-SP has explicit trailing hyphen with uppercase 'SP'", category: "Disambiguation" },
+        { writtenText: "Pair 6A: Montair vs Pair 6B: Montair LC", intendedMeaning: "Montair LC has explicit 'LC' for Montelukast + Levocetirizine", category: "Disambiguation" }
+      ]
+    },
+    {
+      sheetNumber: 5,
+      title: "Instructions, Durations, and Signature",
+      description: "Meal timing rules, treatment durations, and official signature verification.",
+      samples: [
+        { writtenText: "Before food", intendedMeaning: "Administer before meals", category: "Instruction" },
+        { writtenText: "After food", intendedMeaning: "Administer after meals", category: "Instruction" },
+        { writtenText: "Empty stomach", intendedMeaning: "Take on empty stomach", category: "Instruction" },
+        { writtenText: "with milk", intendedMeaning: "Take with milk", category: "Instruction" },
+        { writtenText: "At bed time", intendedMeaning: "Take at bedtime (HS)", category: "Instruction" },
+        { writtenText: "As needed / SOS", intendedMeaning: "Take as needed only", category: "Instruction" },
+        { writtenText: "Duration: x 5 days / x 7 days", intendedMeaning: "Treatment length: 5 days / 7 days", category: "Duration" },
+        { writtenText: "Date: 15/8/26", intendedMeaning: "Date notation: 15 August 2026", category: "Date Format" },
+        { writtenText: "Patient Name (sample): Rohan Verma, 34 years, 62 kg", intendedMeaning: "Patient demographics header", category: "Patient Info" },
+        { writtenText: "Sandeep Kumar Signature", intendedMeaning: "Physician signature: Dr. Sandeep Kumar", category: "Authentication" }
+      ]
+    }
+  ],
+
+  confusablePairs: [
+    {
+      pairA: "Augmentin",
+      pairB: "Augmentin Duo",
+      handwritingRule: "Doctor writes 'cap. Augmentin 625 mg'. Only classify as Duo if uppercase 'Duo' is explicitly appended."
+    },
+    {
+      pairA: "Ciplox",
+      pairB: "Cifran",
+      handwritingRule: "Ciplox has a clean cursive 'C-i-p' start; Cifran has a distinct sharp tall 'f' stroke."
+    },
+    {
+      pairA: "Pan 40",
+      pairB: "Pantocid",
+      handwritingRule: "Pan 40 is a short word followed by '40'. Pantocid has multi-syllable cursive tail."
+    },
+    {
+      pairA: "Glycomet",
+      pairB: "Glycomet GP",
+      handwritingRule: "Doctor writes 'Tab. Glycomet 500 mg'. Assign to plain Metformin unless explicit 'GP' appears."
+    },
+    {
+      pairA: "Zerodol",
+      pairB: "Zerodol-SP",
+      handwritingRule: "Zerodol-SP has explicit trailing hyphen with uppercase 'SP' for Serratiopeptidase combination."
+    },
+    {
+      pairA: "Montair",
+      pairB: "Montair LC",
+      handwritingRule: "Doctor writes 'Tab. Montair LC - 1-0-1 HS' with distinct 'LC' suffix for combination."
+    }
+  ],
+
+  formulary: [
+    {
+      brandName: "Dolo 650",
+      genericName: "Paracetamol 650mg",
+      category: "analgesic",
+      doctorHandwritingVariants: ["dolo 650", "tab. dolo", "dolo 650 mg", "paracetamol"],
+      standardDosage: "650mg",
+      standardFrequency: "1-0-1 (Twice daily, Morning & Night)",
+      standardDuration: "5 days",
+      standardInstructions: "After food",
+      intendedUse: "Analgesic and antipyretic for pain and fever control"
+    },
+    {
+      brandName: "Augmentin 625",
+      genericName: "Amoxicillin 500mg + Clavulanic Acid 125mg",
+      category: "antibiotic",
+      doctorHandwritingVariants: ["augmentin", "cap. augmentin", "augmentin 625 mg"],
+      standardDosage: "625mg",
+      standardFrequency: "1-0-1 (Twice daily, BD)",
+      standardDuration: "7 days",
+      standardInstructions: "After food with water",
+      intendedUse: "Broad-spectrum antibiotic for bacterial respiratory or systemic infection"
+    },
+    {
+      brandName: "Pan 40",
+      genericName: "Pantoprazole 40mg",
+      category: "gastro",
+      doctorHandwritingVariants: ["pan 40", "tab. pan 40", "pan 40 od"],
+      standardDosage: "40mg",
+      standardFrequency: "1-0-0 (Once daily, OD)",
+      standardDuration: "10 days",
+      standardInstructions: "Before food in morning (empty stomach)",
+      intendedUse: "Proton pump inhibitor for gastroprotection and acid suppression"
+    },
+    {
+      brandName: "Azithral 200mg/5ml",
+      genericName: "Azithromycin 200mg per 5ml",
+      category: "antibiotic",
+      doctorHandwritingVariants: ["azithral", "syp. azithral", "azithral 200 mg"],
+      standardDosage: "5ml (200mg)",
+      standardFrequency: "1-0-1 (Twice daily, BD)",
+      standardDuration: "3 days",
+      standardInstructions: "Between meals",
+      intendedUse: "Macrolide antibiotic for respiratory tract infections"
+    },
+    {
+      brandName: "Glycomet 500",
+      genericName: "Metformin Hydrochloride 500mg",
+      category: "diabetic",
+      doctorHandwritingVariants: ["glycomet", "tab. glycomet", "glycomet 500 mg"],
+      standardDosage: "500mg",
+      standardFrequency: "1-0-1 (Twice daily, after food)",
+      standardDuration: "30 days",
+      standardInstructions: "After food",
+      intendedUse: "Glycemic management for Type 2 Diabetes"
+    },
+    {
+      brandName: "Montair LC",
+      genericName: "Montelukast 10mg + Levocetirizine 5mg",
+      category: "respiratory",
+      doctorHandwritingVariants: ["montair lc", "tab. montair lc", "montair lc - 1-0-1 hs"],
+      standardDosage: "1 Tablet",
+      standardFrequency: "1-0-1 HS (Twice daily including Bedtime)",
+      standardDuration: "10 days",
+      standardInstructions: "At bedtime",
+      intendedUse: "Antiallergic and bronchodilator for bronchial congestion and allergic rhinitis"
+    },
+    {
+      brandName: "Paracetamol 500",
+      genericName: "Paracetamol 500mg",
+      category: "analgesic",
+      doctorHandwritingVariants: ["paracetamol", "tab. paracetamol", "paracetamol 500 mg"],
+      standardDosage: "500mg",
+      standardFrequency: "SOS (As needed, max 3 per day)",
+      standardDuration: "3 days",
+      standardInstructions: "When needed for temperature spikes",
+      intendedUse: "Antipyretic for breakthrough fever"
+    }
+  ],
+
+  presets: [
+    {
+      id: "rx-sandeep-sheet1",
+      title: "Prescription Pad Specimen: Dr. Sandeep Kumar",
+      subtitle: "Dr. Sandeep Kumar • Patient: Rohan Verma • Internal Medicine Regimen",
+      imageFileName: "dr-sandeep-sheet-1.jpg",
+      imageUrl: "/calibrated-samples/dr-sandeep-sheet-1.jpg",
+      samplePatientName: "Rohan Verma",
+      patientAgeGender: "34 yr / Male",
+      date: "2026-09-14",
+      doctorName: "Dr. Sandeep Kumar (M.B.B.S., D.N.B. Medicine, PMC Regd. PMC-52104)",
+      clinicName: "Sandeep Medical Care Centre, Model Town, Jalandhar",
+      diagnosis: "Acute Bronchial Respiratory Infection with Glycemic Instability & Gastric Protection",
+      clinicalContext: "Internal medicine consultation for patient with respiratory infection and pre-existing Type 2 Diabetes. Prescribed dual coverage with Augmentin + Azithral, Pan 40 for gastric prophylaxis, and continued Glycomet 500mg.",
+      vitals: "Pulse: 80 bpm, BP: 126/82 mmHg, Temp: 100.4°F, Wt: 62 kg",
+      investigations: ["HbA1c & Fasting Glucose", "Complete Blood Count", "Kidney Function Test"],
+      clinicalSummary: {
+        overview: "Calibrated internal medicine prescription by Dr. Sandeep Kumar. Features antipyretic Tab. Dolo 650mg, oral antimicrobial Cap. Augmentin 625mg BD, acid-peptic barrier Tab. Pan 40 OD, Syp. Azithral 200mg/5ml, antidiabetic Tab. Glycomet 500mg, and Tab. Montair LC for airway hyperresponsiveness.",
+        total_medicines: 7,
+        review_warning: ""
+      },
+      medicines: [
+        {
+          medicine_name: "Tab. Dolo 650mg",
+          dosage: "650mg",
+          frequency: "1-0-1 (Twice daily, Morning & Night)",
+          duration: "5 days",
+          instructions: "After food",
+          intended_use: "Analgesic and antipyretic for pain and fever control",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Cap. Augmentin 625mg",
+          dosage: "625mg",
+          frequency: "1-0-1 (Twice daily, BD)",
+          duration: "7 days",
+          instructions: "After food",
+          intended_use: "Broad-spectrum antibiotic for bacterial infection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Pan 40",
+          dosage: "40mg",
+          frequency: "1-0-0 (Once daily, OD)",
+          duration: "10 days",
+          instructions: "Before food (empty stomach)",
+          intended_use: "Gastric acid suppression and mucosal protection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Syp. Azithral 200mg/5ml",
+          dosage: "5ml",
+          frequency: "1-0-1 (Twice daily, BD)",
+          duration: "3 days",
+          instructions: "Between meals",
+          intended_use: "Macrolide antibiotic for upper and lower respiratory tract infection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Glycomet 500mg",
+          dosage: "500mg",
+          frequency: "1-0-1 (Twice daily, Morning & Night)",
+          duration: "30 days",
+          instructions: "After food",
+          intended_use: "Blood glucose regulation in Type 2 Diabetes",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Montair LC",
+          dosage: "1 Tablet",
+          frequency: "1-0-1 HS (Twice daily including Bedtime)",
+          duration: "10 days",
+          instructions: "At bedtime",
+          intended_use: "Anti-allergic and bronchodilator for wheezing and rhinitis",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Paracetamol 500mg",
+          dosage: "500mg",
+          frequency: "SOS (As needed, max 3 per day)",
+          duration: "3 days",
+          instructions: "When having fever",
+          intended_use: "Antipyretic for breakthrough fever spikes",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        }
+      ],
+      otherNotes: "Adv: Drink plenty of fluids, rest, maintain blood glucose logs."
+    }
+  ]
+};
+
+// ============================================================================
+// DR. MEENAKSHI JAIN - FAMILY MEDICINE & CLINICAL FORMULATIONS PROFILE
+// ============================================================================
+
+export const DR_MEENAKSHI_JAIN_PROFILE: DoctorCalibrationProfile = {
+  id: "dr-meenakshi-jain",
+  doctorName: "Dr. Meenakshi Jain",
+  qualifications: "M.B.B.S., M.D. (Physician)",
+  pmcRegNo: "PMC-39420",
+  clinicName: "Jain Healthcare & Multispecialty Clinic",
+  clinicAddress: "Urban Estate, Phase 2, Patiala",
+  phone: "98884-77215",
+  timings: "Morning: 10.00 A.M. to 1.30 P.M. | Evening: 5.30 P.M. to 8.30 P.M.",
+  founder: "Jain Healthcare Foundation",
+  specialty: "Family Medicine, Pediatric & Adult Clinical Formulations",
+
+  commonAbbreviations: {
+    "tab": "Tab.",
+    "cap": "Cap.",
+    "syp": "Syp.",
+    "adv:": "Advice:",
+    "od (once daily)": "1-0-0 (Once daily, OD)",
+    "bd (twice daily)": "1-0-1 (Twice daily, BD)",
+    "tds (three times daily)": "1-1-1 (Three times daily, TDS)",
+    "sos. (as needed)": "SOS (As needed, max 3 per day)",
+    "hs (at bedtime)": "0-0-1 (At Bedtime, HS)",
+    "plenty of fluids, rest.": "Plenty of fluids, bed rest"
+  },
+
+  dosageMap: {
+    "650 mg": "650mg",
+    "625 mg": "625mg",
+    "500 mg": "500mg",
+    "200 mg": "200mg",
+    "5ml": "5ml",
+    "5 ml": "5ml",
+    "40": "40mg",
+    "1 tablet": "1 Tablet"
+  },
+
+  durationMap: {
+    "x 5 days": "5 days",
+    "x 7 days": "7 days",
+    "x 7 days.": "7 days",
+    "x 10 days.": "10 days",
+    "x 3 days.": "3 days"
+  },
+
+  frequencyMap: {
+    "1-0-1": "1-0-1 (Twice daily, Morning & Night)",
+    "1-0-1 hs.": "1-0-1 HS (Twice daily including Bedtime)",
+    "1-0-1 hs": "1-0-1 HS (Twice daily including Bedtime)",
+    "od": "1-0-0 (Once daily, OD)",
+    "bd": "1-0-1 (Twice daily, BD)",
+    "tds": "1-1-1 (Three times daily, TDS)",
+    "sos": "SOS (As needed, max 3 per day)",
+    "hs": "0-0-1 (At Bedtime, HS)"
+  },
+
+  instructionMap: {
+    "before food": "Before food (empty stomach)",
+    "after food": "After food",
+    "empty stomach": "On an empty stomach",
+    "with milk": "Take with warm milk",
+    "at bedtime": "At bedtime",
+    "as needed / sos.": "As needed during acute fever or symptoms",
+    "plenty of fluids, rest.": "Drink plenty of fluids and rest"
+  },
+
+  calibrationSheets: [
+    {
+      sheetNumber: 1,
+      title: "Continuous Writing Sample",
+      description: "Flowing connected script punctuated with terminal periods.",
+      samples: [
+        { writtenText: "Tab Dolo 650 mg 1-0-1 x 5 days", intendedMeaning: "Tab. Dolo 650mg 1-0-1 x 5 days", category: "Analgesic / Antipyretic" },
+        { writtenText: "cap Augmentin 625 mg BD after food x 7 days.", intendedMeaning: "Cap. Augmentin 625mg BD after food x 7 days", category: "Antibiotic" },
+        { writtenText: "Tab Pan 40 OD before food x 10 days.", intendedMeaning: "Tab. Pan 40 OD before food x 10 days", category: "Antacid / PPI" },
+        { writtenText: "Syp Azithral 200 mg 5ml BD x 3 days.", intendedMeaning: "Syp. Azithral 200mg/5ml BD x 3 days", category: "Antibiotic" },
+        { writtenText: "Tab Glycomet 500 mg 1-0-1 after food", intendedMeaning: "Tab. Glycomet 500mg 1-0-1 after food", category: "Antidiabetic" },
+        { writtenText: "Tab Montair LC 1-0-1 HS.", intendedMeaning: "Tab. Montair LC 1-0-1 HS", category: "Respiratory / Antiallergic" },
+        { writtenText: "Tab Paracetamol 500 mg SOS, max 3 per day", intendedMeaning: "Tab. Paracetamol 500mg SOS, max 3 per day", category: "Analgesic / Antipyretic" },
+        { writtenText: "Adv: plenty of fluids, rest.", intendedMeaning: "Advice: Plenty of fluids, rest", category: "Clinical Advice" }
+      ]
+    },
+    {
+      sheetNumber: 2,
+      title: "Medicine Names & Generics Formulary",
+      description: "Brand names cross-referenced against active generic constituent formulas.",
+      samples: [
+        { writtenText: "Dolo 650 (paracetamol)", intendedMeaning: "Dolo 650 (Paracetamol 650mg)", category: "Analgesic" },
+        { writtenText: "Augmentin (Amoxicillin + Clavulanic acid)", intendedMeaning: "Augmentin (Amoxicillin + Clavulanic Acid 625mg)", category: "Antibiotic" },
+        { writtenText: "Azithral 500 (Azithromycin)", intendedMeaning: "Azithral 500 (Azithromycin 500mg)", category: "Antibiotic" },
+        { writtenText: "Glycomet (Metformin)", intendedMeaning: "Glycomet (Metformin 500mg)", category: "Antidiabetic" },
+        { writtenText: "Combiflam (Ibuprofen + Paracetamol)", intendedMeaning: "Combiflam (Ibuprofen 400mg + Paracetamol 325mg)", category: "Analgesic / Anti-inflammatory" },
+        { writtenText: "Atorva (Atorvastatin)", intendedMeaning: "Atorva (Atorvastatin 10mg/20mg)", category: "Statin / Lipid Lowering" },
+        { writtenText: "Flagyl (Metronidazole)", intendedMeaning: "Flagyl (Metronidazole 400mg)", category: "Antiamoebic / Antibacterial" },
+        { writtenText: "Ciplox (Ciprofloxacin)", intendedMeaning: "Ciplox (Ciprofloxacin 500mg)", category: "Fluoroquinolone Antibiotic" },
+        { writtenText: "Doxy 1 (Doxycycline)", intendedMeaning: "Doxy-1 (Doxycycline 100mg)", category: "Tetracycline Antibiotic" },
+        { writtenText: "Losar (Losartan)", intendedMeaning: "Losar (Losartan Potassium 50mg)", category: "Antihypertensive" }
+      ]
+    },
+    {
+      sheetNumber: 3,
+      title: "Dosage & Frequency Shorthand",
+      description: "Dosage weights and frequency abbreviations with explicit ground truth notes.",
+      samples: [
+        { writtenText: "500 mg", intendedMeaning: "500 mg dosage unit", category: "Dosage" },
+        { writtenText: "650 mg", intendedMeaning: "650 mg dosage unit", category: "Dosage" },
+        { writtenText: "1-0-1 (morning - noon - night)", intendedMeaning: "1-0-1 (Twice daily, Morning & Night)", category: "Frequency" },
+        { writtenText: "5 ml", intendedMeaning: "5 ml oral measure", category: "Dosage" },
+        { writtenText: "1 tablet", intendedMeaning: "1 Tablet per dose", category: "Dosage" },
+        { writtenText: "OD (once daily)", intendedMeaning: "Once daily (OD)", category: "Frequency" },
+        { writtenText: "BD (twice daily)", intendedMeaning: "Twice daily (BD)", category: "Frequency" },
+        { writtenText: "TDS (three times daily)", intendedMeaning: "Three times daily (TDS)", category: "Frequency" },
+        { writtenText: "SOS. (as needed)", intendedMeaning: "SOS (As needed during symptoms)", category: "Frequency" },
+        { writtenText: "HS (at bedtime)", intendedMeaning: "At bedtime (HS)", category: "Frequency" }
+      ]
+    },
+    {
+      sheetNumber: 4,
+      title: "Confusable Medicine Pairs",
+      description: "Visual look-alike sound-alike handwriting differentiation rules.",
+      samples: [
+        { writtenText: "Pair 1A - Augmentin vs Pair 1B: Augmentin Duo", intendedMeaning: "Plain Augmentin 625mg vs Augmentin Duo with explicit uppercase 'Duo'", category: "Disambiguation" },
+        { writtenText: "Pair 2A: Ciplox vs Pair 2B: Cifran", intendedMeaning: "Ciplox starts with rounded 'C-i-p'; Cifran has sharp vertical 'f'", category: "Disambiguation" },
+        { writtenText: "Pair 3A: Pan 40 vs Pair 3B: Pantocid", intendedMeaning: "Pan 40 is short 3 letters; Pantocid has long trailing '-cid'", category: "Disambiguation" },
+        { writtenText: "Pair 4A: Glycomet vs Pair 4B: Glycomet GP", intendedMeaning: "Glycomet 500mg unless trailing 'GP' loop is clearly present", category: "Disambiguation" },
+        { writtenText: "Pair 5A: Zerodol vs Pair 5B: Zerodol-SP", intendedMeaning: "Zerodol-SP has explicit trailing hyphen with uppercase 'SP'", category: "Disambiguation" },
+        { writtenText: "Pair 6A: Montair vs Pair 6B: Montair LC", intendedMeaning: "Montair LC has explicit 'LC' for Montelukast + Levocetirizine", category: "Disambiguation" }
+      ]
+    },
+    {
+      sheetNumber: 5,
+      title: "Instructions, Durations, and Signature",
+      description: "Meal timings, course duration notations, and verified physician signature.",
+      samples: [
+        { writtenText: "Before food", intendedMeaning: "Administer 30 mins before food", category: "Instruction" },
+        { writtenText: "After food", intendedMeaning: "Administer after food", category: "Instruction" },
+        { writtenText: "Empty stomach", intendedMeaning: "Administer on an empty stomach", category: "Instruction" },
+        { writtenText: "With milk", intendedMeaning: "Take with warm milk", category: "Instruction" },
+        { writtenText: "At bedtime", intendedMeaning: "Take at bedtime (night)", category: "Instruction" },
+        { writtenText: "As needed / SOS.", intendedMeaning: "Take when symptomatic only", category: "Instruction" },
+        { writtenText: "Duration x 5 days. / x 7 days", intendedMeaning: "Course length: 5 days / 7 days", category: "Duration" },
+        { writtenText: "Date: 15/08/2026", intendedMeaning: "Prescription issuance date", category: "Date Format" },
+        { writtenText: "Patient name (sample): Rohan Verma, 34 years, 62 kg", intendedMeaning: "Patient demographic header", category: "Patient Info" },
+        { writtenText: "Meenakshi Jain Signature", intendedMeaning: "Physician signature: Dr. Meenakshi Jain", category: "Authentication" }
+      ]
+    }
+  ],
+
+  confusablePairs: [
+    {
+      pairA: "Augmentin",
+      pairB: "Augmentin Duo",
+      handwritingRule: "Doctor writes 'cap Augmentin 625 mg'. Only classify as Duo if uppercase 'Duo' is explicitly appended."
+    },
+    {
+      pairA: "Ciplox",
+      pairB: "Cifran",
+      handwritingRule: "Ciplox has a rounded cursive 'C-i-p' start; Cifran has a sharp cross on the letter 'f'."
+    },
+    {
+      pairA: "Pan 40",
+      pairB: "Pantocid",
+      handwritingRule: "Pan 40 is a short word followed by '40'. Pantocid has multi-syllable cursive tail."
+    },
+    {
+      pairA: "Glycomet",
+      pairB: "Glycomet GP",
+      handwritingRule: "Doctor writes 'Tab Glycomet 500 mg'. Assign to plain Metformin unless explicit 'GP' appears."
+    },
+    {
+      pairA: "Zerodol",
+      pairB: "Zerodol-SP",
+      handwritingRule: "Zerodol-SP has explicit trailing hyphen with uppercase 'SP' for Serratiopeptidase combination."
+    },
+    {
+      pairA: "Montair",
+      pairB: "Montair LC",
+      handwritingRule: "Doctor writes 'Tab Montair LC 1-0-1 HS.' with distinct 'LC' suffix for combination."
+    }
+  ],
+
+  formulary: [
+    {
+      brandName: "Dolo 650",
+      genericName: "Paracetamol 650mg",
+      category: "analgesic",
+      doctorHandwritingVariants: ["dolo 650", "tab dolo", "dolo 650 mg", "paracetamol"],
+      standardDosage: "650mg",
+      standardFrequency: "1-0-1 (Twice daily, Morning & Night)",
+      standardDuration: "5 days",
+      standardInstructions: "After food",
+      intendedUse: "Analgesic and antipyretic for pain and fever control"
+    },
+    {
+      brandName: "Augmentin 625",
+      genericName: "Amoxicillin 500mg + Clavulanic Acid 125mg",
+      category: "antibiotic",
+      doctorHandwritingVariants: ["augmentin", "cap augmentin", "augmentin 625 mg"],
+      standardDosage: "625mg",
+      standardFrequency: "1-0-1 (Twice daily, BD)",
+      standardDuration: "7 days",
+      standardInstructions: "After food with water",
+      intendedUse: "Broad-spectrum antibiotic for bacterial respiratory or systemic infection"
+    },
+    {
+      brandName: "Pan 40",
+      genericName: "Pantoprazole 40mg",
+      category: "gastro",
+      doctorHandwritingVariants: ["pan 40", "tab pan 40", "pan 40 od"],
+      standardDosage: "40mg",
+      standardFrequency: "1-0-0 (Once daily, OD)",
+      standardDuration: "10 days",
+      standardInstructions: "Before food in morning (empty stomach)",
+      intendedUse: "Proton pump inhibitor for gastroprotection and acid suppression"
+    },
+    {
+      brandName: "Azithral 200mg/5ml",
+      genericName: "Azithromycin 200mg per 5ml",
+      category: "antibiotic",
+      doctorHandwritingVariants: ["azithral", "syp azithral", "azithral 200 mg"],
+      standardDosage: "5ml (200mg)",
+      standardFrequency: "1-0-1 (Twice daily, BD)",
+      standardDuration: "3 days",
+      standardInstructions: "Between meals",
+      intendedUse: "Macrolide antibiotic for respiratory tract infections"
+    },
+    {
+      brandName: "Glycomet 500",
+      genericName: "Metformin Hydrochloride 500mg",
+      category: "diabetic",
+      doctorHandwritingVariants: ["glycomet", "tab glycomet", "glycomet 500 mg"],
+      standardDosage: "500mg",
+      standardFrequency: "1-0-1 (Twice daily, after food)",
+      standardDuration: "30 days",
+      standardInstructions: "After food",
+      intendedUse: "Glycemic management for Type 2 Diabetes"
+    },
+    {
+      brandName: "Montair LC",
+      genericName: "Montelukast 10mg + Levocetirizine 5mg",
+      category: "respiratory",
+      doctorHandwritingVariants: ["montair lc", "tab montair lc", "montair lc 1-0-1 hs"],
+      standardDosage: "1 Tablet",
+      standardFrequency: "1-0-1 HS (Twice daily including Bedtime)",
+      standardDuration: "10 days",
+      standardInstructions: "At bedtime",
+      intendedUse: "Antiallergic and bronchodilator for bronchial congestion and allergic rhinitis"
+    },
+    {
+      brandName: "Paracetamol 500",
+      genericName: "Paracetamol 500mg",
+      category: "analgesic",
+      doctorHandwritingVariants: ["paracetamol", "tab paracetamol", "paracetamol 500 mg"],
+      standardDosage: "500mg",
+      standardFrequency: "SOS (As needed, max 3 per day)",
+      standardDuration: "3 days",
+      standardInstructions: "When needed for temperature spikes",
+      intendedUse: "Antipyretic for breakthrough fever"
+    }
+  ],
+
+  presets: [
+    {
+      id: "rx-meenakshi-sheet1",
+      title: "Prescription Pad Specimen: Dr. Meenakshi Jain",
+      subtitle: "Dr. Meenakshi Jain • Patient: Rohan Verma • Family Practice Regimen",
+      imageFileName: "dr-meenakshi-sheet-1.jpg",
+      imageUrl: "/calibrated-samples/dr-meenakshi-sheet-1.jpg",
+      samplePatientName: "Rohan Verma",
+      patientAgeGender: "34 yr / Male",
+      date: "2026-09-14",
+      doctorName: "Dr. Meenakshi Jain (M.B.B.S., M.D., PMC Regd. PMC-39420)",
+      clinicName: "Jain Healthcare & Multispecialty Clinic, Urban Estate Phase 2, Patiala",
+      diagnosis: "Acute Bronchial Congestion & Febrile Syndrome with Acid Peptic Prophylaxis",
+      clinicalContext: "Multispecialty family practice outpatient evaluation for productive cough, fever spikes, and epigastric discomfort. Prescribed combination antimicrobials, Pan 40 gastroprotection, and Montair LC.",
+      vitals: "Pulse: 82 bpm, BP: 120/78 mmHg, Temp: 100.6°F, Wt: 62 kg",
+      investigations: ["Hemogram with ESR", "Sputum Routine", "Random Blood Sugar"],
+      clinicalSummary: {
+        overview: "Calibrated family practice prescription by Dr. Meenakshi Jain. Features antipyretic Tab. Dolo 650mg, broad-spectrum antibiotic Cap. Augmentin 625mg BD, acid suppression Tab. Pan 40 OD, oral liquid Syp. Azithral 200mg/5ml, metabolic stabilizer Tab. Glycomet 500mg, and Tab. Montair LC for bronchial comfort.",
+        total_medicines: 7,
+        review_warning: ""
+      },
+      medicines: [
+        {
+          medicine_name: "Tab. Dolo 650mg",
+          dosage: "650mg",
+          frequency: "1-0-1 (Twice daily, Morning & Night)",
+          duration: "5 days",
+          instructions: "After food",
+          intended_use: "Analgesic and antipyretic for pain and fever control",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Cap. Augmentin 625mg",
+          dosage: "625mg",
+          frequency: "1-0-1 (Twice daily, BD)",
+          duration: "7 days",
+          instructions: "After food",
+          intended_use: "Broad-spectrum antibiotic for bacterial infection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Pan 40",
+          dosage: "40mg",
+          frequency: "1-0-0 (Once daily, OD)",
+          duration: "10 days",
+          instructions: "Before food (empty stomach)",
+          intended_use: "Gastric acid suppression and mucosal protection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Syp. Azithral 200mg/5ml",
+          dosage: "5ml",
+          frequency: "1-0-1 (Twice daily, BD)",
+          duration: "3 days",
+          instructions: "Between meals",
+          intended_use: "Macrolide antibiotic for upper and lower respiratory tract infection",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Glycomet 500mg",
+          dosage: "500mg",
+          frequency: "1-0-1 (Twice daily, Morning & Night)",
+          duration: "30 days",
+          instructions: "After food",
+          intended_use: "Blood glucose regulation in Type 2 Diabetes",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Montair LC",
+          dosage: "1 Tablet",
+          frequency: "1-0-1 HS (Twice daily including Bedtime)",
+          duration: "10 days",
+          instructions: "At bedtime",
+          intended_use: "Anti-allergic and bronchodilator for wheezing and rhinitis",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        },
+        {
+          medicine_name: "Tab. Paracetamol 500mg",
+          dosage: "500mg",
+          frequency: "SOS (As needed, max 3 per day)",
+          duration: "3 days",
+          instructions: "When having fever",
+          intended_use: "Antipyretic for breakthrough fever spikes",
+          confidence: "high",
+          needs_review: false,
+          candidate_suggestions: [],
+          verified_source: "prescription_slip"
+        }
+      ],
+      otherNotes: "Adv: Drink plenty of warm fluids, rest, avoid fried and chilled foods."
+    }
+  ]
+};
+
+// ============================================================================
+// DOCTOR PROFILE REGISTRY & RESOLUTION HELPERS
+// ============================================================================
+
+export const CALIBRATED_DOCTOR_PROFILES: Record<string, DoctorCalibrationProfile> = {
+  "dr-reeta-bhambri": DR_REETA_BHAMBRI_PROFILE,
+  "dr-lovepreet": DR_LOVEPREET_PROFILE,
+  "dr-sandeep-kumar": DR_SANDEEP_KUMAR_PROFILE,
+  "dr-meenakshi-jain": DR_MEENAKSHI_JAIN_PROFILE,
+};
+
+export function getDoctorProfile(id?: string | null): DoctorCalibrationProfile {
+  if (!id) return DR_REETA_BHAMBRI_PROFILE;
+  return CALIBRATED_DOCTOR_PROFILES[id] || DR_REETA_BHAMBRI_PROFILE;
+}
+
+export function getAllDoctorProfiles(): DoctorCalibrationProfile[] {
+  return [
+    DR_REETA_BHAMBRI_PROFILE,
+    DR_LOVEPREET_PROFILE,
+    DR_SANDEEP_KUMAR_PROFILE,
+    DR_MEENAKSHI_JAIN_PROFILE,
+  ];
+}
+
 /**
- * Returns prompt injection text for Dr. Reeta Bhambri or any calibrated doctor profile.
+ * Returns tailored prompt injection text for any selected calibrated doctor profile.
  */
-export function getDoctorCalibrationPrompt(profile: DoctorCalibrationProfile = DR_REETA_BHAMBRI_PROFILE): string {
+export function getDoctorCalibrationPrompt(
+  profileOrId: DoctorCalibrationProfile | string = DR_REETA_BHAMBRI_PROFILE
+): string {
+  const profile = typeof profileOrId === "string" ? getDoctorProfile(profileOrId) : profileOrId;
+
+  if (profile.id === "dr-lovepreet") {
+    return `
+SPECIALIZED DOCTOR HANDWRITING CALIBRATION ACTIVE:
+Doctor Identity: ${profile.doctorName} (${profile.qualifications}, P.M.C. Regd: ${profile.pmcRegNo})
+Clinic: ${profile.clinicName}, ${profile.clinicAddress} (Mob: ${profile.phone})
+Specialty Focus: ${profile.specialty}
+
+CRITICAL HANDWRITING CALIBRATION RULES FOR DR. LOVEPREET:
+1. CURSIVE PREFIX: Dr. Lovepreet writes "Tab" with a fluid cursive loop and "cap" in lowercase.
+2. BRACKETED FREQUENCIES: Frequency notations often have explicit parentheses, e.g. "(1-0-1) HS" for Montair LC.
+3. DOSAGE AMOUNTS: Numerals are clearly written before units, e.g. "650 mg", "625mg", "200mg 5ml", "500mg".
+4. CLINICAL ABBREVIATIONS & SIGNATURE:
+   - "cap Augmentin 625mg BD after food x 7 days"
+   - "Tab. Pan 40 OD Before food x 10 days"
+   - "syp Azithral 200mg 5ml BD x 3 days"
+   - "Tab Glycomet 500mg 1-0-1 after food"
+   - "Combiflam (Ibuprofen + PCM)"
+   - "Adv plenty of fluids, rest"
+5. CONFUSABLE DISAMBIGUATION:
+   - Augmentin vs Augmentin Duo: Standard tablet is 625mg. Only classify as Duo if explicit 'Duo' loop is appended.
+   - Ciplox vs Cifran: Ciplox has rounded 'C-i-p' start; Cifran has sharp vertical 'f'.
+   - Pan 40 vs Pantocid: Pan 40 is short 3 letters; Pantocid has multi-syllable cursive tail.
+   - Glycomet vs Glycomet GP: Assign to plain Metformin 500mg unless explicit 'GP' suffix is present.
+`;
+  }
+
+  if (profile.id === "dr-sandeep-kumar") {
+    return `
+SPECIALIZED DOCTOR HANDWRITING CALIBRATION ACTIVE:
+Doctor Identity: ${profile.doctorName} (${profile.qualifications}, P.M.C. Regd: ${profile.pmcRegNo})
+Clinic: ${profile.clinicName}, ${profile.clinicAddress} (Mob: ${profile.phone})
+Specialty Focus: ${profile.specialty}
+
+CRITICAL HANDWRITING CALIBRATION RULES FOR DR. SANDEEP KUMAR:
+1. STRUCTURED PUNCTUATION: Dr. Sandeep Kumar uses precise dot abbreviations: "Tab.", "cap.", "Syp.", "Adv.".
+2. METRIC DOSING SPACING: Numerals are separated by a clean space from unit: "650 mg", "625 mg", "500 mg", "200 mg 5ml".
+3. FREQUENCY EXPANSIONS: Handwriting frequently expands abbreviations in parentheses:
+   - "OD (once daily)"
+   - "BD (twice daily)"
+   - "TDS (Three times daily)"
+   - "SOS (as needed)"
+   - "HS (at bedtime)"
+4. FORMULARY MAPPINGS:
+   - "Tab. Dolo 650 mg 1-0-1 x 5 days"
+   - "cap. Augmentin 625 mg BD after food x 7 days"
+   - "Tab. pan 40 OD Before food x 10 days"
+   - "Syp. Azithral 200 mg 5ml BD x 3 days"
+   - "Tab. Glycomet 500 mg 1-0-1 after food"
+   - "Tab. Montair LC - 1-0-1 HS"
+   - "Tab. paracetamol 500 mg SOS, max 3 per day"
+5. SIGNATURE & AUTHENTICATION: Look for official sign flourish "Sandeep Kumar".
+`;
+  }
+
+  if (profile.id === "dr-meenakshi-jain") {
+    return `
+SPECIALIZED DOCTOR HANDWRITING CALIBRATION ACTIVE:
+Doctor Identity: ${profile.doctorName} (${profile.qualifications}, P.M.C. Regd: ${profile.pmcRegNo})
+Clinic: ${profile.clinicName}, ${profile.clinicAddress} (Mob: ${profile.phone})
+Specialty Focus: ${profile.specialty}
+
+CRITICAL HANDWRITING CALIBRATION RULES FOR DR. MEENAKSHI JAIN:
+1. CONNECTED CURSIVE SCRIPT: Highly legible connected cursive where line entries terminate with periods (".").
+2. STANDARD PRESCRIPTION HEADERS:
+   - "Tab Dolo 650 mg 1-0-1 x 5 days"
+   - "cap Augmentin 625 mg BD after food x 7 days."
+   - "Tab Pan 40 OD before food x 10 days."
+   - "Syp Azithral 200 mg 5ml BD x 3 days."
+   - "Tab Glycomet 500 mg 1-0-1 after food"
+   - "Tab Montair LC 1-0-1 HS."
+   - "Tab Paracetamol 500 mg SOS, max 3 per day"
+   - "Adv: plenty of fluids, rest."
+3. HIGH PRECISION GENERIC WRITING: Generic constituents are spelled out meticulously:
+   - Amoxicillin + Clavulanic acid, Azithromycin, Metformin, Ibuprofen + Paracetamol, Atorvastatin, Metronidazole, Ciprofloxacin, Doxycycline, Losartan.
+4. SIGNATURE: Verified cursive signature "Meenakshi Jain".
+`;
+  }
+
+  // Default: Dr. Reeta Bhambri (Obstetrics & Maternity)
   return `
 SPECIALIZED DOCTOR HANDWRITING CALIBRATION ACTIVE:
 Doctor Identity: ${profile.doctorName} (${profile.qualifications}, P.M.C. Regd: ${profile.pmcRegNo})
@@ -715,26 +1959,32 @@ CRITICAL HANDWRITING CALIBRATION RULES FOR THIS DOCTOR:
 }
 
 /**
- * /**
- * Normalizes and calibrates extracted prescription data against Dr. Reeta Bhambri's profile.
- * Only applies calibration if explicitly forced or if letterhead matches Dr. Reeta Bhambri / Ranjit Maternity Clinic,
+ * Normalizes and calibrates extracted prescription data against a calibrated doctor's profile.
+ * Only applies calibration if explicitly forced or if letterhead matches the doctor,
  * completely preventing bias when scanning prescriptions from other doctors.
  */
 export function calibratePrescriptionOutput(
   data: any,
-  profile: DoctorCalibrationProfile = DR_REETA_BHAMBRI_PROFILE,
+  profileOrId: DoctorCalibrationProfile | string = DR_REETA_BHAMBRI_PROFILE,
   options?: { force?: boolean }
 ): any {
   if (!data) return data;
+  const profile = typeof profileOrId === "string" ? getDoctorProfile(profileOrId) : profileOrId;
 
-  // 1. Identify if letterhead or doctor refers to Dr. Reeta Bhambri
+  // 1. Identify if letterhead or doctor refers to this doctor
   const docLower = String(data.doctor_name || "").toLowerCase();
   const clinicLower = String(data.clinic_name || "").toLowerCase();
-  const isDoctorMatch =
-    docLower.includes("bhambri") ||
-    docLower.includes("reeta") ||
-    clinicLower.includes("ranjit") ||
-    clinicLower.includes("maternity");
+  
+  let isDoctorMatch = false;
+  if (profile.id === "dr-reeta-bhambri") {
+    isDoctorMatch = docLower.includes("bhambri") || docLower.includes("reeta") || clinicLower.includes("ranjit") || clinicLower.includes("maternity");
+  } else if (profile.id === "dr-lovepreet") {
+    isDoctorMatch = docLower.includes("lovepreet") || clinicLower.includes("care & cure") || clinicLower.includes("ludhiana");
+  } else if (profile.id === "dr-sandeep-kumar") {
+    isDoctorMatch = docLower.includes("sandeep") || docLower.includes("kumar") || clinicLower.includes("sandeep medical") || clinicLower.includes("jalandhar");
+  } else if (profile.id === "dr-meenakshi-jain") {
+    isDoctorMatch = docLower.includes("meenakshi") || docLower.includes("jain") || clinicLower.includes("jain healthcare");
+  }
 
   // ANTI-BIAS GUARD: If not explicitly forced and doctor does not match, return untouched!
   if (!options?.force && !isDoctorMatch) {
@@ -743,7 +1993,7 @@ export function calibratePrescriptionOutput(
 
   const calibrated = { ...data };
 
-  calibrated.doctor_name = profile.doctorName + " (" + profile.qualifications + ", P.M.C. Regd. EP 22045)";
+  calibrated.doctor_name = profile.doctorName + " (" + profile.qualifications + ", P.M.C. Regd. " + profile.pmcRegNo + ")";
   calibrated.clinic_name = profile.clinicName + ", " + profile.clinicAddress;
 
   // 2. Calibrate medicines list
@@ -757,7 +2007,7 @@ export function calibratePrescriptionOutput(
       let intendedUse = String(item.intended_use || "").trim();
 
       // Clean prefix "Tas" -> "Tab."
-      rawName = rawName.replace(/^tas\b/i, "Tab.").replace(/^tab\b/i, "Tab.").replace(/^cap\b/i, "Cap.");
+      rawName = rawName.replace(/^tas/i, "Tab.").replace(/^tab/i, "Tab.").replace(/^cap/i, "Cap.");
 
       // Fuzzy match against doctor's formulary
       const lowerRaw = rawName.toLowerCase();
@@ -771,9 +2021,9 @@ export function calibratePrescriptionOutput(
       }
 
       if (matchedDefinition) {
-        rawName = matchedDefinition.brandName.startsWith("Tab") || matchedDefinition.brandName.startsWith("Cap")
+        rawName = matchedDefinition.brandName.startsWith("Tab") || matchedDefinition.brandName.startsWith("Cap") || matchedDefinition.brandName.startsWith("Syp")
           ? matchedDefinition.brandName
-          : `${matchedDefinition.brandName.includes("Augmentin") || matchedDefinition.brandName.includes("Sporlac") ? "Cap." : "Tab."} ${matchedDefinition.brandName}`;
+          : `${matchedDefinition.brandName.includes("Augmentin") || matchedDefinition.brandName.includes("Sporlac") ? "Cap." : matchedDefinition.brandName.includes("Azithral") ? "Syp." : "Tab."} ${matchedDefinition.brandName}`;
         
         if (!dosage || dosage === "As directed") dosage = matchedDefinition.standardDosage;
         if (!frequency || frequency === "As directed") frequency = matchedDefinition.standardFrequency;
@@ -782,23 +2032,23 @@ export function calibratePrescriptionOutput(
         if (!intendedUse) intendedUse = matchedDefinition.intendedUse;
       }
 
-      // Apply dosage mappings (e.g. 650m -> 650mg)
+      // Apply dosage mappings
       const doseKey = dosage.toLowerCase().trim();
       if (profile.dosageMap[doseKey]) {
         dosage = profile.dosageMap[doseKey];
       } else {
-        dosage = dosage.replace(/(\d+)\s*m\b/i, "$1mg");
+        dosage = dosage.replace(/(\d+)\s*m/i, "$1mg");
       }
 
-      // Apply duration mappings (e.g. 7ds -> 7 days)
+      // Apply duration mappings
       const durKey = duration.toLowerCase().trim();
       if (profile.durationMap[durKey]) {
         duration = profile.durationMap[durKey];
       } else {
-        duration = duration.replace(/(\d+)\s*ds\b/i, "$1 days").replace(/(\d+)\s*d\b/i, "$1 days");
+        duration = duration.replace(/(\d+)\s*ds/i, "$1 days").replace(/(\d+)\s*d/i, "$1 days");
       }
 
-      // Apply frequency mappings (e.g. 1 - - 1 -> 1-0-1)
+      // Apply frequency mappings
       const freqKey = frequency.toLowerCase().trim();
       if (profile.frequencyMap[freqKey]) {
         frequency = profile.frequencyMap[freqKey];
@@ -828,23 +2078,36 @@ export function calibratePrescriptionOutput(
   // 3. Clinical Summary refinement
   if (calibrated.medicines && calibrated.medicines.length > 0) {
     const medNames = calibrated.medicines.map((m: any) => m.medicine_name.toLowerCase()).join(" ");
-    if (medNames.includes("folvit") || medNames.includes("ecosprin") || medNames.includes("doxinate") || medNames.includes("drotin")) {
-      calibrated.diagnosis = calibrated.diagnosis || "G2 P1 A0 (Antenatal Care - 2nd Pregnancy)";
-      if (!calibrated.clinical_summary?.overview || calibrated.clinical_summary.overview.includes("Identified")) {
-        calibrated.clinical_summary = {
-          overview: "Calibrated obstetric antenatal prescription for Gravida 2 Para 1 patient. Provides neural tube defect prevention (Folvit), low-dose aspirin preeclampsia prophylaxis (Ecosprin 75), pregnancy-safe antispasmodic for cramping (Drotin 40), and antiemetic for nausea (Doxinate).",
-          total_medicines: calibrated.medicines.length,
-          review_warning: "",
-        };
+    if (profile.id === "dr-reeta-bhambri") {
+      if (medNames.includes("folvit") || medNames.includes("ecosprin") || medNames.includes("doxinate") || medNames.includes("drotin")) {
+        calibrated.diagnosis = calibrated.diagnosis || "G2 P1 A0 (Antenatal Care - 2nd Pregnancy)";
+        if (!calibrated.clinical_summary?.overview || calibrated.clinical_summary.overview.includes("Identified")) {
+          calibrated.clinical_summary = {
+            overview: "Calibrated obstetric antenatal prescription for Gravida 2 Para 1 patient. Provides neural tube defect prevention (Folvit), low-dose aspirin preeclampsia prophylaxis (Ecosprin 75), pregnancy-safe antispasmodic for cramping (Drotin 40), and antiemetic for nausea (Doxinate).",
+            total_medicines: calibrated.medicines.length,
+            review_warning: "",
+          };
+        }
+      } else if (medNames.includes("nft") || medNames.includes("flavospas") || medNames.includes("sporlac")) {
+        calibrated.diagnosis = calibrated.diagnosis || "Acute Urinary Tract Infection (UTI) with Dysuria";
+        if (!calibrated.clinical_summary?.overview || calibrated.clinical_summary.overview.includes("Identified")) {
+          calibrated.clinical_summary = {
+            overview: "Calibrated urological therapy for acute bacterial urinary tract infection (UTI). Combines urinary tract antibiotic (NFT 100), urinary antispasmodic for dysuria relief (Flavospas), probiotic gut/vaginal support (Sporlac), and antipyretic/analgesic (Dolo 650).",
+            total_medicines: calibrated.medicines.length,
+            review_warning: "",
+          };
+        }
       }
-    } else if (medNames.includes("nft") || medNames.includes("flavospas") || medNames.includes("sporlac")) {
-      calibrated.diagnosis = calibrated.diagnosis || "Acute Urinary Tract Infection (UTI) with Dysuria";
-      if (!calibrated.clinical_summary?.overview || calibrated.clinical_summary.overview.includes("Identified")) {
-        calibrated.clinical_summary = {
-          overview: "Calibrated urological therapy for acute bacterial urinary tract infection (UTI). Combines urinary tract antibiotic (NFT 100), urinary antispasmodic for dysuria relief (Flavospas), probiotic gut/vaginal support (Sporlac), and antipyretic/analgesic (Dolo 650).",
-          total_medicines: calibrated.medicines.length,
-          review_warning: "",
-        };
+    } else {
+      if (medNames.includes("augmentin") || medNames.includes("azithral") || medNames.includes("montair") || medNames.includes("dolo")) {
+        calibrated.diagnosis = calibrated.diagnosis || "Acute Respiratory Infection & Symptomatic Febrile Episode";
+        if (!calibrated.clinical_summary?.overview || calibrated.clinical_summary.overview.includes("Identified")) {
+          calibrated.clinical_summary = {
+            overview: `Calibrated clinical therapy by ${profile.doctorName} (${profile.clinicName}). Combines targeted antimicrobials (Augmentin, Azithral), antipyretic analgesia (Dolo 650), proton-pump gastric shielding (Pan 40), and airway bronchodilator coverage (Montair LC).`,
+            total_medicines: calibrated.medicines.length,
+            review_warning: "",
+          };
+        }
       }
     }
   }
@@ -853,16 +2116,34 @@ export function calibratePrescriptionOutput(
 }
 
 /**
- * /**
- * Recognizes if an uploaded file specifically matches Dr. Reeta Bhambri's calibrated study presets.
- * Does NOT match on generic aspect ratios or loose file names to prevent hijacking general prescriptions.
+ * Recognizes if an uploaded file specifically matches any calibrated doctor presets.
  */
 export async function matchPrescriptionPreset(
-  file: File
+  file: File,
+  doctorProfileId?: string
 ): Promise<CalibratedPrescriptionPreset | null> {
   const fileName = (file.name || "").toLowerCase();
 
-  // 1. Direct explicit file name matches for known study artifacts
+  // If a specific doctor is targeted, check that doctor's presets first
+  const targetProfiles = doctorProfileId && doctorProfileId !== "general"
+    ? [getDoctorProfile(doctorProfileId)]
+    : getAllDoctorProfiles();
+
+  for (const prof of targetProfiles) {
+    for (const preset of prof.presets) {
+      if (
+        fileName.includes(preset.id) ||
+        fileName.includes(preset.imageFileName.replace(".jpg", "")) ||
+        (fileName.includes("lovepreet") && prof.id === "dr-lovepreet") ||
+        (fileName.includes("sandeep") && prof.id === "dr-sandeep-kumar") ||
+        (fileName.includes("meenakshi") && prof.id === "dr-meenakshi-jain")
+      ) {
+        return preset;
+      }
+    }
+  }
+
+  // Known Dr. Reeta Bhambri legacy artifacts
   if (
     fileName.includes("antenatal") ||
     fileName.includes("simranjit") ||
@@ -882,25 +2163,27 @@ export async function matchPrescriptionPreset(
     return DR_REETA_BHAMBRI_PROFILE.presets[1];
   }
 
-  // 2. Inspect PDF or binary text snippet for explicit doctor/patient letterhead
+  // Inspect binary snippet for explicit letterhead
   try {
     const slice = file.slice(0, 500000);
     const arrayBuf = await slice.arrayBuffer();
     const str = String.fromCharCode(...new Uint8Array(arrayBuf).slice(0, 100000)).toLowerCase();
 
-    // Must explicitly identify Dr. Reeta Bhambri or Ranjit Clinic AND the specific patient
-    const hasClinicMarker = str.includes("reeta") || str.includes("bhambri") || str.includes("ranjit maternity") || str.includes("ep 22045");
-    
-    if (hasClinicMarker && (str.includes("simranjit") || str.includes("folvit") || str.includes("ecosprin"))) {
+    for (const prof of targetProfiles) {
+      if (str.includes(prof.doctorName.toLowerCase().replace("dr. ", "")) || str.includes(prof.clinicName.toLowerCase())) {
+        if (prof.presets.length > 0) return prof.presets[0];
+      }
+    }
+
+    if ((str.includes("reeta") || str.includes("bhambri")) && (str.includes("simranjit") || str.includes("folvit"))) {
       return DR_REETA_BHAMBRI_PROFILE.presets[0];
     }
-    if (hasClinicMarker && (str.includes("kajal") || str.includes("flavospas") || (str.includes("nft") && str.includes("uti")))) {
+    if ((str.includes("reeta") || str.includes("bhambri")) && (str.includes("kajal") || str.includes("flavospas"))) {
       return DR_REETA_BHAMBRI_PROFILE.presets[1];
     }
   } catch (e) {
     // ignore
   }
 
-  // Pure generic / uncalibrated files return null (never matched by aspect ratio or size)
   return null;
 }

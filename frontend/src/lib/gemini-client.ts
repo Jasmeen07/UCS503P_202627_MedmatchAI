@@ -86,10 +86,10 @@ For items verified against the secondary document, set "verified_source" to "pha
 `;
   }
 
-  // Doctor Calibration Prompt is strictly scoped: only injected if Dr. Reeta Bhambri profile is selected.
-  // When analyzing other doctors, prompt remains 100% universal and unbiased.
-  if (doctorProfileId === "dr-reeta-bhambri") {
-    prompt += getDoctorCalibrationPrompt();
+  // Doctor Calibration Prompt is strictly scoped: only injected if a specific calibrated doctor profile is selected.
+  // When analyzing other doctors or in general mode, prompt remains 100% universal and unbiased.
+  if (doctorProfileId && doctorProfileId !== "general") {
+    prompt += getDoctorCalibrationPrompt(doctorProfileId);
   }
 
   prompt += `
@@ -281,12 +281,12 @@ export async function extractWithGeminiApi(
         other_notes: parsed.other_notes || "",
       };
 
-      if (doctorProfileId === "dr-reeta-bhambri") {
-        return calibratePrescriptionOutput(result, undefined, { force: true });
+      if (doctorProfileId && doctorProfileId !== "general") {
+        return calibratePrescriptionOutput(result, doctorProfileId, { force: true });
       } else if (doctorProfileId === "general") {
         return result; // Pure unbiased universal extraction
       } else {
-        // Auto-detect: only calibrate if letterhead explicitly references Dr. Reeta Bhambri
+        // Auto-detect: only calibrate if letterhead explicitly references a calibrated doctor
         return calibratePrescriptionOutput(result, undefined, { force: false });
       }
     } catch (e: any) {
