@@ -2070,56 +2070,58 @@ export function verifyAndConnectEmergencyQrPass(
 
   const docId = doctorInfo.doctorId || "dr-reeta";
   const docName = doctorInfo.doctorName || "Dr. Reeta Bhambri";
-  const hospital = doctorInfo.hospital || "Ranjit Maternity & Medical Center";
+  const hospital = doctorInfo.hospital || "Ranjit Maternity & Emergency Center";
+  const doctorLicense = "MCI-34182";
 
-  // Grant access
-  updateDoctorPatientAccessStatus(targetEmail, "granted", docId, {
-    requestReason: `Verified Emergency Patient QR Pass (${extractedToken})`,
+  // 1. Activate Emergency Override status in patient access registry
+  updateDoctorPatientAccessStatus(targetEmail, "emergency_override", docId, {
+    requestReason: `Emergency Break-Glass via QR Pass (Token: ${extractedToken})`,
     accessGrantedAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
   });
 
-  // Log in patient audit trail
+  // 2. Log in patient audit trail under Emergency Break-Glass protocol
   addPatientAccessAuditEntry({
     accessorName: docName,
-    accessorRole: "Consulting Doctor",
-    accessorLicense: "MCI-34182",
+    accessorRole: "Emergency Physician",
+    accessorLicense: doctorLicense,
     hospital: hospital,
-    accessType: "QR Code Scanned",
-    reason: `Scanned Time-Limited Emergency QR Pass (Token: ${extractedToken})`,
-    status: "Granted"
+    accessType: "Emergency Break-Glass",
+    reason: `Scanned Time-Limited Emergency Patient QR Pass (${extractedToken}) under Acute Emergency Override`,
+    status: "Emergency Logged"
   }, targetEmail);
 
-  // Send real-time notification to patient
+  // 3. Send critical real-time emergency notification to patient
   try {
     addPatientNotification({
       patientEmail: targetEmail,
-      type: "access_request",
-      title: "📱 Emergency QR Pass Scanned & Verified",
-      message: `${docName} at ${hospital} scanned your Time-Limited QR Pass (${extractedToken}). Medical records unlocked.`,
-      severity: "info",
+      type: "emergency_access",
+      title: "🚨 Emergency Break-Glass Override via QR Pass",
+      message: `${docName} (${doctorLicense}) at ${hospital} scanned your Emergency QR Pass (${extractedToken}) and executed emergency break-glass override. Full emergency medical records and allergy profile unlocked.`,
+      severity: "critical",
       actionUrl: "/dashboard/sharing"
     }, targetEmail);
   } catch {}
 
-  // Trigger cross-window real-time event
+  // 4. Trigger cross-window real-time event
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("medmatch_access_update"));
     try {
       const bc = new BroadcastChannel("medmatch_access_channel");
-      bc.postMessage({ type: "ACCESS_GRANTED", patientEmail: targetEmail, doctorId: docId });
+      bc.postMessage({ type: "ACCESS_GRANTED", accessStatus: "emergency_override", patientEmail: targetEmail, doctorId: docId });
       bc.close();
     } catch {}
   }
 
   const patientList = getHospitalRegisteredPatients(docId);
   const matched = patientList.find(p => p.patientEmail.toLowerCase() === targetEmail.toLowerCase());
+  const finalPatientRecord = matched ? { ...matched, accessStatus: "emergency_override" as const } : undefined;
 
   return {
     success: true,
-    message: `Emergency QR Pass verified successfully! Connected to ${matched?.patientName || targetEmail}.`,
-    patientRecord: matched,
+    message: `🚨 Emergency Override Activated! Connected to ${finalPatientRecord?.patientName || targetEmail} via verified QR Pass.`,
+    patientRecord: finalPatientRecord,
     token: extractedToken,
-    dossierUrl: `/dossier?token=${extractedToken}`
+    dossierUrl: `/dossier?token=${extractedToken}&emergency=true&docName=${encodeURIComponent(docName)}&docLic=${encodeURIComponent(doctorLicense)}`
   };
 }
 

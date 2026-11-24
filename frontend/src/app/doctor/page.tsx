@@ -54,6 +54,7 @@ import {
   getPatientDocuments,
   downloadMedicalSummaryReport,
   verifyDoctorAccess,
+  verifyAndConnectEmergencyQrPass,
   StoredPrescription,
   PatientDocument,
   DoctorPatientRecord,
@@ -109,6 +110,7 @@ export default function DoctorPortalPage() {
   const [emergencyReason, setEmergencyReason] = useState("Acute Emergency Resuscitation & High-Risk Drug Allergy Screening");
   const [emergencyAttestation, setEmergencyAttestation] = useState(false);
   const [emergencyError, setEmergencyError] = useState<string | null>(null);
+  const [emergencyTokenInput, setEmergencyTokenInput] = useState("");
 
   // Emergency QR Scanner Modal
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
@@ -355,10 +357,10 @@ export default function DoctorPortalPage() {
     loadRegistryData();
     setIsQrScannerOpen(false);
     if (result.patientRecord) {
-      showToast(`Emergency Pass Verified: Connected to ${result.patientRecord.patientName}'s clinical vault!`);
+      showToast(`🚨 Emergency Break-Glass Override Activated: Connected to ${result.patientRecord.patientName}'s clinical vault via QR Pass!`);
       handleOpenPatientChart({
         ...result.patientRecord,
-        accessStatus: "granted"
+        accessStatus: "emergency_override"
       });
     } else {
       showToast(result.message || "Emergency QR Pass verified.");
@@ -456,6 +458,7 @@ export default function DoctorPortalPage() {
     setEmergencyTargetPatient(p);
     setEmergencyAttestation(false);
     setEmergencyError(null);
+    setEmergencyTokenInput("");
     setIsEmergencyModalOpen(true);
   };
 
@@ -463,12 +466,36 @@ export default function DoctorPortalPage() {
     e.preventDefault();
     setEmergencyError(null);
     if (!emergencyTargetPatient) return;
-    if (!emergencyAttestation) {
-      setEmergencyError("Clinical Certification required: You must certify under medical council regulations that this is a critical emergency.");
+
+    const docName = userSession?.name || "Dr. Reeta Bhambri";
+    const docId = getDoctorId();
+
+    // If emergency pass token provided (e.g. EMG-1492-VLT or PIN), authenticate via QR pass token engine
+    if (emergencyTokenInput.trim()) {
+      const res = verifyAndConnectEmergencyQrPass(emergencyTokenInput.trim(), {
+        doctorId: docId,
+        doctorName: docName,
+        hospital: "Ranjit Maternity Clinic & Emergency Center"
+      });
+      if (!res.success) {
+        setEmergencyError(res.message);
+        return;
+      }
+      setIsEmergencyModalOpen(false);
+      loadRegistryData();
+      showToast(`🚨 Emergency Break-Glass activated for ${emergencyTargetPatient.patientName} via verified QR Pass token.`);
+      handleOpenPatientChart({
+        ...emergencyTargetPatient,
+        accessStatus: "emergency_override"
+      });
       return;
     }
 
-    const docName = userSession?.name || "Dr. Reeta Bhambri";
+    if (!emergencyAttestation) {
+      setEmergencyError("Clinical Certification required: You must certify under medical council regulations or provide the patient's Emergency QR Pass token.");
+      return;
+    }
+
     const res = verifyDoctorAccess(emergencyTargetPatient.patientUid, undefined, {
       doctorName: docName,
       doctorLicense: "MCI-34182",
@@ -1463,9 +1490,16 @@ export default function DoctorPortalPage() {
                       {selectedPatient.patientUid}
                     </span>
                     {(selectedPatient.accessStatus === "granted" || selectedPatient.accessStatus === "emergency_override") && !accessDeniedError ? (
-                      <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60">
-                        Verified Clinical Vault
-                      </span>
+                      selectedPatient.accessStatus === "emergency_override" ? (
+                        <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-full border border-rose-300 dark:border-rose-800 flex items-center gap-1.5 animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-rose-600" />
+                          <span>🚨 Emergency Break-Glass Active</span>
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60">
+                          Verified Clinical Vault
+                        </span>
+                      )
                     ) : selectedPatient.accessStatus === "revoked" || (accessDeniedError && accessDeniedError.includes("403")) ? (
                       <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded border border-rose-200/60 dark:border-rose-800/60">
                         Access Revoked by Patient
@@ -1585,6 +1619,35 @@ export default function DoctorPortalPage() {
               </div>
             ) : (
               <>
+                {/* Active Emergency Override Banner */}
+                {selectedPatient.accessStatus === "emergency_override" && !accessDeniedError && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-rose-50/70 to-amber-50/50 dark:from-rose-950/60 dark:via-rose-950/30 dark:to-amber-950/20 border-2 border-rose-200 dark:border-rose-900/80 flex items-center justify-between gap-4 text-xs shadow-xs animate-in fade-in mb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/80 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0 border border-rose-300 dark:border-rose-700 shadow-xs">
+                        <AlertTriangle className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-sm text-rose-900 dark:text-rose-200 flex items-center gap-2">
+                          <span>Emergency Break-Glass Record Decryption Active</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 dark:bg-rose-900 dark:text-rose-100 uppercase font-bold">
+                            Audit Sealed
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-rose-800/85 dark:text-rose-300/85 mt-0.5">
+                          Records decrypted under acute emergency override via verified QR Pass / trauma credentials. Full patient health timeline, drug allergies, and active prescriptions unlocked.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 hidden md:block">
+                      <span className="font-mono text-[11px] text-rose-800 dark:text-rose-300 font-bold block">
+                        Attending: {getDoctorName()}
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        MCI-34182 • Emergency Trauma Logged
+                      </span>
+                    </div>
+                  </div>
+                )}
             {/* Offline / Demonstration Notice if backend was unreachable */}
             {networkOfflineNotice && (
               <div className="mx-6 mb-4 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/90 dark:bg-amber-950/50 flex items-center justify-between text-xs text-amber-800 dark:text-amber-200">
@@ -2201,6 +2264,48 @@ export default function DoctorPortalPage() {
                 <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 font-semibold">
                   {emergencyTargetPatient.patientName} ({emergencyTargetPatient.patientUid})
                 </div>
+              </div>
+
+              {/* Emergency QR Pass Fast-Track Option */}
+              <div className="p-3 rounded-xl bg-gradient-to-r from-rose-50 to-amber-50 dark:from-rose-950/40 dark:to-amber-950/40 border border-rose-200 dark:border-rose-900/60 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-rose-900 dark:text-rose-200">
+                    <QrCode className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                    <span>Instant Authorization via Emergency QR Pass</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEmergencyModalOpen(false);
+                      setIsQrScannerOpen(true);
+                    }}
+                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer shadow-xs"
+                  >
+                    <QrCode className="w-3 h-3" />
+                    <span>Open Camera / Scanner</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={emergencyTokenInput}
+                    onChange={(e) => setEmergencyTokenInput(e.target.value)}
+                    placeholder="Or enter Token (e.g. EMG-1492-VLT) or PIN"
+                    className="flex-1 p-2 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 rounded-lg text-xs font-mono uppercase"
+                  />
+                  {emergencyTokenInput && (
+                    <button
+                      type="button"
+                      onClick={() => setEmergencyTokenInput("")}
+                      className="text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-rose-800/80 dark:text-rose-300/80 leading-normal">
+                  Scanning or entering the patient's Emergency QR Pass token cryptographically validates this Break-Glass override immediately.
+                </p>
               </div>
 
               <div>
