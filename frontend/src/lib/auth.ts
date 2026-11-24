@@ -115,9 +115,19 @@ export function getRegisteredAccounts(): RegisteredAccount[] {
         if (!existing) {
           parsed.push(def);
           updated = true;
-        } else if (existing.role !== def.role) {
-          existing.role = def.role;
-          updated = true;
+        } else {
+          if (existing.name !== def.name) {
+            existing.name = def.name;
+            updated = true;
+          }
+          if (existing.role !== def.role) {
+            existing.role = def.role;
+            updated = true;
+          }
+          if (existing.password !== def.password) {
+            existing.password = def.password;
+            updated = true;
+          }
         }
       }
       if (updated) {
@@ -226,10 +236,15 @@ export function validateCredentials(
     };
   }
 
+  const isDoctorReeta =
+    cleanEmail === "doctor@medmatch.com" ||
+    cleanEmail.includes("reeta") ||
+    cleanEmail.includes("bhambri");
+
   const session: UserSession = {
     id: account.id,
     email: account.email,
-    name: account.name,
+    name: isDoctorReeta ? "Dr. Reeta Bhambri" : account.name,
     role: account.role,
     loggedInAt: Date.now()
   };
@@ -248,6 +263,13 @@ export function getUserSession(): UserSession | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object" && parsed.email) {
+      const cleanEmail = (parsed.email || "").toLowerCase().trim();
+      if (cleanEmail === "doctor@medmatch.com" || cleanEmail.includes("reeta") || cleanEmail.includes("bhambri")) {
+        if (parsed.name !== "Dr. Reeta Bhambri") {
+          parsed.name = "Dr. Reeta Bhambri";
+          localStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+        }
+      }
       return parsed as UserSession;
     }
     return null;

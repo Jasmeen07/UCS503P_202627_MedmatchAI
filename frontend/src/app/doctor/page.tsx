@@ -127,8 +127,15 @@ export default function DoctorPortalPage() {
   };
 
   const getDoctorName = () => {
+    const email = (userSession?.email || "").toLowerCase().trim();
+    if (email === "doctor@medmatch.com" || email.includes("reeta") || email.includes("bhambri")) {
+      return "Dr. Reeta Bhambri";
+    }
     if (!userSession?.name) return "Dr. Reeta Bhambri";
     const trimmed = userSession.name.trim();
+    if (trimmed.toLowerCase().includes("sharma") && (email === "doctor@medmatch.com" || !email || email.includes("medmatch"))) {
+      return "Dr. Reeta Bhambri";
+    }
     if (/^dr\.?\s+/i.test(trimmed)) return trimmed;
     return `Dr. ${trimmed}`;
   };
