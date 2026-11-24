@@ -36,8 +36,10 @@ import {
   UserCheck,
   Shield,
   LayoutGrid,
-  ListFilter
+  ListFilter,
+  QrCode
 } from "lucide-react";
+import { DoctorQrScannerModal } from "@/components/DoctorQrScannerModal";
 import { 
   verifyActiveSession,
   clearUserSession,
@@ -107,6 +109,9 @@ export default function DoctorPortalPage() {
   const [emergencyReason, setEmergencyReason] = useState("Acute Emergency Resuscitation & High-Risk Drug Allergy Screening");
   const [emergencyAttestation, setEmergencyAttestation] = useState(false);
   const [emergencyError, setEmergencyError] = useState<string | null>(null);
+
+  // Emergency QR Scanner Modal
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
 
   // Toast Notification
   const [toast, setToast] = useState<string | null>(null);
@@ -341,6 +346,25 @@ export default function DoctorPortalPage() {
     }
   };
 
+  const handleQrScanSuccess = (result: {
+    patientRecord?: DoctorPatientRecord;
+    token?: string;
+    dossierUrl?: string;
+    message: string;
+  }) => {
+    loadRegistryData();
+    setIsQrScannerOpen(false);
+    if (result.patientRecord) {
+      showToast(`Emergency Pass Verified: Connected to ${result.patientRecord.patientName}'s clinical vault!`);
+      handleOpenPatientChart({
+        ...result.patientRecord,
+        accessStatus: "granted"
+      });
+    } else {
+      showToast(result.message || "Emergency QR Pass verified.");
+    }
+  };
+
   const handleCompleteAppointment = (aptId: string | number, patientName: string) => {
     syncDoctorRequestAction(aptId, "complete");
     loadRegistryData();
@@ -553,6 +577,14 @@ export default function DoctorPortalPage() {
           </div>
 
           <div className="flex items-center gap-2.5 text-xs">
+            <button
+              onClick={() => setIsQrScannerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer shadow-xs"
+              title="Scan Patient Emergency QR Pass"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden sm:inline">Scan QR Pass</span>
+            </button>
             <Link
               href="/dashboard/scan"
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 transition-all shadow-xs hover:shadow"
@@ -599,6 +631,14 @@ export default function DoctorPortalPage() {
               </div>
 
               <div className="flex items-center gap-2.5 flex-wrap self-start lg:self-center">
+                <button
+                  onClick={() => setIsQrScannerOpen(true)}
+                  className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 rounded-xl transition-all shadow-sm hover:shadow flex items-center gap-2 cursor-pointer hover:scale-102"
+                  title="Scan Patient Emergency QR Pass or Enter Token"
+                >
+                  <QrCode className="w-4 h-4 text-emerald-200" />
+                  <span>Scan Emergency QR Pass</span>
+                </button>
                 <button
                   onClick={loadRegistryData}
                   className="px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer"
@@ -782,6 +822,15 @@ export default function DoctorPortalPage() {
             }`}>
               {allRequests.length}
             </span>
+          </button>
+
+          <button
+            onClick={() => setIsQrScannerOpen(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/80 sm:ml-auto shrink-0 shadow-xs hover:shadow"
+            title="Scan Patient Emergency QR Pass"
+          >
+            <QrCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Scan Emergency QR Pass</span>
           </button>
         </div>
 
@@ -1303,6 +1352,32 @@ export default function DoctorPortalPage() {
                         ))}
                     </div>
                   )}
+                </div>
+
+                {/* Emergency QR Pass Scanner Card */}
+                <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-slate-900/5 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 border border-emerald-200/90 dark:border-emerald-800/60 p-4.5 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                        Emergency QR Pass
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Instant Unlock
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Connect to patient emergency profile, blood group, critical allergies, and unlocked records by scanning their QR pass or entering token (e.g. <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">EMG-1492-VLT</span>).
+                  </p>
+                  <button
+                    onClick={() => setIsQrScannerOpen(true)}
+                    className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer hover:shadow"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>Launch QR Scanner &amp; Token Pass</span>
+                  </button>
                 </div>
 
                 {/* Panel 2: Multi-Doctor Calibrated Prescription OCR */}
@@ -2294,6 +2369,20 @@ export default function DoctorPortalPage() {
           </div>
         </div>
       )}
+
+      {/* =========================================================================
+          MODAL: TIME-LIMITED EMERGENCY PATIENT QR PASS SCANNER
+          ========================================================================= */}
+      <DoctorQrScannerModal
+        isOpen={isQrScannerOpen}
+        onClose={() => setIsQrScannerOpen(false)}
+        onScanSuccess={handleQrScanSuccess}
+        doctorInfo={{
+          doctorId: getDoctorId(),
+          doctorName: getDoctorName(),
+          hospital: "Ranjit Maternity Clinic & Emergency Center"
+        }}
+      />
     </div>
   );
 }
