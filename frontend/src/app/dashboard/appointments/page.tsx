@@ -56,7 +56,7 @@ const SPECIALTIES = [
 ];
 
 const QUICK_REASONS = [
-  "Routine Antenatal Ultrasound & Review",
+  "Clinical Health Consultation & Review",
   "Post-Operative Wound Inspection",
   "Blood Pressure & Diabetes Follow-up",
   "Prescription Refill & Dosage Adjustment",
@@ -90,17 +90,17 @@ export default function AppointmentsPage() {
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>("dr-reeta");
 
   // Create Form State with reliable defaults
-  const [newTitle, setNewTitle] = useState("Antenatal Ultrasound & Review");
+  const [newTitle, setNewTitle] = useState("Clinical Health Consultation");
   const [newDoc, setNewDoc] = useState("Dr. Reeta Bhambri");
-  const [newSpecialty, setNewSpecialty] = useState("Obstetrics & Antenatal Care");
+  const [newSpecialty, setNewSpecialty] = useState("General Medicine");
   const [newDate, setNewDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d.toISOString().split("T")[0];
   });
   const [newTime, setNewTime] = useState("10:30 AM");
-  const [newLocation, setNewLocation] = useState("Ranjit Maternity Clinic & Nursing Home");
-  const [newNotes, setNewNotes] = useState("Bring past scan reports and blood panel sheets.");
+  const [newLocation, setNewLocation] = useState("Ranjit Maternity & Clinical Suite");
+  const [newNotes, setNewNotes] = useState("Clinical consultation and evaluation.");
 
   // Reschedule Form State
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -170,8 +170,8 @@ export default function AppointmentsPage() {
       setNewTime(doc.defaultSlots[0]);
     }
     if (doc.id === "dr-reeta") {
-      setNewTitle("Antenatal Ultrasound & Review");
-      setNewNotes("Bring prior ultrasound records and hemoglobin panel.");
+      setNewTitle("Clinical Consultation & Evaluation");
+      setNewNotes("Bring any recent medical reports or prescription slips.");
     } else if (doc.id === "dr-duggal") {
       setNewTitle("Post-Operative Wound Inspection & Suture Check");
       setNewNotes("Wound inspection. Dressing replacement required.");
@@ -1042,7 +1042,7 @@ export default function AppointmentsPage() {
                 <input 
                   type="text" 
                   required
-                  placeholder="e.g. Antenatal Ultrasound & Review, BP Evaluation" 
+                  placeholder="e.g. Clinical Health Consultation, BP Review, Health Checkup" 
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"

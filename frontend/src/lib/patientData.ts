@@ -879,40 +879,27 @@ export function savePatientAppointments(appointments: AppointmentItem[], email?:
 // Doctor Portal Appointment Requests & Real-Time Sync API
 // ============================================================================
 
-export const INITIAL_DOCTOR_REQUESTS: DoctorRequest[] = [
-  {
-    id: "req-1",
-    patientName: "Jasmeen Kaur",
-    patientEmail: "patient@medmatch.com",
-    patientUid: "PT-2026-LUD-8821",
-    doctorName: "Dr. Reeta Bhambri",
-    doctorId: "dr-reeta",
-    reason: "Antenatal Ultrasound & 28-Week Gestational Review",
-    date: "Nov 20, 2026",
-    time: "10:30 AM",
-    location: "Ranjit Maternity Clinic & Nursing Home",
-    specialty: "Obstetrics & Antenatal Care",
-    urgency: "Priority",
-    status: "confirmed",
-    dossierToken: "EMG-8821-VLT",
-    notes: "Patient reports mild ankle edema. Blood pressure stable. Folic acid and iron adherence regular.",
-    createdAt: 1700000000000
-  }
-];
+export const INITIAL_DOCTOR_REQUESTS: DoctorRequest[] = [];
 
 export function getDoctorRequests(): DoctorRequest[] {
-  if (typeof window === "undefined") return [...INITIAL_DOCTOR_REQUESTS];
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem("medmatch_doctor_requests");
     if (raw) {
       let parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Purge synthetic demo sample accounts (never real logged-in users)
+        // Purge synthetic demo sample accounts and legacy mock bookings (never real logged-in users)
         const prevLen = parsed.length;
         parsed = parsed.filter((r: any) => {
           const e = (r.patientEmail || "").toLowerCase().trim();
           const n = (r.patientName || "").toLowerCase().trim();
-          return !e.includes("harpreet") && !e.includes("amandeep") && !n.includes("harpreet") && !n.includes("amandeep");
+          const id = (r.id || "").toString();
+          // Purge synthetic demo requests or calibration sheet sample names
+          if (id === "req-1") return false;
+          if (n.includes("simranjit") || n.includes("harpreet") || n.includes("amandeep")) return false;
+          if (e.includes("simranjit") || e.includes("harpreet") || e.includes("amandeep") || e === "patient@medmatch.com") return false;
+          if (n === "jasmeen kaur" && e === "patient@medmatch.com") return false;
+          return true;
         });
         if (parsed.length !== prevLen) {
           localStorage.setItem("medmatch_doctor_requests", JSON.stringify(parsed));
@@ -920,11 +907,10 @@ export function getDoctorRequests(): DoctorRequest[] {
         return parsed;
       }
     }
-    localStorage.setItem("medmatch_doctor_requests", JSON.stringify(INITIAL_DOCTOR_REQUESTS));
-    return [...INITIAL_DOCTOR_REQUESTS];
+    return [];
   } catch (e) {
     console.warn("Error reading doctor requests:", e);
-    return [...INITIAL_DOCTOR_REQUESTS];
+    return [];
   }
 }
 
@@ -1052,7 +1038,7 @@ export function addPatientAppointment(apt: Omit<AppointmentItem, "id">, email?: 
     const access = getPatientAccessControl(user);
     const accounts = getRegisteredAccounts();
     const account = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
-    const patientName = account?.name || access.patientName || (isDemoPatient(user) ? "Jasmeen Kaur" : user.split("@")[0]);
+    const patientName = account?.name || access.patientName || (user !== "anonymous" ? user.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) : "Verified Patient");
     const patientUid = access.patientUid || `PT-2026-${(account?.id || user).replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase()}-8821`;
 
     const docTarget = (apt.doc || "").toLowerCase();
@@ -1077,7 +1063,7 @@ export function addPatientAppointment(apt: Omit<AppointmentItem, "id">, email?: 
       specialty: apt.specialty || "General Medicine",
       urgency: apt.title.toLowerCase().includes("emergency") ? "Priority" : "Routine",
       status: "confirmed",
-      dossierToken: access.token || "EMG-8821-VLT",
+      dossierToken: access.token || getEmergencyToken(user),
       notes: apt.notes ? `${apt.notes} (Location: ${apt.location})` : `Booked via Patient Portal. Location: ${apt.location}`,
       createdAt: Date.now()
     };
@@ -1688,40 +1674,18 @@ export function getPatientAccessControl(email?: string | null): PatientAccessCon
     };
   }
 
-  // Simranjit Kaur or Custom Registered User
-  const isDemo = isDemoPatient(user) || user === "anonymous";
-  const name = isDemo ? "Simranjit Kaur" : user.split("@")[0].toUpperCase();
-  const uid = isDemo ? "PT-2026-LUD-8821" : `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`;
-  const phone = isDemo ? "+91 98765-43210" : "+91 98000-00000";
-  const token = isDemo ? DEFAULT_EMERGENCY_TOKEN : getEmergencyToken(user);
-  const defaultPasscode = isDemo ? "882194" : "542918";
+  // Verified Patient Account Access Profile
+  const accounts = getRegisteredAccounts();
+  const acc = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
+  const name = acc?.name || (user !== "anonymous" ? user.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) : "Verified Patient");
+  const uid = acc ? `PT-2026-${acc.id.replace("usr-", "").slice(0, 8).toUpperCase()}` : `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`;
+  const phone = "+91 98000-00000";
+  const token = getEmergencyToken(user);
+  const defaultPasscode = "542918";
 
   let doctorPasscode = defaultPasscode;
   let accessGranted = true;
-  let auditLog: AccessAuditEntry[] = isDemo ? [
-    {
-      id: "aud-s1",
-      timestamp: "Today, 10:15 AM",
-      accessorName: "Dr. Reeta Bhambri",
-      accessorRole: "Consulting Doctor",
-      accessorLicense: "MCI-34182",
-      hospital: "Ranjit Maternity Clinic & Nursing Home",
-      accessType: "Passcode Verified",
-      reason: "Antenatal 28-Week Gestational Review",
-      status: "Granted"
-    },
-    {
-      id: "aud-s2",
-      timestamp: "Sep 12, 2026, 02:40 PM",
-      accessorName: "Dr. H.S. Virk",
-      accessorRole: "Consulting Doctor",
-      accessorLicense: "PBI-19842",
-      hospital: "City Care Super Speciality",
-      accessType: "QR Code Scanned",
-      reason: "Acute UTI Care Episode Consultation",
-      status: "Granted"
-    }
-  ] : [];
+  let auditLog: AccessAuditEntry[] = [];
 
   if (typeof window !== "undefined") {
     try {
@@ -1740,7 +1704,7 @@ export function getPatientAccessControl(email?: string | null): PatientAccessCon
   }
 
   return {
-    patientEmail: isDemo ? "jk0822123@gmail.com" : user,
+    patientEmail: user,
     patientName: name,
     patientUid: uid,
     phoneNumber: phone,
@@ -2273,45 +2237,19 @@ export function getHospitalRegisteredPatients(
     }
 
     const uid = ac.patientUid || `PT-2026-${a.id.replace("usr-", "").toUpperCase()}`;
-    const isDemo = isDemoPatient(userEmail);
-    const isHarpreet = userEmail.includes("harpreet");
-    const isAmandeep = userEmail.includes("amandeep");
-
-    let primaryCondition = "General Medical Vault";
+    const ep = getPatientEmergencyProfile(userEmail);
+    let primaryCondition = rxs[0]?.diag || (rxs.length > 0 ? "Under Active Clinical Care" : "General Medical Vault");
     let ageGender = "Patient / Verified";
-    let bloodGroup = "O+ (Rh Positive)";
-    let allergiesSummary = "None recorded";
-    let emergencyContactName = "Primary Emergency Contact";
-    let emergencyContactPhone = "+91 98000-00000";
-
-    if (isDemo) {
-      primaryCondition = "Antenatal Care (Trimester II — Week 28)";
-      ageGender = "26 Y / Female";
-      bloodGroup = "B+ (Rh Positive)";
-      allergiesSummary = "Penicillin / Amoxicillin (Severe Angioedema)";
-      emergencyContactName = "Jaswinder Singh (Spouse)";
-      emergencyContactPhone = "+91 98765-43210";
-    } else if (isHarpreet) {
-      primaryCondition = "Post-Cholecystectomy & Hypertension";
-      ageGender = "54 Y / Male";
-      bloodGroup = "A+ (Rh Positive)";
-      allergiesSummary = "Sulfa Drugs / Ciprofloxacin (Skin Rash)";
-      emergencyContactName = "Gurpreet Kaur (Spouse)";
-      emergencyContactPhone = "+91 98881-23456";
-    } else if (isAmandeep) {
-      primaryCondition = "First Trimester Antenatal & Hypothyroidism";
-      ageGender = "29 Y / Female";
-      bloodGroup = "AB+ (Rh Positive)";
-      allergiesSummary = "No Severe Drug Hypersensitivities Logged";
-      emergencyContactName = "Rajesh Sharma (Spouse)";
-      emergencyContactPhone = "+91 98882-65431";
-    }
+    let bloodGroup = ep.bloodGroup || "O+ (Rh Positive)";
+    let allergiesSummary = ep.allergies.length > 0 ? ep.allergies.map(al => al.substance).join(", ") : "None recorded";
+    let emergencyContactName = ep.emergencyContact?.name || "Emergency Contact";
+    let emergencyContactPhone = ep.emergencyContact?.phone || "+91 98000-00000";
 
     return {
       patientEmail: a.email,
       patientName: a.name || a.email.split("@")[0],
       patientUid: uid,
-      phoneNumber: ac.phoneNumber || (isHarpreet ? "+91 98881-23456" : isAmandeep ? "+91 98882-65431" : "+91 98881-88219"),
+      phoneNumber: ac.phoneNumber || "+91 98881-88219",
       ageGender,
       bloodGroup,
       primaryCondition,
@@ -3742,27 +3680,22 @@ export function getPatientDossier(email?: string | null, tokenOverride?: string 
     return getAmandeepSharmaDossier(rawToken || "EMG-4091-VLT");
   }
 
-  if (rawToken.includes("8821") && (!resolvedEmail || resolvedEmail === "anonymous" || resolvedEmail.includes("simranjit"))) {
-    return getSimranjitKaurDossier(rawToken || DEFAULT_EMERGENCY_TOKEN);
-  }
-
   // 3. Fallback to active logged-in user if not resolved yet
   if (!resolvedEmail || resolvedEmail === "anonymous") {
     resolvedEmail = getActivePatientEmail().trim().toLowerCase();
   }
 
-  // 4. If we have a non-demo user, construct real live dynamic dossier
-  if (!isDemoPatient(resolvedEmail) && resolvedEmail !== "anonymous") {
-    const user = resolvedEmail;
-    const token = rawToken || getEmergencyToken(user);
-    const emergencyProfile = getPatientEmergencyProfile(user);
-    const treatmentGroups = getPatientTreatmentGroups(user);
-    const userPrescriptions = getPatientPrescriptions(user);
+  // 4. Construct real live dynamic dossier for the target patient
+  const user = resolvedEmail && resolvedEmail !== "anonymous" ? resolvedEmail : "patient@medmatch.com";
+  const token = rawToken || getEmergencyToken(user);
+  const emergencyProfile = getPatientEmergencyProfile(user);
+  const treatmentGroups = getPatientTreatmentGroups(user);
+  const userPrescriptions = getPatientPrescriptions(user);
 
-    const accounts = getRegisteredAccounts();
-    const acc = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
-    const patientName = resolvedName || acc?.name || (user === "jk0822123@gmail.com" ? "Jasmeen Kaur" : user.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
-    const patientUid = resolvedUid || `PT-2026-REG-${(acc?.id || user).replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase()}`;
+  const accounts = getRegisteredAccounts();
+  const acc = accounts.find(a => (a.email || "").toLowerCase().trim() === user);
+  const patientName = resolvedName || acc?.name || (user !== "anonymous" && user !== "patient@medmatch.com" ? user.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Verified Patient");
+  const patientUid = resolvedUid || (acc ? `PT-2026-${acc.id.replace("usr-", "").slice(0, 8).toUpperCase()}` : `PT-2026-REG-${user.slice(0, 4).toUpperCase()}`);
 
     const episodes: ClinicalEpisode[] = treatmentGroups.map(tg => ({
       id: tg.id,
@@ -3851,9 +3784,5 @@ export function getPatientDossier(email?: string | null, tokenOverride?: string 
       generatedAt,
       expiresAt
     };
-  }
-
-  // 5. Default fallback: Simranjit Kaur
-  return getSimranjitKaurDossier(rawToken || DEFAULT_EMERGENCY_TOKEN);
 }
 

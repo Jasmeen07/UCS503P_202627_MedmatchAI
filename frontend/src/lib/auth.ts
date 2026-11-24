@@ -45,7 +45,7 @@ const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
     id: "usr-demo-patient",
     email: "patient@medmatch.com",
     password: "Password123",
-    name: "Jasmeen Kaur",
+    name: "Demo Patient",
     role: "patient",
     createdAt: 1700000000000
   },
