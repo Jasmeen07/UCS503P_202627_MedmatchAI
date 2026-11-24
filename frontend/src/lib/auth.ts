@@ -15,7 +15,7 @@ export interface UserSession {
   id: string;
   email: string;
   name: string;
-  role: "patient" | "doctor" | "pharmacy";
+  role: "patient" | "doctor" | string;
   loggedInAt: number;
 }
 
@@ -24,7 +24,7 @@ export interface RegisteredAccount {
   email: string;
   password: string;
   name: string;
-  role: "patient" | "doctor" | "pharmacy";
+  role: "patient" | "doctor" | string;
   createdAt: number;
 }
 

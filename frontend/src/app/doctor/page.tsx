@@ -34,7 +34,9 @@ import {
   Activity,
   Check,
   UserCheck,
-  Shield
+  Shield,
+  LayoutGrid,
+  ListFilter
 } from "lucide-react";
 import { 
   verifyActiveSession,
@@ -73,6 +75,7 @@ export default function DoctorPortalPage() {
   // Search & Filter
   const [patientSearch, setPatientSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "granted" | "pending" | "needs_request">("all");
+  const [patientViewMode, setPatientViewMode] = useState<"cards" | "table">("cards");
 
   // Appointment filters & state
   const [appointmentFilter, setAppointmentFilter] = useState<"all" | "upcoming" | "completed">("upcoming");
@@ -128,6 +131,13 @@ export default function DoctorPortalPage() {
     const trimmed = userSession.name.trim();
     if (/^dr\.?\s+/i.test(trimmed)) return trimmed;
     return `Dr. ${trimmed}`;
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
   };
 
   const loadRegistryData = () => {
@@ -505,37 +515,48 @@ export default function DoctorPortalPage() {
       )}
 
       {/* Top Clinical Header */}
-      <header className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-[#0c1220] sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-bold tracking-tight text-base hover:opacity-85 transition-opacity">
-              <Stethoscope className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-              <span>MedMatch AI</span>
+      <header className="border-b border-slate-200/90 dark:border-slate-800/90 bg-white/95 dark:bg-[#0c1220]/95 backdrop-blur-md sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <Link href="/" className="flex items-center gap-2.5 text-teal-900 dark:text-teal-200 font-extrabold tracking-tight text-lg hover:opacity-90 transition-opacity">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-xs">
+                <Stethoscope className="w-4.5 h-4.5" />
+              </div>
+              <span>MedMatch <span className="text-teal-600 dark:text-teal-400">AI</span></span>
             </Link>
-            <span className="text-slate-300 dark:text-slate-700 font-light">|</span>
-            <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
-                {getDoctorName()}
-              </span>
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/70 dark:border-teal-800/60 font-bold">
-                MCI-34182
-              </span>
-              <span className="text-slate-400 hidden sm:inline">• Ranjit Maternity Clinic &amp; Emergency Center</span>
+            <span className="text-slate-300 dark:text-slate-700 font-light hidden sm:inline">|</span>
+            <div className="flex items-center gap-2.5 text-xs">
+              <div className="w-8 h-8 rounded-xl bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-200 flex items-center justify-center font-bold text-xs border border-teal-200 dark:border-teal-800 shadow-xs">
+                {getDoctorName().replace(/^Dr\.\s*/i, "").slice(0, 1) || "D"}
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                    {getDoctorName()}
+                  </span>
+                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded font-bold bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800">
+                    PMC Regd. EP-22045
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[280px]">
+                  Ranjit Maternity Clinic &amp; Medical Network
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-xs">
             <Link
               href="/dashboard/scan"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/40 border border-teal-200/70 dark:border-teal-800/60 font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-bold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 transition-all shadow-xs hover:shadow"
               title="Launch Prescription OCR Engine"
             >
-              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-              <span>Scan Prescription (OCR)</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Prescription OCR</span>
             </Link>
             <button
               onClick={handleDoctorLogout}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/80 dark:border-slate-800 rounded-xl transition-all cursor-pointer font-semibold"
               title="Sign Out of Doctor Workstation"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -549,39 +570,44 @@ export default function DoctorPortalPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
         
         {/* Executive Clinical Telemetry Header */}
-        <section className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
+        <section className="mb-7">
+          <div className="rounded-3xl bg-gradient-to-br from-white via-teal-50/25 to-slate-50 dark:from-slate-900 dark:via-teal-950/20 dark:to-slate-900/90 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 mb-6 shadow-xs">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-100/80 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Hospital Clinical Workstation • Live Network
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono">
+                    Shift ID: OPD-2026-CH-01
+                  </span>
+                </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-                  Hospital Patient Workstation
+                  {getGreeting()}, <span className="text-teal-700 dark:text-teal-300">{getDoctorName()}</span>
                 </h1>
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Sync Connected
-                </span>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Decrypted patient health records, live consent permission registry, and scheduled outpatient consultation queue.
+                </p>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Patient consent registry, real-time cryptographic record access, and OPD consultation queue
-              </p>
-            </div>
 
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={loadRegistryData}
-                className="px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                title="Refresh patient authorization statuses"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Sync Registry</span>
-              </button>
-              <Link
-                href="/dashboard/scan"
-                className="px-3.5 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Scan Rx (OCR)</span>
-              </Link>
+              <div className="flex items-center gap-2.5 flex-wrap self-start lg:self-center">
+                <button
+                  onClick={loadRegistryData}
+                  className="px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                  title="Refresh patient authorization statuses"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>Sync Registry</span>
+                </button>
+                <Link
+                  href="/dashboard/scan"
+                  className="px-4 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 rounded-xl transition-all shadow-xs flex items-center gap-2"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Prescription Scanner (OCR)</span>
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -756,14 +782,14 @@ export default function DoctorPortalPage() {
             VIEW 1: REGISTERED PATIENT DIRECTORY
             ========================================================================= */}
         {activeTab === "patients" && !selectedPatient && (
-          <div className="space-y-4">
-            {/* Search and Category Filter Toolbar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="relative flex-1 max-w-md">
+          <div className="space-y-6">
+            {/* Search, Filter & Layout Toolbar */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div className="relative flex-1 max-w-lg">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search by patient name, email, condition, or UID..."
+                  placeholder="Search by patient name, email, condition, phone, or UID..."
                   value={patientSearch}
                   onChange={(e) => setPatientSearch(e.target.value)}
                   className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-slate-900 dark:text-slate-100"
@@ -778,222 +804,560 @@ export default function DoctorPortalPage() {
                 )}
               </div>
 
-              {/* Segmented Filter Pills */}
-              <div className="flex items-center gap-1.5 text-xs overflow-x-auto pb-1 sm:pb-0">
-                {(
-                  [
-                    { key: "all", label: `All Patients (${patients.length})` },
-                    { key: "granted", label: `Authorized (${authorizedCount})` },
-                    { key: "pending", label: `Awaiting (${pendingCount})` },
-                    { key: "needs_request", label: `Action Needed (${needsActionCount})` },
-                  ] as const
-                ).map(({ key, label }) => (
+              {/* Segmented Filter Pills & Layout Mode Toggle */}
+              <div className="flex items-center gap-2 justify-between lg:justify-end flex-wrap">
+                <div className="flex items-center gap-1.5 text-xs overflow-x-auto pb-1 sm:pb-0">
+                  {(
+                    [
+                      { key: "all", label: `All Patients (${patients.length})` },
+                      { key: "granted", label: `Authorized (${authorizedCount})` },
+                      { key: "pending", label: `Awaiting (${pendingCount})` },
+                      { key: "needs_request", label: `Action Needed (${needsActionCount})` },
+                    ] as const
+                  ).map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setStatusFilter(key)}
+                      className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        statusFilter === key
+                          ? "bg-teal-700 text-white dark:bg-teal-600 dark:text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* View Switcher: Cards vs Table */}
+                <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shrink-0">
                   <button
-                    key={key}
-                    onClick={() => setStatusFilter(key)}
-                    className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
-                      statusFilter === key
-                        ? "bg-teal-700 text-white dark:bg-teal-600 dark:text-white shadow-xs"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    type="button"
+                    onClick={() => setPatientViewMode("cards")}
+                    className={`p-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      patientViewMode === "cards"
+                        ? "bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                     }`}
+                    title="Interactive Cards View"
                   >
-                    {label}
+                    <LayoutGrid className="w-3.5 h-3.5" />
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setPatientViewMode("table")}
+                    className={`p-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      patientViewMode === "table"
+                        ? "bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                    title="Dense Table View"
+                  >
+                    <ListFilter className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Patient Directory Table Card */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200/90 dark:border-slate-800 text-[11px] text-slate-500 uppercase tracking-wider font-bold">
-                      <th className="py-3.5 px-4">Patient Identity</th>
-                      <th className="py-3.5 px-4">Demographics &amp; Contact</th>
-                      <th className="py-3.5 px-4 text-center">Clinical Vault</th>
-                      <th className="py-3.5 px-4">Authorization Status</th>
-                      <th className="py-3.5 px-4 text-right">Workstation Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {filteredPatients.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-16 text-center text-slate-400">
-                          <Users className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-                          <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                            No registered patients match this filter
-                          </div>
-                          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                            Try adjusting your search query or reset the filter to view all hospital patients.
-                          </p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredPatients.map((patient) => {
-                        const isGranted = patient.accessStatus === "granted" || patient.accessStatus === "emergency_override";
-                        const isPending = patient.accessStatus === "pending";
-                        const isRevoked = patient.accessStatus === "revoked";
+            {/* Structured Main Content: Split Grid with Patient Roster & Shift Companion */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+              {/* Primary Column: Patients Display (Cards or Table) */}
+              <div className="xl:col-span-8 space-y-4">
+                {filteredPatients.length === 0 ? (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center text-slate-400 shadow-xs">
+                    <Users className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                      No registered patients match this filter
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Try adjusting your search criteria or switch to "All Patients" to view the complete clinic directory.
+                    </p>
+                  </div>
+                ) : patientViewMode === "cards" ? (
+                  /* Modern Cards Grid View */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredPatients.map((patient) => {
+                      const isGranted = patient.accessStatus === "granted" || patient.accessStatus === "emergency_override";
+                      const isPending = patient.accessStatus === "pending";
+                      const isRevoked = patient.accessStatus === "revoked";
+                      const upAppt = doctorAppointments.find(
+                        (a) =>
+                          a.patientEmail.toLowerCase() === patient.patientEmail.toLowerCase() &&
+                          (a.status === "confirmed" || a.status === "rescheduled")
+                      );
 
-                        return (
-                          <tr 
-                            key={patient.patientEmail}
-                            className="hover:bg-teal-50/20 dark:hover:bg-slate-800/40 transition-colors group"
+                      return (
+                        <div
+                          key={patient.patientEmail}
+                          className={`relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border transition-all duration-200 hover:shadow-md flex flex-col justify-between ${
+                            isGranted
+                              ? "border-emerald-200/90 dark:border-emerald-900/60 shadow-xs"
+                              : isRevoked
+                              ? "border-rose-200/90 dark:border-rose-950/60"
+                              : isPending
+                              ? "border-amber-200/90 dark:border-amber-950/60"
+                              : "border-slate-200/90 dark:border-slate-800"
+                          }`}
+                        >
+                          {/* Status Banner Strip on Top */}
+                          <div
+                            className={`px-4 py-2 border-b flex items-center justify-between text-xs ${
+                              isGranted
+                                ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300"
+                                : isRevoked
+                                ? "bg-rose-50/70 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/40 text-rose-800 dark:text-rose-300"
+                                : isPending
+                                ? "bg-amber-50/70 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/40 text-amber-800 dark:text-amber-300"
+                                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                            }`}
                           >
-                            {/* Patient Identity */}
-                            <td className="py-4 px-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                                  {patient.patientName.slice(0, 2).toUpperCase()}
-                                </div>
-                                <div>
-                                  <div className="font-bold text-sm text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-1.5">
-                                    <span>{patient.patientName}</span>
-                                    {(() => {
-                                      const upAppt = doctorAppointments.find(a => a.patientEmail.toLowerCase() === patient.patientEmail.toLowerCase() && (a.status === "confirmed" || a.status === "rescheduled"));
-                                      if (!upAppt) return null;
-                                      return (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/60">
-                                          <Calendar className="w-3 h-3 text-indigo-500" />
-                                          <span>{upAppt.date}</span>
-                                        </span>
-                                      );
-                                    })()}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                      {patient.patientUid}
-                                    </span>
-                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/60">
-                                      {patient.bloodGroup}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Demographics & Contact */}
-                            <td className="py-4 px-4">
-                              <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{patient.patientEmail}</div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{patient.phoneNumber}</div>
-                              <div className="text-[10px] text-slate-400 mt-0.5">{patient.ageGender}</div>
-                            </td>
-
-                            {/* Clinical Vault Summary */}
-                            <td className="py-4 px-4 text-center">
-                              <div className="inline-flex flex-col items-center gap-1">
-                                <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 max-w-[180px] truncate block" title={patient.primaryCondition}>
-                                  {patient.primaryCondition}
-                                </span>
-                                <div className="flex items-center gap-1.5 text-[10px] font-mono">
-                                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                                    {patient.prescriptionsCount ?? 0} Rx
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                                    {patient.documentsCount ?? 0} Labs
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Access Authorization Status */}
-                            <td className="py-4 px-4">
+                            <div className="flex items-center gap-1.5 font-bold">
                               {isGranted ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <>
                                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                  <span>Access Granted</span>
-                                  {patient.accessStatus === "emergency_override" && (
-                                    <span className="text-[10px] uppercase font-extrabold text-rose-600 dark:text-rose-400 ml-1">
-                                      [ER Override]
-                                    </span>
-                                  )}
-                                </div>
-                              ) : isPending ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" />
-                                  <span>Awaiting Approval</span>
-                                </div>
+                                  <span>Vault Decrypted &amp; Authorized</span>
+                                </>
                               ) : isRevoked ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                                <>
                                   <Lock className="w-3.5 h-3.5 text-rose-600" />
-                                  <span>Access Revoked</span>
-                                </div>
-                              ) : patient.accessStatus === "declined" ? (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                  <span>Request Declined</span>
-                                </div>
+                                  <span>Access Revoked by Patient</span>
+                                </>
+                              ) : isPending ? (
+                                <>
+                                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                                  <span>Awaiting Patient Consent</span>
+                                </>
                               ) : (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                <>
                                   <Lock className="w-3.5 h-3.5 text-slate-400" />
                                   <span>Authorization Required</span>
-                                </div>
+                                </>
                               )}
-                            </td>
+                            </div>
 
-                            {/* Workstation Actions */}
-                            <td className="py-4 px-4 text-right">
-                              <div className="inline-flex items-center justify-end gap-2">
-                                {isGranted ? (
-                                  <>
-                                    <button
-                                      onClick={() => handleOpenPatientChart(patient)}
-                                      className="px-3.5 py-1.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-102"
-                                      title="Open Decrypted Clinical Records"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                      <span>View Records</span>
-                                    </button>
-                                    <button
-                                      onClick={() => downloadMedicalSummaryReport(patient.patientEmail, { doctorName: userSession?.name || "Dr. Reeta Bhambri" })}
-                                      className="px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                      title="Download/Print Clinical Summary"
-                                    >
-                                      <Download className="w-3.5 h-3.5" />
-                                      <span className="hidden sm:inline">Summary</span>
-                                    </button>
-                                  </>
-                                ) : isPending ? (
-                                  <button
-                                    onClick={() => handleOpenRequestModal(patient)}
-                                    className="px-3.5 py-1.5 rounded-xl text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/70 transition-colors text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
-                                    title="Awaiting patient consent. Click to update request."
-                                  >
-                                    <Clock className="w-3 h-3 text-amber-600" />
-                                    <span>Pending Authorization</span>
-                                  </button>
-                                ) : (
-                                  <div className="flex items-center justify-end gap-2">
-                                    <button
-                                      onClick={() => handleOpenRequestModal(patient)}
-                                      className="px-3.5 py-1.5 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-102"
-                                    >
-                                      <Send className="w-3.5 h-3.5" />
-                                      <span>{isRevoked ? "Request Access Again" : "Request Access"}</span>
-                                    </button>
-                                    <button
-                                      onClick={() => handleOpenEmergencyBreakGlass(patient)}
-                                      className="text-[11px] text-rose-600 hover:text-rose-800 dark:text-rose-400 font-semibold hover:underline px-1 py-1"
-                                      title="Emergency Break-Glass Override"
-                                    >
-                                      Emergency
-                                    </button>
-                                  </div>
-                                )}
+                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+                              {patient.patientUid}
+                            </span>
+                          </div>
+
+                          {/* Card Body */}
+                          <div className="p-4 space-y-3.5">
+                            {/* Patient Identity & Blood Group */}
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-xs ${
+                                  isGranted
+                                    ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+                                    : isRevoked
+                                    ? "bg-gradient-to-br from-rose-500 to-slate-700"
+                                    : "bg-gradient-to-br from-teal-600 to-slate-700"
+                                }`}
+                              >
+                                {patient.patientName.slice(0, 2).toUpperCase()}
                               </div>
-                            </td>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                                    {patient.patientName}
+                                  </h4>
+                                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800">
+                                    {patient.bloodGroup}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                  {patient.patientEmail} • {patient.phoneNumber}
+                                </p>
+                                <p className="text-[11px] text-slate-400">
+                                  {patient.ageGender}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Clinical Condition & Vault Counts */}
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400">Primary Condition:</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[170px]" title={patient.primaryCondition}>
+                                  {patient.primaryCondition}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] font-mono">
+                                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 font-bold border border-slate-200/60 dark:border-slate-700">
+                                  {patient.prescriptionsCount ?? 0} Prescriptions
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold border border-slate-200/60 dark:border-slate-700">
+                                  {patient.documentsCount ?? 0} Lab Reports
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Upcoming Appointment Tag if scheduled */}
+                            {upAppt && (
+                              <div className="flex items-center gap-2 p-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 text-xs">
+                                <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                <span className="text-indigo-900 dark:text-indigo-200 truncate">
+                                  Scheduled OPD: <strong>{upAppt.date}</strong> at {upAppt.time}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Card Action Footer */}
+                          <div className="p-3.5 bg-slate-50/60 dark:bg-slate-950/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                            {isGranted ? (
+                              <>
+                                <button
+                                  onClick={() => handleOpenPatientChart(patient)}
+                                  className="flex-1 px-3.5 py-2 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs hover:scale-101"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Open Medical Vault</span>
+                                </button>
+                                <button
+                                  onClick={() => downloadMedicalSummaryReport(patient.patientEmail, { doctorName: userSession?.name || "Dr. Reeta Bhambri" })}
+                                  className="px-2.5 py-2 rounded-xl font-medium text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1 cursor-pointer shrink-0"
+                                  title="Download Clinical Summary"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Summary</span>
+                                </button>
+                              </>
+                            ) : isPending ? (
+                              <div className="w-full flex items-center justify-between gap-2">
+                                <span className="text-xs text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1.5">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                  <span>Authorization Pending</span>
+                                </span>
+                                <button
+                                  onClick={() => handleOpenRequestModal(patient)}
+                                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50 hover:bg-amber-200/80 transition-colors cursor-pointer"
+                                >
+                                  Update
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleOpenRequestModal(patient)}
+                                  className="flex-1 px-3.5 py-2 rounded-xl font-bold text-xs text-white bg-teal-600 hover:bg-teal-700 transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs hover:scale-101"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                  <span>{isRevoked ? "Request Access Again" : "Request Access"}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenEmergencyBreakGlass(patient)}
+                                  className="px-2.5 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl font-semibold transition-colors shrink-0 cursor-pointer"
+                                  title="Emergency Break-Glass Override"
+                                >
+                                  ER Override
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Dense Table View */
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50/90 dark:bg-slate-950/80 border-b border-slate-200/90 dark:border-slate-800 text-[11px] text-slate-500 uppercase tracking-wider font-bold">
+                            <th className="py-3.5 px-4">Patient Identity</th>
+                            <th className="py-3.5 px-4">Demographics &amp; Contact</th>
+                            <th className="py-3.5 px-4 text-center">Clinical Vault</th>
+                            <th className="py-3.5 px-4">Authorization Status</th>
+                            <th className="py-3.5 px-4 text-right">Workstation Action</th>
                           </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                          {filteredPatients.map((patient) => {
+                            const isGranted = patient.accessStatus === "granted" || patient.accessStatus === "emergency_override";
+                            const isPending = patient.accessStatus === "pending";
+                            const isRevoked = patient.accessStatus === "revoked";
+
+                            return (
+                              <tr 
+                                key={patient.patientEmail}
+                                className="hover:bg-teal-50/20 dark:hover:bg-slate-800/40 transition-colors group"
+                              >
+                                {/* Patient Identity */}
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                      {patient.patientName.slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-sm text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-1.5">
+                                        <span>{patient.patientName}</span>
+                                        {(() => {
+                                          const upAppt = doctorAppointments.find(
+                                            (a) =>
+                                              a.patientEmail.toLowerCase() === patient.patientEmail.toLowerCase() &&
+                                              (a.status === "confirmed" || a.status === "rescheduled")
+                                          );
+                                          if (!upAppt) return null;
+                                          return (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/60">
+                                              <Calendar className="w-3 h-3 text-indigo-500" />
+                                              <span>{upAppt.date}</span>
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                          {patient.patientUid}
+                                        </span>
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/60">
+                                          {patient.bloodGroup}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Demographics & Contact */}
+                                <td className="py-4 px-4">
+                                  <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{patient.patientEmail}</div>
+                                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{patient.phoneNumber}</div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5">{patient.ageGender}</div>
+                                </td>
+
+                                {/* Clinical Vault Summary */}
+                                <td className="py-4 px-4 text-center">
+                                  <div className="inline-flex flex-col items-center gap-1">
+                                    <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 max-w-[180px] truncate block" title={patient.primaryCondition}>
+                                      {patient.primaryCondition}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                                      <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                                        {patient.prescriptionsCount ?? 0} Rx
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                                        {patient.documentsCount ?? 0} Labs
+                                      </span>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Access Authorization Status */}
+                                <td className="py-4 px-4">
+                                  {isGranted ? (
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                      <span>Access Granted</span>
+                                      {patient.accessStatus === "emergency_override" && (
+                                        <span className="text-[10px] uppercase font-extrabold text-rose-600 dark:text-rose-400 ml-1">
+                                          [ER Override]
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : isPending ? (
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                      <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                                      <span>Awaiting Approval</span>
+                                    </div>
+                                  ) : isRevoked ? (
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                                      <Lock className="w-3.5 h-3.5 text-rose-600" />
+                                      <span>Access Revoked</span>
+                                    </div>
+                                  ) : patient.accessStatus === "declined" ? (
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                      <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                      <span>Request Declined</span>
+                                    </div>
+                                  ) : (
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                      <span>Authorization Required</span>
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Workstation Actions */}
+                                <td className="py-4 px-4 text-right">
+                                  <div className="inline-flex items-center justify-end gap-2">
+                                    {isGranted ? (
+                                      <>
+                                        <button
+                                          onClick={() => handleOpenPatientChart(patient)}
+                                          className="px-3.5 py-1.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs hover:scale-102"
+                                          title="Open Decrypted Clinical Records"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                          <span>View Records</span>
+                                        </button>
+                                        <button
+                                          onClick={() => downloadMedicalSummaryReport(patient.patientEmail, { doctorName: userSession?.name || "Dr. Reeta Bhambri" })}
+                                          className="px-2.5 py-1.5 rounded-xl font-medium text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                          title="Download/Print Clinical Summary"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                          <span className="hidden sm:inline">Summary</span>
+                                        </button>
+                                      </>
+                                    ) : isPending ? (
+                                      <button
+                                        onClick={() => handleOpenRequestModal(patient)}
+                                        className="px-3.5 py-1.5 rounded-xl text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300/70 transition-colors text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
+                                        title="Awaiting patient consent. Click to update request."
+                                      >
+                                        <Clock className="w-3 h-3 text-amber-600" />
+                                        <span>Pending Authorization</span>
+                                      </button>
+                                    ) : (
+                                      <div className="flex items-center justify-end gap-2">
+                                        <button
+                                          onClick={() => handleOpenRequestModal(patient)}
+                                          className="px-3.5 py-1.5 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-102"
+                                        >
+                                          <Send className="w-3.5 h-3.5" />
+                                          <span>{isRevoked ? "Request Access Again" : "Request Access"}</span>
+                                        </button>
+                                        <button
+                                          onClick={() => handleOpenEmergencyBreakGlass(patient)}
+                                          className="text-[11px] text-rose-600 hover:text-rose-800 dark:text-rose-400 font-semibold hover:underline px-1 py-1 cursor-pointer"
+                                          title="Emergency Break-Glass Override"
+                                        >
+                                          Emergency
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Secondary Column: Clinical Shift Companion Panel */}
+              <div className="xl:col-span-4 space-y-4">
+                {/* Panel 1: Today's Consultation Schedule */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4.5 shadow-xs space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                        Today's OPD Queue
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => { setActiveTab("appointments"); setSelectedPatient(null); }}
+                      className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer"
+                    >
+                      Full Queue ({confirmedAppointmentsCount}) →
+                    </button>
+                  </div>
+
+                  {doctorAppointments.filter(a => a.status === "confirmed" || a.status === "rescheduled").length === 0 ? (
+                    <div className="text-center py-6 text-slate-400">
+                      <Calendar className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-1.5" />
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">No OPD visits remaining for today</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Walk-ins can be registered anytime.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {doctorAppointments
+                        .filter(a => a.status === "confirmed" || a.status === "rescheduled")
+                        .slice(0, 3)
+                        .map((apt) => (
+                          <div
+                            key={apt.id}
+                            className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                                {apt.patientName}
+                              </p>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                                  {apt.time}
+                                </span>
+                                <span>•</span>
+                                <span className="truncate">{apt.reason || "Clinical Consultation"}</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleOpenDossierFromAppointment(apt)}
+                              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 border border-teal-200/60 dark:border-teal-800 shrink-0 cursor-pointer"
+                            >
+                              Open Chart
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Panel 2: Multi-Doctor Calibrated Prescription OCR */}
+                <div className="rounded-2xl bg-gradient-to-br from-teal-500/10 via-emerald-500/5 to-slate-900/5 dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-slate-900 border border-teal-200 dark:border-teal-800/60 p-4.5 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                        AI Prescription Scanner
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200">
+                      4 Calibrated
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Decipher handwritten prescription slips with zero-hallucination dual document cross-verification.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/80 dark:bg-slate-800 border border-teal-200/80 dark:border-teal-800 text-teal-800 dark:text-teal-300">
+                      Dr. Reeta Bhambri
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/80 dark:bg-slate-800 border border-teal-200/80 dark:border-teal-800 text-teal-800 dark:text-teal-300">
+                      Dr. Lovepreet
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/80 dark:bg-slate-800 border border-teal-200/80 dark:border-teal-800 text-teal-800 dark:text-teal-300">
+                      Dr. Sandeep Kumar
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/80 dark:bg-slate-800 border border-teal-200/80 dark:border-teal-800 text-teal-800 dark:text-teal-300">
+                      Dr. Meenakshi Jain
+                    </span>
+                  </div>
+                  <Link
+                    href="/dashboard/scan"
+                    className="w-full mt-2 py-2 px-3 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Launch Scanner Workstation</span>
+                  </Link>
+                </div>
+
+                {/* Panel 3: Clinical Governance & Privacy Seal */}
+                <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 text-xs space-y-2.5 shadow-xs">
+                  <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>DPDP Act 2023 &amp; Consent Directives</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                    All patient clinical records are locked with patient-mediated encryption keys. Access is strictly logged into immutable audit registries with timestamp and physician license attribution.
+                  </p>
+                  <div className="pt-1 flex items-center gap-2 text-[10px] text-slate-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>SHA-256 Audit Integrity Verified</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* =========================================================================
+
+                {/* =========================================================================
             VIEW 2: READ-ONLY CLINICAL RECORDS CHART (When Patient Selected)
             ========================================================================= */}
         {selectedPatient && (

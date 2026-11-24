@@ -59,20 +59,14 @@ const ROLES = [
   {
     id: "patient",
     label: "Patient",
-    desc: "Manage your personal health records",
+    desc: "Manage your personal health records & prescriptions",
     icon: UserIcon,
   },
   {
     id: "doctor",
     label: "Doctor",
-    desc: "Collaborate with patients",
+    desc: "Clinical consultations & patient health vaults",
     icon: Stethoscope,
-  },
-  {
-    id: "pharmacy",
-    label: "Pharmacy",
-    desc: "Manage inventory and prescriptions",
-    icon: Pill,
   },
 ] as const;
 
@@ -308,7 +302,7 @@ function AuthFormInner() {
         return;
       }
 
-      const userRole = role; // "doctor" | "patient" | "pharmacy"
+      const userRole = role; // "doctor" | "patient"
       const destination = getTargetRouteForRole(userRole, targetDestination);
 
       setRegSuccess(`Account registered as ${userRole === "doctor" ? "Doctor" : "Patient"}! Entering portal...`);
