@@ -303,19 +303,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## Academic Capstone Metadata
+## Academic Capstone Metadata & Team Contributions
 
 - **Course:** UCS503P — Software Engineering Capstone (Academic Year 2026–2027)
 - **Institution:** Thapar Institute of Engineering & Technology, Patiala
-- **Engineering Roles & Member Contributions:**
-  - **Jasmeen Kaur** (Roll: 1024030103) — Lead ML & Backend Security Architect
-    - Evaluated TrOCR & Florence-2 benchmarks; architected Gemini 3.6 Flash VLM pipeline.
-    - Engineered Multi-Doctor Calibration Engine across 4 practicing physicians (Dr. Reeta Bhambri, Dr. Lovepreet, Dr. Sandeep Kumar, Dr. Meenakshi Jain) with 5-sheet ground-truth ingestion.
-    - Architected dynamic real-patient Emergency Pass, in-browser QR generation, Medical ID editor, and live OCR prescription medication synchronization.
-    - Implemented Anti-Bias Context Scoping and multi-tenant patient vault isolation.
-    - Designed real-time Drug-Drug Interaction (DDI) screening matrix.
-  - **Maitri Mishra** (Roll: 1024030124) — Lead Frontend & Systems Integration Engineer
-    - Initialized monorepo scaffolding and FastAPI REST backend structure.
-    - Built responsive clinical UI in Next.js 16 with accessible components and modals.
-    - Implemented interactive appointment scheduler and condition timeline views.
-    - Conducted OpenCV line and contour segmentation benchmarks.
+
+### Primary Contributions
+
+| Team Member | Primary Contributions |
+| :--- | :--- |
+| **Jasmeen Kaur (Lead)** | Led problem research and technical exploration; compared OCR and VLM approaches; investigated handwriting recognition limitations and Indian prescription shorthand; designed the Gemini prompt strategy and structured extraction schema; developed and refined the OCR flow, fallback handling, second-document prompt path, and doctor-specific calibration concept; contributed substantially to FastAPI backend integration, prescription and analytics workflows, repository architecture, debugging, end-to-end integration, evaluation design, and final technical report consolidation. |
+| **Maitri Mishra** | Contributed to patient-facing frontend design and implementation, including dashboard layouts, prescription archive and workflow screens; supported usability improvements, form behaviour, and integration of frontend components with application services; assisted with functional checks and report preparation. |
+| **Ananya Saini** | Contributed to data modelling and persistence design, including review of PostgreSQL entities, relationships, and user-owned record flows; supported Supabase authentication and Row-Level Security configuration, access permissions, consent-state testing, and documentation of privacy and data governance decisions. |
+| **Shambhavi Chaudhary** | Contributed to doctor-facing workflows and supporting interface modules, including appointment/consultation flows and emergency dossier presentation; supported test-case preparation, visual consistency checks, diagram organization, documentation, and final validation of user journeys. |
